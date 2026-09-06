@@ -1,4 +1,5 @@
-﻿using Microsoft.EntityFrameworkCore;
+﻿using EggERP.Domain.Entities;
+using Microsoft.EntityFrameworkCore;
 
 namespace EggERP.Infrastructure.Persistence;
 
@@ -8,4 +9,6 @@ public class EggERPDbContext : DbContext
         : base(options)
     {
     }
+
+    public DbSet<Business> Businesses => Set<Business>();
 }
