@@ -8,12 +8,21 @@ using EggERP.Infrastructure.Products;
 
 var builder = WebApplication.CreateBuilder(args);
 
+// Database
 builder.Services.AddDbContext<EggERPDbContext>(options =>
     options.UseSqlServer(
         builder.Configuration.GetConnectionString("EggERPConnection")));
 
+// Product services
 builder.Services.AddScoped<IProductRepository, ProductRepository>();
 builder.Services.AddScoped<IProductService, ProductService>();
+
+// API Controllers
+builder.Services.AddControllers();
+
+// Swagger
+builder.Services.AddEndpointsApiExplorer();
+builder.Services.AddSwaggerGen();
 
 // Add services to the container.
 builder.Services.AddRazorComponents()
@@ -28,8 +37,14 @@ var app = builder.Build();
 if (!app.Environment.IsDevelopment())
 {
     app.UseExceptionHandler("/Error", createScopeForErrors: true);
-    // The default HSTS value is 30 days. You may want to change this for production scenarios, see https://aka.ms/aspnetcore-hsts.
     app.UseHsts();
+}
+
+// Swagger
+if (app.Environment.IsDevelopment())
+{
+    app.UseSwagger();
+    app.UseSwaggerUI();
 }
 
 app.UseHttpsRedirection();
@@ -37,6 +52,10 @@ app.UseHttpsRedirection();
 app.UseStaticFiles();
 app.UseAntiforgery();
 
+// API Controllers
+app.MapControllers();
+
+// Blazor
 app.MapRazorComponents<App>()
     .AddInteractiveServerRenderMode()
     .AddAdditionalAssemblies(typeof(EggERP.Shared._Imports).Assembly);

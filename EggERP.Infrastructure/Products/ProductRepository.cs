@@ -21,4 +21,12 @@ public class ProductRepository : IProductRepository
             .OrderBy(p => p.Name)
             .ToListAsync();
     }
+
+    public async Task<Product> AddAsync(Product product)
+    {
+        _dbContext.Products.Add(product);
+        await _dbContext.SaveChangesAsync();
+
+        return product;
+    }
 }

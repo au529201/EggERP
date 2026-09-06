@@ -1,4 +1,5 @@
 ﻿using EggERP.Application.Products;
+using EggERP.Domain.Entities;
 using Microsoft.AspNetCore.Mvc;
 
 namespace EggERP.Web.Controllers;
@@ -20,5 +21,16 @@ public class ProductController : ControllerBase
         var products = await _productService.GetProductsAsync(businessId);
 
         return Ok(products);
+    }
+
+    [HttpPost]
+    public async Task<IActionResult> CreateProduct(Product product)
+    {
+        var createdProduct = await _productService.CreateProductAsync(product);
+
+        return CreatedAtAction(
+            nameof(GetProducts),
+            new { businessId = createdProduct.BusinessId },
+            createdProduct);
     }
 }

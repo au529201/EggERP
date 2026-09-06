@@ -15,4 +15,13 @@ public class ProductService : IProductService
     {
         return _productRepository.GetActiveByBusinessIdAsync(businessId);
     }
+
+    public async Task<Product> CreateProductAsync(Product product)
+    {
+        product.Id = Guid.NewGuid();
+        product.CreatedAtUtc = DateTime.UtcNow;
+        product.IsActive = true;
+
+        return await _productRepository.AddAsync(product);
+    }
 }
