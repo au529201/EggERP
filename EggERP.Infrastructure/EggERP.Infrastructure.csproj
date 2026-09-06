@@ -1,15 +1,13 @@
-<Project Sdk="Microsoft.NET.Sdk.Web">
+﻿<Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
     <TargetFramework>net9.0</TargetFramework>
-    <Nullable>enable</Nullable>
     <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
   </PropertyGroup>
 
   <ItemGroup>
     <ProjectReference Include="..\EggERP.Application\EggERP.Application.csproj" />
-    <ProjectReference Include="..\EggERP.Infrastructure\EggERP.Infrastructure.csproj" />
-    <ProjectReference Include="..\EggERP.Shared\EggERP.Shared.csproj" />
   </ItemGroup>
 
 </Project>

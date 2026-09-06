@@ -1,12 +1,18 @@
 Microsoft Visual Studio Solution File, Format Version 12.00
 # Visual Studio Version 17
-VisualStudioVersion = 17.14.36705.20 d17.14
+VisualStudioVersion = 17.14.36705.20
 MinimumVisualStudioVersion = 10.0.40219.1
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "EggERP", "EggERP\EggERP.csproj", "{294F7E10-9882-4FF6-B1BC-F1DB79F3EB3F}"
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "EggERP.Shared", "EggERP.Shared\EggERP.Shared.csproj", "{DB2558BC-30D4-40FF-BA59-3E766A88724F}"
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "EggERP.Web", "EggERP.Web\EggERP.Web.csproj", "{1808B569-4BBC-4D5E-895B-F920F63165E1}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "EggERP.Domain", "EggERP.Domain\EggERP.Domain.csproj", "{85661383-3FBA-434A-AF0C-622F193BFA25}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "EggERP.Application", "EggERP.Application\EggERP.Application.csproj", "{AA4E291D-7E67-414C-AEF9-58D093D4321A}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "EggERP.Infrastructure", "EggERP.Infrastructure\EggERP.Infrastructure.csproj", "{BDA77F2C-8646-44DF-A6E8-EEAF12495F7B}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
@@ -16,6 +22,7 @@ Global
 	GlobalSection(ProjectConfigurationPlatforms) = postSolution
 		{294F7E10-9882-4FF6-B1BC-F1DB79F3EB3F}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
 		{294F7E10-9882-4FF6-B1BC-F1DB79F3EB3F}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{294F7E10-9882-4FF6-B1BC-F1DB79F3EB3F}.Debug|Any CPU.Deploy.0 = Debug|Any CPU
 		{294F7E10-9882-4FF6-B1BC-F1DB79F3EB3F}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{294F7E10-9882-4FF6-B1BC-F1DB79F3EB3F}.Release|Any CPU.Build.0 = Release|Any CPU
 		{DB2558BC-30D4-40FF-BA59-3E766A88724F}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
@@ -26,6 +33,18 @@ Global
 		{1808B569-4BBC-4D5E-895B-F920F63165E1}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{1808B569-4BBC-4D5E-895B-F920F63165E1}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{1808B569-4BBC-4D5E-895B-F920F63165E1}.Release|Any CPU.Build.0 = Release|Any CPU
+		{85661383-3FBA-434A-AF0C-622F193BFA25}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{85661383-3FBA-434A-AF0C-622F193BFA25}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{85661383-3FBA-434A-AF0C-622F193BFA25}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{85661383-3FBA-434A-AF0C-622F193BFA25}.Release|Any CPU.Build.0 = Release|Any CPU
+		{AA4E291D-7E67-414C-AEF9-58D093D4321A}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{AA4E291D-7E67-414C-AEF9-58D093D4321A}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{AA4E291D-7E67-414C-AEF9-58D093D4321A}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{AA4E291D-7E67-414C-AEF9-58D093D4321A}.Release|Any CPU.Build.0 = Release|Any CPU
+		{BDA77F2C-8646-44DF-A6E8-EEAF12495F7B}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{BDA77F2C-8646-44DF-A6E8-EEAF12495F7B}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{BDA77F2C-8646-44DF-A6E8-EEAF12495F7B}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{BDA77F2C-8646-44DF-A6E8-EEAF12495F7B}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
