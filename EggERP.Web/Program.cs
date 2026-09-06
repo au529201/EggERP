@@ -1,3 +1,4 @@
+using EggERP.Shared.Models;
 using EggERP.Shared.Services;
 using EggERP.Web.Components;
 using EggERP.Web.Services;
@@ -30,6 +31,12 @@ builder.Services.AddRazorComponents()
 
 // Add device-specific services used by the EggERP.Shared project
 builder.Services.AddSingleton<IFormFactor, FormFactor>();
+
+// Product API client (calls this same app's own API endpoints)
+builder.Services.AddHttpClient<IProductApiService, ProductApiService>(client =>
+{
+    client.BaseAddress = new Uri("https://localhost:7062/");
+});
 
 var app = builder.Build();
 
