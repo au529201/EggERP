@@ -1,12 +1,18 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
+﻿using EggERP.Domain.Entities;
 
-namespace EggERP.Application.Products
+namespace EggERP.Application.Products;
+
+public class ProductService : IProductService
 {
-    internal class ProductService
+    private readonly IProductRepository _productRepository;
+
+    public ProductService(IProductRepository productRepository)
     {
+        _productRepository = productRepository;
+    }
+
+    public Task<List<Product>> GetProductsAsync(Guid businessId)
+    {
+        return _productRepository.GetActiveByBusinessIdAsync(businessId);
     }
 }
