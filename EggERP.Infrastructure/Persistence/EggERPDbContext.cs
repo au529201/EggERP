@@ -11,4 +11,5 @@ public class EggERPDbContext : DbContext
     }
 
     public DbSet<Business> Businesses => Set<Business>();
+    public DbSet<Category> Categories => Set<Category>();
 }
