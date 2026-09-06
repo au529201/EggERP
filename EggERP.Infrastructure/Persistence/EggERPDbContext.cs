@@ -18,4 +18,5 @@ public class EggERPDbContext : DbContext
     public DbSet<Inventory> Inventories => Set<Inventory>();
     public DbSet<Sale> Sales => Set<Sale>();
     public DbSet<SaleItem> SaleItems => Set<SaleItem>();
+    public DbSet<Purchase> Purchases => Set<Purchase>();
 } 
