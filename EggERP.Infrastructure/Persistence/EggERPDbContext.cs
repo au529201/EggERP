@@ -22,5 +22,5 @@ public class EggERPDbContext : DbContext
     public DbSet<PurchaseItem> PurchaseItems => Set<PurchaseItem>();
     public DbSet<Payment> Payments => Set<Payment>();
     public DbSet<Expense> Expenses => Set<Expense>();
-
+    public DbSet<TaxRate> TaxRates => Set<TaxRate>();
 } 
