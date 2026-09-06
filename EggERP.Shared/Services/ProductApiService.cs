@@ -6,6 +6,7 @@ namespace EggERP.Shared.Services
     public interface IProductApiService
     {
         Task<List<ProductDto>> GetProductsAsync(Guid businessId);
+        Task CreateProductAsync(CreateProductRequest request);
     }
 
     public class ProductApiService : IProductApiService
@@ -23,6 +24,12 @@ namespace EggERP.Shared.Services
                 $"api/products/{businessId}");
 
             return result ?? new List<ProductDto>();
+        }
+
+        public async Task CreateProductAsync(CreateProductRequest request)
+        {
+            var response = await _http.PostAsJsonAsync("api/products", request);
+            response.EnsureSuccessStatusCode();
         }
     }
 }
