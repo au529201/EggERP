@@ -1,0 +1,53 @@
+﻿@page "/products"
+@using EggERP.Shared.Models
+@using EggERP.Shared.Services
+@inject IProductApiService ProductApiService
+
+<h3>Products</h3>
+
+@if (products is null)
+{
+    <p>Loading...</p>
+}
+else if (products.Count == 0)
+{
+    <p>No products found.</p>
+}
+else
+{
+    <table class="table">
+        <thead>
+            <tr>
+                <th>Name</th>
+                <th>SKU</th>
+                <th>Unit</th>
+                <th>Cost</th>
+                <th>Selling</th>
+            </tr>
+        </thead>
+        <tbody>
+            @foreach (var product in products)
+            {
+                <tr>
+                    <td>@product.Name</td>
+                    <td>@product.Sku</td>
+                    <td>@product.Unit</td>
+                    <td>@product.CostPrice</td>
+                    <td>@product.SellingPrice</td>
+                </tr>
+            }
+        </tbody>
+    </table>
+}
+
+@code {
+    private List<ProductDto>? products;
+
+    // Hard-coded test business ID for now, until auth/business context exists
+    private readonly Guid businessId = Guid.Parse("11111111-1111-1111-1111-111111111111");
+
+    protected override async Task OnInitializedAsync()
+    {
+        products = await ProductApiService.GetProductsAsync(businessId);
+    }
+}
