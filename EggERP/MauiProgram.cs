@@ -18,8 +18,11 @@ namespace EggERP
 
             // Add device-specific services used by the EggERP.Shared project
             builder.Services.AddSingleton<IFormFactor, FormFactor>();
-
             builder.Services.AddMauiBlazorWebView();
+            builder.Services.AddHttpClient<IProductApiService, ProductApiService>(client =>
+            {
+                client.BaseAddress = new Uri("https://localhost:7062/");
+            });
 
 #if DEBUG
             builder.Services.AddBlazorWebViewDeveloperTools();
