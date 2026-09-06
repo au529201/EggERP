@@ -3,12 +3,18 @@ using EggERP.Web.Components;
 using EggERP.Web.Services;
 using EggERP.Infrastructure.Persistence;
 using Microsoft.EntityFrameworkCore;
+using EggERP.Application.Products;
+using EggERP.Infrastructure.Products;
 
 var builder = WebApplication.CreateBuilder(args);
 
 builder.Services.AddDbContext<EggERPDbContext>(options =>
     options.UseSqlServer(
         builder.Configuration.GetConnectionString("EggERPConnection")));
+
+builder.Services.AddScoped<IProductRepository, ProductRepository>();
+builder.Services.AddScoped<IProductService, ProductService>();
+
 // Add services to the container.
 builder.Services.AddRazorComponents()
     .AddInteractiveServerComponents();
