@@ -32,7 +32,29 @@ public class ProductRepository : IProductRepository
     {
         _dbContext.Products.Add(product);
         await _dbContext.SaveChangesAsync();
-
         return product;
+    }
+
+    public async Task<bool> UpdateAsync(Product product)
+    {
+        var existing = await _dbContext.Products
+            .FirstOrDefaultAsync(p => p.BusinessId == product.BusinessId && p.Id == product.Id);
+
+        if (existing is null)
+        {
+            return false;
+        }
+
+        existing.CategoryId = product.CategoryId;
+        existing.Name = product.Name;
+        existing.SKU = product.SKU;
+        existing.Description = product.Description;
+        existing.CostPrice = product.CostPrice;
+        existing.SellingPrice = product.SellingPrice;
+        existing.Unit = product.Unit;
+        existing.UpdatedAtUtc = DateTime.UtcNow;
+
+        await _dbContext.SaveChangesAsync();
+        return true;
     }
 }
