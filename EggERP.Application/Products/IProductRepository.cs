@@ -8,4 +8,5 @@ public interface IProductRepository
     Task<Product?> GetByIdAsync(Guid businessId, Guid id);
     Task<Product> AddAsync(Product product);
     Task<bool> UpdateAsync(Product product);
+    Task<bool> DeactivateAsync(Guid businessId, Guid id);
 }

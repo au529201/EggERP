@@ -39,12 +39,10 @@ public class ProductRepository : IProductRepository
     {
         var existing = await _dbContext.Products
             .FirstOrDefaultAsync(p => p.BusinessId == product.BusinessId && p.Id == product.Id);
-
         if (existing is null)
         {
             return false;
         }
-
         existing.CategoryId = product.CategoryId;
         existing.Name = product.Name;
         existing.SKU = product.SKU;
@@ -53,7 +51,20 @@ public class ProductRepository : IProductRepository
         existing.SellingPrice = product.SellingPrice;
         existing.Unit = product.Unit;
         existing.UpdatedAtUtc = DateTime.UtcNow;
+        await _dbContext.SaveChangesAsync();
+        return true;
+    }
 
+    public async Task<bool> DeactivateAsync(Guid businessId, Guid id)
+    {
+        var existing = await _dbContext.Products
+            .FirstOrDefaultAsync(p => p.BusinessId == businessId && p.Id == id);
+        if (existing is null)
+        {
+            return false;
+        }
+        existing.IsActive = false;
+        existing.UpdatedAtUtc = DateTime.UtcNow;
         await _dbContext.SaveChangesAsync();
         return true;
     }
