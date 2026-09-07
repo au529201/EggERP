@@ -52,14 +52,22 @@ public class ProductController : ControllerBase
         {
             return BadRequest("Route id does not match product id in the request body.");
         }
-
         var updated = await _productService.UpdateProductAsync(product);
-
         if (!updated)
         {
             return NotFound();
         }
+        return NoContent();
+    }
 
+    [HttpDelete("{businessId:guid}/{id:guid}")]
+    public async Task<IActionResult> DeactivateProduct(Guid businessId, Guid id)
+    {
+        var deactivated = await _productService.DeactivateProductAsync(businessId, id);
+        if (!deactivated)
+        {
+            return NotFound();
+        }
         return NoContent();
     }
 }
