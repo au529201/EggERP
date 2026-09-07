@@ -24,4 +24,9 @@ public class ProductService : IProductService
         product.IsActive = true;
         return await _productRepository.AddAsync(product);
     }
+
+    public Task<bool> UpdateProductAsync(Product product)
+    {
+        return _productRepository.UpdateAsync(product);
+    }
 }
