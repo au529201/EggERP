@@ -22,6 +22,12 @@ public class ProductRepository : IProductRepository
             .ToListAsync();
     }
 
+    public Task<Product?> GetByIdAsync(Guid businessId, Guid id)
+    {
+        return _dbContext.Products
+            .FirstOrDefaultAsync(p => p.BusinessId == businessId && p.Id == id);
+    }
+
     public async Task<Product> AddAsync(Product product)
     {
         _dbContext.Products.Add(product);
