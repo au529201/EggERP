@@ -2,8 +2,9 @@
 @using EggERP.Shared.Models
 @using EggERP.Shared.Services
 @inject IProductApiService ProductApiService
-
 <h3>Products</h3>
+
+<a class="btn btn-primary mb-3" href="/products/add">+ Add Product</a>
 
 @if (products is null)
 {
