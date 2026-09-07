@@ -39,10 +39,27 @@ public class ProductController : ControllerBase
     public async Task<IActionResult> CreateProduct(Product product)
     {
         var createdProduct = await _productService.CreateProductAsync(product);
-
         return CreatedAtAction(
             nameof(GetProducts),
             new { businessId = createdProduct.BusinessId },
             createdProduct);
+    }
+
+    [HttpPut("{id:guid}")]
+    public async Task<IActionResult> UpdateProduct(Guid id, Product product)
+    {
+        if (id != product.Id)
+        {
+            return BadRequest("Route id does not match product id in the request body.");
+        }
+
+        var updated = await _productService.UpdateProductAsync(product);
+
+        if (!updated)
+        {
+            return NotFound();
+        }
+
+        return NoContent();
     }
 }
