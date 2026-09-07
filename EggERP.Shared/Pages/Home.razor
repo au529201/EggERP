@@ -1,14 +1,62 @@
 ﻿@page "/"
+@using EggERP.Shared.Models
 @using EggERP.Shared.Services
-@inject IFormFactor FormFactor
+@inject IProductApiService ProductApiService
+@inject ICategoryApiService CategoryApiService
 
-<PageTitle>Home</PageTitle>
+<PageTitle>EggERP Dashboard</PageTitle>
 
-<h1>Hello, world!</h1>
+<h3>Dashboard</h3>
 
-Welcome to your new app running on <em>@factor</em> using <em>@platform</em>.
+@if (isLoading)
+{
+    <p>Loading...</p>
+}
+else
+{
+    <div class="row mb-4">
+        <div class="col-md-4">
+            <div class="card text-white bg-primary mb-3">
+                <div class="card-body">
+                    <h5 class="card-title">Total Products</h5>
+                    <p class="card-text" style="font-size:2rem;">@totalProducts</p>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-4">
+            <div class="card text-white bg-success mb-3">
+                <div class="card-body">
+                    <h5 class="card-title">Total Categories</h5>
+                    <p class="card-text" style="font-size:2rem;">@totalCategories</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <h5>Quick Links</h5>
+    <div class="mb-2">
+        <a class="btn btn-primary me-2" href="/products">View Products</a>
+        <a class="btn btn-outline-primary me-2" href="/products/add">+ Add Product</a>
+        <a class="btn btn-success me-2" href="/categories">View Categories</a>
+        <a class="btn btn-outline-success" href="/categories/add">+ Add Category</a>
+    </div>
+}
 
 @code {
-    private string factor => FormFactor.GetFormFactor();
-    private string platform => FormFactor.GetPlatform();
+    private int totalProducts;
+    private int totalCategories;
+    private bool isLoading = true;
+
+    private readonly Guid businessId = Guid.Parse("11111111-1111-1111-1111-111111111111");
+
+    protected override async Task OnInitializedAsync()
+    {
+        var products = await ProductApiService.GetProductsAsync(businessId);
+        var categories = await CategoryApiService.GetCategoriesAsync(businessId);
+
+        totalProducts = products.Count;
+        totalCategories = categories.Count;
+
+        isLoading = false;
+    }
 }
