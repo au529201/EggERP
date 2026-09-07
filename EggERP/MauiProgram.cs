@@ -23,6 +23,10 @@ namespace EggERP
             {
                 client.BaseAddress = new Uri("https://localhost:7062/");
             });
+            builder.Services.AddHttpClient<ICategoryApiService, CategoryApiService>(client =>
+            {
+                client.BaseAddress = new Uri("https://localhost:7062/");
+            });
 
 #if DEBUG
             builder.Services.AddBlazorWebViewDeveloperTools();

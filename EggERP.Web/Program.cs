@@ -42,6 +42,11 @@ builder.Services.AddHttpClient<IProductApiService, ProductApiService>(client =>
 {
     client.BaseAddress = new Uri("https://localhost:7062/");
 });
+// Category API client (calls this same app's own API endpoints)
+builder.Services.AddHttpClient<ICategoryApiService, CategoryApiService>(client =>
+{
+    client.BaseAddress = new Uri("https://localhost:7062/");
+});
 
 var app = builder.Build();
 
