@@ -2,9 +2,13 @@
 @using EggERP.Shared.Models
 @using EggERP.Shared.Services
 @inject IProductApiService ProductApiService
-<h3>Products</h3>
 
+<h3>Products</h3>
 <a class="btn btn-primary mb-3" href="/products/add">+ Add Product</a>
+
+<div class="mb-3">
+    <input class="form-control" placeholder="Search products..." @bind="searchText" @bind:event="oninput" />
+</div>
 
 @if (products is null)
 {
@@ -28,7 +32,7 @@ else
             </tr>
         </thead>
         <tbody>
-            @foreach (var product in products)
+            @foreach (var product in FilteredProducts)
             {
                 <tr>
                     <td>@product.Name</td>
@@ -48,9 +52,17 @@ else
 
 @code {
     private List<ProductDto>? products;
-
+    private string searchText = string.Empty;
     // Hard-coded test business ID for now, until auth/business context exists
     private readonly Guid businessId = Guid.Parse("11111111-1111-1111-1111-111111111111");
+
+    private IEnumerable<ProductDto> FilteredProducts =>
+        products is null
+            ? Enumerable.Empty<ProductDto>()
+            : products.Where(p =>
+                string.IsNullOrWhiteSpace(searchText) ||
+                p.Name.Contains(searchText, StringComparison.OrdinalIgnoreCase) ||
+                p.Sku.Contains(searchText, StringComparison.OrdinalIgnoreCase));
 
     protected override async Task OnInitializedAsync()
     {
