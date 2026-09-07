@@ -1,0 +1,60 @@
+﻿@page "/categories/add"
+@using EggERP.Shared.Models
+@using EggERP.Shared.Services
+@inject ICategoryApiService CategoryApiService
+@inject NavigationManager Navigation
+
+<h3>Add Category</h3>
+
+<EditForm Model="@newCategory" OnValidSubmit="HandleSave">
+    <div class="mb-3">
+        <label>Name</label>
+        <InputText class="form-control" @bind-Value="newCategory.Name" />
+    </div>
+    <div class="mb-3">
+        <label>Description</label>
+        <InputText class="form-control" @bind-Value="newCategory.Description" />
+    </div>
+
+    @if (!string.IsNullOrEmpty(errorMessage))
+    {
+        <p style="color:red">@errorMessage</p>
+    }
+
+    <button type="submit" class="btn btn-primary">Save</button>
+</EditForm>
+
+@code {
+    private CategoryFormModel newCategory = new();
+    private string? errorMessage;
+    private readonly Guid businessId = Guid.Parse("11111111-1111-1111-1111-111111111111");
+
+    private async Task HandleSave()
+    {
+        errorMessage = null;
+
+        var request = new CreateCategoryRequest
+        {
+            BusinessId = businessId,
+            Name = newCategory.Name,
+            Description = newCategory.Description,
+            IsActive = true
+        };
+
+        try
+        {
+            await CategoryApiService.CreateCategoryAsync(request);
+            Navigation.NavigateTo("/categories");
+        }
+        catch (Exception ex)
+        {
+            errorMessage = $"Failed to save category: {ex.Message}";
+        }
+    }
+
+    private class CategoryFormModel
+    {
+        public string Name { get; set; } = string.Empty;
+        public string Description { get; set; } = string.Empty;
+    }
+}

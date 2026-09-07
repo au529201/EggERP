@@ -1,0 +1,57 @@
+﻿@page "/categories"
+@using EggERP.Shared.Models
+@using EggERP.Shared.Services
+@inject ICategoryApiService CategoryApiService
+
+<h3>Categories</h3>
+<a class="btn btn-primary mb-3" href="/categories/add">+ Add Category</a>
+
+@if (categories is null)
+{
+    <p>Loading...</p>
+}
+else if (categories.Count == 0)
+{
+    <p>No categories found.</p>
+}
+else
+{
+    <table class="table">
+        <thead>
+            <tr>
+                <th>Name</th>
+                <th>Description</th>
+                <th></th>
+            </tr>
+        </thead>
+        <tbody>
+            @foreach (var category in categories)
+            {
+                <tr>
+                    <td>@category.Name</td>
+                    <td>@category.Description</td>
+                    <td>
+                        <a class="btn btn-sm btn-secondary" href="@($"/categories/edit/{category.Id}")">Edit</a>
+                        <button class="btn btn-sm btn-danger" @onclick="() => DeactivateCategory(category.Id)">Deactivate</button>
+                    </td>
+                </tr>
+            }
+        </tbody>
+    </table>
+}
+
+@code {
+    private List<CategoryDto>? categories;
+    private readonly Guid businessId = Guid.Parse("11111111-1111-1111-1111-111111111111");
+
+    protected override async Task OnInitializedAsync()
+    {
+        categories = await CategoryApiService.GetCategoriesAsync(businessId);
+    }
+
+    private async Task DeactivateCategory(Guid id)
+    {
+        await CategoryApiService.DeactivateCategoryAsync(businessId, id);
+        categories = await CategoryApiService.GetCategoriesAsync(businessId);
+    }
+}
