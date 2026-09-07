@@ -36,7 +36,10 @@ else
                     <td>@product.Unit</td>
                     <td>@product.CostPrice</td>
                     <td>@product.SellingPrice</td>
-                    <td><a class="btn btn-sm btn-secondary" href="@($"/products/edit/{product.Id}")">Edit</a></td>
+                    <td>
+                        <a class="btn btn-sm btn-secondary" href="@($"/products/edit/{product.Id}")">Edit</a>
+                        <button class="btn btn-sm btn-danger" @onclick="() => DeactivateProduct(product.Id)">Deactivate</button>
+                    </td>
                 </tr>
             }
         </tbody>
@@ -51,6 +54,12 @@ else
 
     protected override async Task OnInitializedAsync()
     {
+        products = await ProductApiService.GetProductsAsync(businessId);
+    }
+
+    private async Task DeactivateProduct(Guid id)
+    {
+        await ProductApiService.DeactivateProductAsync(businessId, id);
         products = await ProductApiService.GetProductsAsync(businessId);
     }
 }

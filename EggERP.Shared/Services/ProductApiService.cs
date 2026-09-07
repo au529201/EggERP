@@ -9,6 +9,7 @@ namespace EggERP.Shared.Services
         Task CreateProductAsync(CreateProductRequest request);
         Task<ProductDetailDto?> GetProductByIdAsync(Guid businessId, Guid id);
         Task UpdateProductAsync(UpdateProductRequest request);
+        Task DeactivateProductAsync(Guid businessId, Guid id);
     }
     public class ProductApiService : IProductApiService
     {
@@ -43,6 +44,11 @@ namespace EggERP.Shared.Services
         public async Task UpdateProductAsync(UpdateProductRequest request)
         {
             var response = await _http.PutAsJsonAsync($"api/products/{request.Id}", request);
+            response.EnsureSuccessStatusCode();
+        }
+        public async Task DeactivateProductAsync(Guid businessId, Guid id)
+        {
+            var response = await _http.DeleteAsync($"api/products/{businessId}/{id}");
             response.EnsureSuccessStatusCode();
         }
     }
