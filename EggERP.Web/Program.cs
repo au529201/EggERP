@@ -1,3 +1,5 @@
+using EggERP.Application.Categories;
+using EggERP.Infrastructure.Categories;
 using EggERP.Shared.Models;
 using EggERP.Shared.Services;
 using EggERP.Web.Components;
@@ -17,6 +19,9 @@ builder.Services.AddDbContext<EggERPDbContext>(options =>
 // Product services
 builder.Services.AddScoped<IProductRepository, ProductRepository>();
 builder.Services.AddScoped<IProductService, ProductService>();
+// Category services
+builder.Services.AddScoped<ICategoryRepository, CategoryRepository>();
+builder.Services.AddScoped<ICategoryService, CategoryService>();
 
 // API Controllers
 builder.Services.AddControllers();
