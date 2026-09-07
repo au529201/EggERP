@@ -29,4 +29,9 @@ public class ProductService : IProductService
     {
         return _productRepository.UpdateAsync(product);
     }
+
+    public Task<bool> DeactivateProductAsync(Guid businessId, Guid id)
+    {
+        return _productRepository.DeactivateAsync(businessId, id);
+    }
 }

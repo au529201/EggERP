@@ -8,4 +8,5 @@ public interface IProductService
     Task<Product?> GetProductByIdAsync(Guid businessId, Guid id);
     Task<Product> CreateProductAsync(Product product);
     Task<bool> UpdateProductAsync(Product product);
+    Task<bool> DeactivateProductAsync(Guid businessId, Guid id);
 }
