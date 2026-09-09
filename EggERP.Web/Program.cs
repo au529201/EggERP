@@ -1,5 +1,6 @@
 using EggERP.Application.Categories;
 using EggERP.Application.Customers;
+using EggERP.Application.Expenses;
 using EggERP.Application.Inventory;
 using EggERP.Application.Products;
 using EggERP.Application.Purchases;
@@ -7,6 +8,7 @@ using EggERP.Application.Sales;
 using EggERP.Application.Suppliers;
 using EggERP.Infrastructure.Categories;
 using EggERP.Infrastructure.Customers;
+using EggERP.Infrastructure.Expenses;
 using EggERP.Infrastructure.Inventory;
 using EggERP.Infrastructure.Persistence;
 using EggERP.Infrastructure.Products;
@@ -46,6 +48,9 @@ builder.Services.AddScoped<ISaleService, SaleService>();
 // Purchase services
 builder.Services.AddScoped<IPurchaseRepository, PurchaseRepository>();
 builder.Services.AddScoped<IPurchaseService, PurchaseService>();
+// Expense services
+builder.Services.AddScoped<IExpenseRepository, ExpenseRepository>();
+builder.Services.AddScoped<IExpenseService, ExpenseService>();
 
 // API Controllers
 builder.Services.AddControllers();
