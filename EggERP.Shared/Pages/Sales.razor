@@ -1,0 +1,62 @@
+﻿@page "/sales"
+@using EggERP.Shared.Models
+@using EggERP.Shared.Services
+@inject ISaleApiService SaleApiService
+@inject ICustomerApiService CustomerApiService
+
+<h3>Sales</h3>
+<a class="btn btn-primary mb-3" href="/sales/new">+ New Sale</a>
+
+@if (sales is null)
+{
+    <p>Loading...</p>
+}
+else if (sales.Count == 0)
+{
+    <p>No sales found.</p>
+}
+else
+{
+    <table class="table">
+        <thead>
+            <tr>
+                <th>Date</th>
+                <th>Customer</th>
+                <th>Total</th>
+                <th>Status</th>
+            </tr>
+        </thead>
+        <tbody>
+            @foreach (var sale in sales)
+            {
+                <tr>
+                    <td>@sale.SaleDateUtc.ToLocalTime().ToString("g")</td>
+                    <td>@GetCustomerName(sale.CustomerId)</td>
+                    <td>@sale.TotalAmount.ToString("N2")</td>
+                    <td>@sale.Status</td>
+                </tr>
+            }
+        </tbody>
+    </table>
+}
+
+@code {
+    private List<SaleDto>? sales;
+    private List<CustomerDto>? customers;
+    private readonly Guid businessId = Guid.Parse("11111111-1111-1111-1111-111111111111");
+
+    protected override async Task OnInitializedAsync()
+    {
+        sales = await SaleApiService.GetSalesAsync(businessId);
+        customers = await CustomerApiService.GetCustomersAsync(businessId);
+    }
+
+    private string GetCustomerName(Guid? customerId)
+    {
+        if (customerId is null)
+        {
+            return "Walk-in";
+        }
+        return customers?.FirstOrDefault(c => c.Id == customerId)?.Name ?? "Unknown";
+    }
+}
