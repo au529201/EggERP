@@ -2,6 +2,7 @@
 @using EggERP.Shared.Models
 @using EggERP.Shared.Services
 @inject ICategoryApiService CategoryApiService
+@inject IJSRuntime JsRuntime
 
 <h3>Categories</h3>
 <a class="btn btn-primary mb-3" href="/categories/add">+ Add Category</a>
@@ -32,7 +33,7 @@ else
                     <td>@category.Description</td>
                     <td>
                         <a class="btn btn-sm btn-secondary" href="@($"/categories/edit/{category.Id}")">Edit</a>
-                        <button class="btn btn-sm btn-danger" @onclick="() => DeactivateCategory(category.Id)">Deactivate</button>
+                        <button class="btn btn-sm btn-danger" @onclick="() => DeactivateCategory(category.Id, category.Name)">Deactivate</button>
                     </td>
                 </tr>
             }
@@ -49,8 +50,14 @@ else
         categories = await CategoryApiService.GetCategoriesAsync(businessId);
     }
 
-    private async Task DeactivateCategory(Guid id)
+    private async Task DeactivateCategory(Guid id, string name)
     {
+        var confirmed = await JsRuntime.InvokeAsync<bool>("confirm", $"Deactivate '{name}'? It will be hidden from the active category list.");
+        if (!confirmed)
+        {
+            return;
+        }
+
         await CategoryApiService.DeactivateCategoryAsync(businessId, id);
         categories = await CategoryApiService.GetCategoriesAsync(businessId);
     }
