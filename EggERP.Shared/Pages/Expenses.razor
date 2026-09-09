@@ -1,0 +1,54 @@
+﻿@page "/expenses"
+@using EggERP.Shared.Models
+@using EggERP.Shared.Services
+@inject IExpenseApiService ExpenseApiService
+
+<h3>Expenses</h3>
+<a class="btn btn-primary mb-3" href="/expenses/add">+ Add Expense</a>
+
+@if (expenses is null)
+{
+    <p>Loading...</p>
+}
+else if (expenses.Count == 0)
+{
+    <p>No expenses found.</p>
+}
+else
+{
+    <table class="table">
+        <thead>
+            <tr>
+                <th>Date</th>
+                <th>Description</th>
+                <th>Category</th>
+                <th>Amount</th>
+                <th>Payment Method</th>
+                <th>Status</th>
+            </tr>
+        </thead>
+        <tbody>
+            @foreach (var expense in expenses)
+            {
+                <tr>
+                    <td>@expense.ExpenseDateUtc.ToLocalTime().ToString("d")</td>
+                    <td>@expense.Description</td>
+                    <td>@expense.Category</td>
+                    <td>@expense.Amount.ToString("N2")</td>
+                    <td>@expense.PaymentMethod</td>
+                    <td>@expense.Status</td>
+                </tr>
+            }
+        </tbody>
+    </table>
+}
+
+@code {
+    private List<ExpenseDto>? expenses;
+    private readonly Guid businessId = Guid.Parse("11111111-1111-1111-1111-111111111111");
+
+    protected override async Task OnInitializedAsync()
+    {
+        expenses = await ExpenseApiService.GetExpensesAsync(businessId);
+    }
+}

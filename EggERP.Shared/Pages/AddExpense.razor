@@ -1,0 +1,61 @@
+﻿@page "/expenses/add"
+@using EggERP.Shared.Models
+@using EggERP.Shared.Services
+@inject IExpenseApiService ExpenseApiService
+@inject NavigationManager Navigation
+
+<h3>Add Expense</h3>
+
+<EditForm Model="@newExpense" OnValidSubmit="HandleSave">
+    <div class="mb-3">
+        <label>Description</label>
+        <InputText class="form-control" @bind-Value="newExpense.Description" />
+    </div>
+    <div class="mb-3">
+        <label>Category</label>
+        <InputText class="form-control" @bind-Value="newExpense.Category" placeholder="e.g. Feed, Utilities, Transport" />
+    </div>
+    <div class="mb-3">
+        <label>Amount</label>
+        <InputNumber class="form-control" @bind-Value="newExpense.Amount" />
+    </div>
+    <div class="mb-3">
+        <label>Payment Method</label>
+        <select class="form-select" @bind="newExpense.PaymentMethod">
+            <option value="Cash">Cash</option>
+            <option value="Bank Transfer">Bank Transfer</option>
+            <option value="GCash">GCash</option>
+            <option value="Check">Check</option>
+        </select>
+    </div>
+
+    @if (!string.IsNullOrEmpty(errorMessage))
+    {
+        <p style="color:red">@errorMessage</p>
+    }
+
+    <button type="submit" class="btn btn-primary">Save</button>
+</EditForm>
+
+@code {
+    private CreateExpenseRequest newExpense = new() { PaymentMethod = "Cash" };
+    private string? errorMessage;
+    private readonly Guid businessId = Guid.Parse("11111111-1111-1111-1111-111111111111");
+
+    private async Task HandleSave()
+    {
+        errorMessage = null;
+        newExpense.BusinessId = businessId;
+        newExpense.Status = "Paid";
+
+        try
+        {
+            await ExpenseApiService.CreateExpenseAsync(newExpense);
+            Navigation.NavigateTo("/expenses");
+        }
+        catch (Exception ex)
+        {
+            errorMessage = $"Failed to save expense: {ex.Message}";
+        }
+    }
+}
