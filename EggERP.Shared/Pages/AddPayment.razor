@@ -1,0 +1,114 @@
+﻿@page "/payments/add"
+@using EggERP.Shared.Models
+@using EggERP.Shared.Services
+@inject IPaymentApiService PaymentApiService
+@inject ISaleApiService SaleApiService
+@inject IPurchaseApiService PurchaseApiService
+@inject NavigationManager Navigation
+
+<h3>Add Payment</h3>
+
+@if (isLoading)
+{
+    <p>Loading...</p>
+}
+else
+{
+    <EditForm Model="@newPayment" OnValidSubmit="HandleSave">
+        <div class="mb-3">
+            <label>Payment For</label>
+            <select class="form-select" @bind="linkType">
+                <option value="none">General (not linked)</option>
+                <option value="sale">A Sale</option>
+                <option value="purchase">A Purchase</option>
+            </select>
+        </div>
+
+        @if (linkType == "sale")
+        {
+            <div class="mb-3">
+                <label>Sale</label>
+                <select class="form-select" @bind="selectedSaleId">
+                    <option value="">Select a sale</option>
+                    @foreach (var sale in sales)
+                    {
+                        <option value="@sale.Id">@sale.SaleDateUtc.ToLocalTime().ToString("d") - @sale.TotalAmount.ToString("N2")</option>
+                    }
+                </select>
+            </div>
+        }
+        else if (linkType == "purchase")
+        {
+            <div class="mb-3">
+                <label>Purchase</label>
+                <select class="form-select" @bind="selectedPurchaseId">
+                    <option value="">Select a purchase</option>
+                    @foreach (var purchase in purchases)
+                    {
+                        <option value="@purchase.Id">@purchase.PurchaseDateUtc.ToLocalTime().ToString("d") - @purchase.TotalAmount.ToString("N2")</option>
+                    }
+                </select>
+            </div>
+        }
+
+        <div class="mb-3">
+            <label>Amount</label>
+            <InputNumber class="form-control" @bind-Value="newPayment.Amount" />
+        </div>
+        <div class="mb-3">
+            <label>Payment Method</label>
+            <select class="form-select" @bind="newPayment.PaymentMethod">
+                <option value="Cash">Cash</option>
+                <option value="Bank Transfer">Bank Transfer</option>
+                <option value="GCash">GCash</option>
+                <option value="Check">Check</option>
+            </select>
+        </div>
+
+        @if (!string.IsNullOrEmpty(errorMessage))
+        {
+            <p style="color:red">@errorMessage</p>
+        }
+
+        <button type="submit" class="btn btn-primary">Save</button>
+    </EditForm>
+}
+
+@code {
+    private CreatePaymentRequest newPayment = new() { PaymentMethod = "Cash" };
+    private List<SaleDto> sales = new();
+    private List<PurchaseDto> purchases = new();
+    private string linkType = "none";
+    private string selectedSaleId = string.Empty;
+    private string selectedPurchaseId = string.Empty;
+    private bool isLoading = true;
+    private string? errorMessage;
+
+    private readonly Guid businessId = Guid.Parse("11111111-1111-1111-1111-111111111111");
+
+    protected override async Task OnInitializedAsync()
+    {
+        sales = await SaleApiService.GetSalesAsync(businessId);
+        purchases = await PurchaseApiService.GetPurchasesAsync(businessId);
+        isLoading = false;
+    }
+
+    private async Task HandleSave()
+    {
+        errorMessage = null;
+        newPayment.BusinessId = businessId;
+        newPayment.Status = "Completed";
+        newPayment.SaleId = Guid.TryParse(selectedSaleId, out var sid) ? sid : null;
+        newPayment.PurchaseId = Guid.TryParse(selectedPurchaseId, out var pid) ? pid : null;
+
+        try
+        {
+            await PaymentApiService.CreatePaymentAsync(newPayment);
+            Navigation.NavigateTo("/payments");
+        }
+        catch (Exception ex)
+        {
+            errorMessage = $"Failed to save payment: {ex.Message}";
+        }
+    }
+}
