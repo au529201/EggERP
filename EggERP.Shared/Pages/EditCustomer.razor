@@ -1,0 +1,111 @@
+﻿@page "/customers/edit/{Id:guid}"
+@using EggERP.Shared.Models
+@using EggERP.Shared.Services
+@inject ICustomerApiService CustomerApiService
+@inject NavigationManager Navigation
+
+<h3>Edit Customer</h3>
+
+@if (isLoading)
+{
+    <p>Loading...</p>
+}
+else if (notFound)
+{
+    <p>Customer not found.</p>
+}
+else
+{
+    <EditForm Model="@editModel" OnValidSubmit="HandleSave">
+        <div class="mb-3">
+            <label>Name</label>
+            <InputText class="form-control" @bind-Value="editModel.Name" />
+        </div>
+        <div class="mb-3">
+            <label>Email</label>
+            <InputText class="form-control" @bind-Value="editModel.Email" />
+        </div>
+        <div class="mb-3">
+            <label>Phone</label>
+            <InputText class="form-control" @bind-Value="editModel.Phone" />
+        </div>
+        <div class="mb-3">
+            <label>Address</label>
+            <InputText class="form-control" @bind-Value="editModel.Address" />
+        </div>
+
+        @if (!string.IsNullOrEmpty(errorMessage))
+        {
+            <p style="color:red">@errorMessage</p>
+        }
+
+        <button type="submit" class="btn btn-primary">Save</button>
+    </EditForm>
+}
+
+@code {
+    [Parameter]
+    public Guid Id { get; set; }
+
+    private CustomerFormModel editModel = new();
+    private bool isLoading = true;
+    private bool notFound = false;
+    private string? errorMessage;
+    private readonly Guid businessId = Guid.Parse("11111111-1111-1111-1111-111111111111");
+
+    protected override async Task OnInitializedAsync()
+    {
+        var customer = await CustomerApiService.GetCustomerByIdAsync(businessId, Id);
+
+        if (customer is null)
+        {
+            notFound = true;
+            isLoading = false;
+            return;
+        }
+
+        editModel = new CustomerFormModel
+        {
+            Name = customer.Name,
+            Email = customer.Email ?? string.Empty,
+            Phone = customer.Phone ?? string.Empty,
+            Address = customer.Address ?? string.Empty
+        };
+
+        isLoading = false;
+    }
+
+    private async Task HandleSave()
+    {
+        errorMessage = null;
+
+        var request = new UpdateCustomerRequest
+        {
+            Id = Id,
+            BusinessId = businessId,
+            Name = editModel.Name,
+            Email = editModel.Email,
+            Phone = editModel.Phone,
+            Address = editModel.Address,
+            IsActive = true
+        };
+
+        try
+        {
+            await CustomerApiService.UpdateCustomerAsync(request);
+            Navigation.NavigateTo("/customers");
+        }
+        catch (Exception ex)
+        {
+            errorMessage = $"Failed to save customer: {ex.Message}";
+        }
+    }
+
+    private class CustomerFormModel
+    {
+        public string Name { get; set; } = string.Empty;
+        public string Email { get; set; } = string.Empty;
+        public string Phone { get; set; } = string.Empty;
+        public string Address { get; set; } = string.Empty;
+    }
+}
