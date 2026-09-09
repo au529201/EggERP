@@ -1,12 +1,12 @@
 using EggERP.Application.Categories;
-using EggERP.Application.Customers;
-using EggERP.Application.Products;
 using EggERP.Infrastructure.Categories;
-using EggERP.Infrastructure.Customers;
 using EggERP.Application.Inventory;
-using EggERP.Infrastructure.Inventory;
+using EggERP.Application.Products;
 using EggERP.Application.Customers;
 using EggERP.Infrastructure.Customers;
+using EggERP.Application.Suppliers;
+using EggERP.Infrastructure.Suppliers;
+using EggERP.Infrastructure.Inventory;
 using EggERP.Infrastructure.Persistence;
 using EggERP.Infrastructure.Products;
 using EggERP.Shared.Models;
@@ -33,6 +33,9 @@ builder.Services.AddScoped<IInventoryService, InventoryService>();
 // Customer services
 builder.Services.AddScoped<ICustomerRepository, CustomerRepository>();
 builder.Services.AddScoped<ICustomerService, CustomerService>();
+// Supplier services
+builder.Services.AddScoped<ISupplierRepository, SupplierRepository>();
+builder.Services.AddScoped<ISupplierService, SupplierService>();
 
 // API Controllers
 builder.Services.AddControllers();
