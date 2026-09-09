@@ -8,7 +8,8 @@ using EggERP.Infrastructure.Persistence;
 using Microsoft.EntityFrameworkCore;
 using EggERP.Application.Products;
 using EggERP.Infrastructure.Products;
-
+using EggERP.Application.Inventory;
+using EggERP.Infrastructure.Inventory;
 var builder = WebApplication.CreateBuilder(args);
 
 // Database
@@ -22,6 +23,9 @@ builder.Services.AddScoped<IProductService, ProductService>();
 // Category services
 builder.Services.AddScoped<ICategoryRepository, CategoryRepository>();
 builder.Services.AddScoped<ICategoryService, CategoryService>();
+// Inventory services
+builder.Services.AddScoped<IInventoryRepository, InventoryRepository>();
+builder.Services.AddScoped<IInventoryService, InventoryService>();
 
 // API Controllers
 builder.Services.AddControllers();
