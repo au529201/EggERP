@@ -1,0 +1,70 @@
+﻿@page "/suppliers"
+@using EggERP.Shared.Models
+@using EggERP.Shared.Services
+@inject ISupplierApiService SupplierApiService
+@inject IJSRuntime JsRuntime
+
+<h3>Suppliers</h3>
+<a class="btn btn-primary mb-3" href="/suppliers/add">+ Add Supplier</a>
+
+@if (suppliers is null)
+{
+    <p>Loading...</p>
+}
+else if (suppliers.Count == 0)
+{
+    <p>No suppliers found.</p>
+}
+else
+{
+    <table class="table">
+        <thead>
+            <tr>
+                <th>Name</th>
+                <th>Contact Person</th>
+                <th>Email</th>
+                <th>Phone</th>
+                <th>Address</th>
+                <th></th>
+            </tr>
+        </thead>
+        <tbody>
+            @foreach (var supplier in suppliers)
+            {
+                <tr>
+                    <td>@supplier.Name</td>
+                    <td>@supplier.ContactPerson</td>
+                    <td>@supplier.Email</td>
+                    <td>@supplier.Phone</td>
+                    <td>@supplier.Address</td>
+                    <td>
+                        <a class="btn btn-sm btn-secondary" href="@($"/suppliers/edit/{supplier.Id}")">Edit</a>
+                        <button class="btn btn-sm btn-danger" @onclick="() => DeactivateSupplier(supplier.Id, supplier.Name)">Deactivate</button>
+                    </td>
+                </tr>
+            }
+        </tbody>
+    </table>
+}
+
+@code {
+    private List<SupplierDto>? suppliers;
+    private readonly Guid businessId = Guid.Parse("11111111-1111-1111-1111-111111111111");
+
+    protected override async Task OnInitializedAsync()
+    {
+        suppliers = await SupplierApiService.GetSuppliersAsync(businessId);
+    }
+
+    private async Task DeactivateSupplier(Guid id, string name)
+    {
+        var confirmed = await JsRuntime.InvokeAsync<bool>("confirm", $"Deactivate '{name}'? It will be hidden from the active supplier list.");
+        if (!confirmed)
+        {
+            return;
+        }
+
+        await SupplierApiService.DeactivateSupplierAsync(businessId, id);
+        suppliers = await SupplierApiService.GetSuppliersAsync(businessId);
+    }
+}

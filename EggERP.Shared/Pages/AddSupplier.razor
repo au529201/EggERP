@@ -1,0 +1,78 @@
+﻿@page "/suppliers/add"
+@using EggERP.Shared.Models
+@using EggERP.Shared.Services
+@inject ISupplierApiService SupplierApiService
+@inject NavigationManager Navigation
+
+<h3>Add Supplier</h3>
+
+<EditForm Model="@newSupplier" OnValidSubmit="HandleSave">
+    <div class="mb-3">
+        <label>Name</label>
+        <InputText class="form-control" @bind-Value="newSupplier.Name" />
+    </div>
+    <div class="mb-3">
+        <label>Contact Person</label>
+        <InputText class="form-control" @bind-Value="newSupplier.ContactPerson" />
+    </div>
+    <div class="mb-3">
+        <label>Email</label>
+        <InputText class="form-control" @bind-Value="newSupplier.Email" />
+    </div>
+    <div class="mb-3">
+        <label>Phone</label>
+        <InputText class="form-control" @bind-Value="newSupplier.Phone" />
+    </div>
+    <div class="mb-3">
+        <label>Address</label>
+        <InputText class="form-control" @bind-Value="newSupplier.Address" />
+    </div>
+
+    @if (!string.IsNullOrEmpty(errorMessage))
+    {
+        <p style="color:red">@errorMessage</p>
+    }
+
+    <button type="submit" class="btn btn-primary">Save</button>
+</EditForm>
+
+@code {
+    private SupplierFormModel newSupplier = new();
+    private string? errorMessage;
+    private readonly Guid businessId = Guid.Parse("11111111-1111-1111-1111-111111111111");
+
+    private async Task HandleSave()
+    {
+        errorMessage = null;
+
+        var request = new CreateSupplierRequest
+        {
+            BusinessId = businessId,
+            Name = newSupplier.Name,
+            ContactPerson = newSupplier.ContactPerson,
+            Email = newSupplier.Email,
+            Phone = newSupplier.Phone,
+            Address = newSupplier.Address,
+            IsActive = true
+        };
+
+        try
+        {
+            await SupplierApiService.CreateSupplierAsync(request);
+            Navigation.NavigateTo("/suppliers");
+        }
+        catch (Exception ex)
+        {
+            errorMessage = $"Failed to save supplier: {ex.Message}";
+        }
+    }
+
+    private class SupplierFormModel
+    {
+        public string Name { get; set; } = string.Empty;
+        public string ContactPerson { get; set; } = string.Empty;
+        public string Email { get; set; } = string.Empty;
+        public string Phone { get; set; } = string.Empty;
+        public string Address { get; set; } = string.Empty;
+    }
+}
