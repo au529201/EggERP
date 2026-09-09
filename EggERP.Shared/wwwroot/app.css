@@ -1,16 +1,92 @@
+@import url('https://fonts.googleapis.com/css2?family=Fraunces:wght@500;600;700&family=Inter:wght@400;500;600&display=swap');
+
+:root {
+    --egg-bg: #F7F1E1;
+    --egg-brown: #4A2E1F;
+    --egg-gold: #C8862B;
+    --egg-clay: #8B5E3C;
+    --egg-sage: #2F5233;
+    --egg-card: #FDF8ED;
+}
+
 html, body {
-    font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif;
+    font-family: 'Inter', 'Helvetica Neue', Helvetica, Arial, sans-serif;
+    background-color: var(--egg-bg);
+    color: var(--egg-brown);
+}
+
+h1, h2, h3, h4, h5 {
+    font-family: 'Fraunces', Georgia, serif;
+    color: var(--egg-brown);
 }
 
 a, .btn-link {
-    color: #006bb7;
+    color: var(--egg-clay);
 }
 
 .btn-primary {
     color: #fff;
-    background-color: #1b6ec2;
-    border-color: #1861ac;
+    background-color: var(--egg-gold);
+    border-color: var(--egg-gold);
 }
+
+    .btn-primary:hover {
+        background-color: #b3761f;
+        border-color: #b3761f;
+    }
+
+.btn-outline-primary {
+    color: var(--egg-gold);
+    border-color: var(--egg-gold);
+}
+
+    .btn-outline-primary:hover {
+        background-color: var(--egg-gold);
+        border-color: var(--egg-gold);
+        color: #fff;
+    }
+
+.btn-success {
+    background-color: var(--egg-sage);
+    border-color: var(--egg-sage);
+}
+
+.btn-outline-success {
+    color: var(--egg-sage);
+    border-color: var(--egg-sage);
+}
+
+    .btn-outline-success:hover {
+        background-color: var(--egg-sage);
+        border-color: var(--egg-sage);
+    }
+
+.btn-secondary {
+    background-color: var(--egg-clay);
+    border-color: var(--egg-clay);
+}
+
+.bg-primary {
+    background-color: var(--egg-gold) !important;
+}
+
+.bg-success {
+    background-color: var(--egg-sage) !important;
+}
+
+.card {
+    background-color: var(--egg-card);
+    border: 1px solid #E5D9BE;
+}
+
+.table {
+    background-color: var(--egg-card);
+}
+
+    .table thead {
+        background-color: var(--egg-brown);
+        color: #fff;
+    }
 
 .btn:focus, .btn:active:focus, .btn-link.nav-link:focus, .form-control:focus, .form-check-input:focus {
   box-shadow: 0 0 0 0.1rem white, 0 0 0 0.25rem #258cfb;
