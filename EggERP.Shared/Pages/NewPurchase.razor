@@ -1,0 +1,161 @@
+﻿@page "/purchases/new"
+@using EggERP.Shared.Models
+@using EggERP.Shared.Services
+@inject IPurchaseApiService PurchaseApiService
+@inject IProductApiService ProductApiService
+@inject ISupplierApiService SupplierApiService
+@inject NavigationManager Navigation
+
+<h3>New Purchase</h3>
+
+@if (isLoading)
+{
+    <p>Loading...</p>
+}
+else
+{
+    <div class="mb-3" style="max-width:400px;">
+        <label>Supplier</label>
+        <select class="form-select" @bind="selectedSupplierId">
+            <option value="">Unspecified</option>
+            @foreach (var supplier in suppliers)
+            {
+                <option value="@supplier.Id">@supplier.Name</option>
+            }
+        </select>
+    </div>
+
+    <table class="table">
+        <thead>
+            <tr>
+                <th>Product</th>
+                <th>Quantity</th>
+                <th>Unit Cost</th>
+                <th>Line Total</th>
+                <th></th>
+            </tr>
+        </thead>
+        <tbody>
+            @foreach (var line in lines)
+            {
+                <tr>
+                    <td>
+                        <select class="form-select" @bind="line.ProductId" @bind:after="() => OnProductChanged(line)">
+                            <option value="">Select product</option>
+                            @foreach (var product in products)
+                            {
+                                <option value="@product.Id">@product.Name</option>
+                            }
+                        </select>
+                    </td>
+                    <td>
+                        <input type="number" step="1" min="1" class="form-control" @bind="line.Quantity" />
+                    </td>
+                    <td>
+                        <input type="number" step="0.01" class="form-control" @bind="line.UnitCost" />
+                    </td>
+                    <td>@((line.Quantity * line.UnitCost).ToString("N2"))</td>
+                    <td>
+                        <button class="btn btn-sm btn-danger" @onclick="() => RemoveLine(line)">Remove</button>
+                    </td>
+                </tr>
+            }
+        </tbody>
+    </table>
+
+    <button class="btn btn-secondary mb-3" @onclick="AddLine">+ Add Line</button>
+
+    <h5>Total: @(lines.Sum(l => l.Quantity * l.UnitCost).ToString("N2"))</h5>
+
+    @if (!string.IsNullOrEmpty(errorMessage))
+    {
+        <p style="color:red">@errorMessage</p>
+    }
+
+    <button class="btn btn-primary" @onclick="HandleSave">Complete Purchase</button>
+}
+
+@code {
+    private class PurchaseLine
+    {
+        public string ProductId { get; set; } = string.Empty;
+        public decimal Quantity { get; set; } = 1;
+        public decimal UnitCost { get; set; }
+    }
+
+    private List<ProductDto> products = new();
+    private List<SupplierDto> suppliers = new();
+    private List<PurchaseLine> lines = new();
+    private string selectedSupplierId = string.Empty;
+    private bool isLoading = true;
+    private string? errorMessage;
+
+    private readonly Guid businessId = Guid.Parse("11111111-1111-1111-1111-111111111111");
+
+    protected override async Task OnInitializedAsync()
+    {
+        products = await ProductApiService.GetProductsAsync(businessId);
+        suppliers = await SupplierApiService.GetSuppliersAsync(businessId);
+        lines.Add(new PurchaseLine());
+        isLoading = false;
+    }
+
+    private void OnProductChanged(PurchaseLine line)
+    {
+        if (Guid.TryParse(line.ProductId, out var productId))
+        {
+            var product = products.FirstOrDefault(p => p.Id == productId);
+            if (product is not null)
+            {
+                line.UnitCost = product.CostPrice;
+            }
+        }
+    }
+
+    private void AddLine()
+    {
+        lines.Add(new PurchaseLine());
+    }
+
+    private void RemoveLine(PurchaseLine line)
+    {
+        lines.Remove(line);
+    }
+
+    private async Task HandleSave()
+    {
+        errorMessage = null;
+
+        var validLines = lines.Where(l => !string.IsNullOrEmpty(l.ProductId) && l.Quantity > 0).ToList();
+
+        if (validLines.Count == 0)
+        {
+            errorMessage = "Add at least one valid line item.";
+            return;
+        }
+
+        Guid? supplierId = Guid.TryParse(selectedSupplierId, out var sid) ? sid : null;
+
+        var request = new CreatePurchaseRequest
+        {
+            BusinessId = businessId,
+            SupplierId = supplierId,
+            Items = validLines.Select(l => new CreatePurchaseItemInput
+            {
+                ProductId = Guid.Parse(l.ProductId),
+                Quantity = l.Quantity,
+                UnitCost = l.UnitCost
+            }).ToList()
+        };
+
+        try
+        {
+            await PurchaseApiService.CreatePurchaseAsync(request);
+            Navigation.NavigateTo("/purchases");
+        }
+        catch (Exception ex)
+        {
+            errorMessage = $"Failed to save purchase: {ex.Message}";
+        }
+    }
+}

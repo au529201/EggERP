@@ -1,0 +1,62 @@
+﻿@page "/purchases"
+@using EggERP.Shared.Models
+@using EggERP.Shared.Services
+@inject IPurchaseApiService PurchaseApiService
+@inject ISupplierApiService SupplierApiService
+
+<h3>Purchases</h3>
+<a class="btn btn-primary mb-3" href="/purchases/new">+ New Purchase</a>
+
+@if (purchases is null)
+{
+    <p>Loading...</p>
+}
+else if (purchases.Count == 0)
+{
+    <p>No purchases found.</p>
+}
+else
+{
+    <table class="table">
+        <thead>
+            <tr>
+                <th>Date</th>
+                <th>Supplier</th>
+                <th>Total</th>
+                <th>Status</th>
+            </tr>
+        </thead>
+        <tbody>
+            @foreach (var purchase in purchases)
+            {
+                <tr>
+                    <td>@purchase.PurchaseDateUtc.ToLocalTime().ToString("g")</td>
+                    <td>@GetSupplierName(purchase.SupplierId)</td>
+                    <td>@purchase.TotalAmount.ToString("N2")</td>
+                    <td>@purchase.Status</td>
+                </tr>
+            }
+        </tbody>
+    </table>
+}
+
+@code {
+    private List<PurchaseDto>? purchases;
+    private List<SupplierDto>? suppliers;
+    private readonly Guid businessId = Guid.Parse("11111111-1111-1111-1111-111111111111");
+
+    protected override async Task OnInitializedAsync()
+    {
+        purchases = await PurchaseApiService.GetPurchasesAsync(businessId);
+        suppliers = await SupplierApiService.GetSuppliersAsync(businessId);
+    }
+
+    private string GetSupplierName(Guid? supplierId)
+    {
+        if (supplierId is null)
+        {
+            return "Unspecified";
+        }
+        return suppliers?.FirstOrDefault(s => s.Id == supplierId)?.Name ?? "Unknown";
+    }
+}
