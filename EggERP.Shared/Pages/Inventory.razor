@@ -1,0 +1,112 @@
+﻿@page "/inventory"
+@using EggERP.Shared.Models
+@using EggERP.Shared.Services
+@inject IInventoryApiService InventoryApiService
+@inject IProductApiService ProductApiService
+
+<h3>Inventory</h3>
+
+@if (isLoading)
+{
+    <p>Loading...</p>
+}
+else if (rows.Count == 0)
+{
+    <p>No inventory records found.</p>
+}
+else
+{
+    <table class="table">
+        <thead>
+            <tr>
+                <th>Product</th>
+                <th>SKU</th>
+                <th>Qty on Hand</th>
+                <th>Reorder Level</th>
+                <th>Status</th>
+                <th>Adjust</th>
+            </tr>
+        </thead>
+        <tbody>
+            @foreach (var row in rows)
+            {
+                <tr>
+                    <td>@row.ProductName</td>
+                    <td>@row.Sku</td>
+                    <td>@row.QuantityOnHand</td>
+                    <td>@row.ReorderLevel</td>
+                    <td>
+                        @if (row.QuantityOnHand <= row.ReorderLevel)
+                        {
+                            <span class="badge bg-danger">Low Stock</span>
+                        }
+                        else
+                        {
+                            <span class="badge bg-success">OK</span>
+                        }
+                    </td>
+                    <td>
+                        <input type="number" step="1" class="form-control form-control-sm d-inline-block" style="width:80px" @bind="row.AdjustAmount" />
+                        <button class="btn btn-sm btn-primary" @onclick="() => Adjust(row)">Add</button>
+                        <button class="btn btn-sm btn-secondary" @onclick="() => Remove(row)">Remove</button>
+                    </td>
+                </tr>
+            }
+        </tbody>
+    </table>
+}
+
+@code {
+    private class InventoryRow
+    {
+        public Guid ProductId { get; set; }
+        public string ProductName { get; set; } = string.Empty;
+        public string Sku { get; set; } = string.Empty;
+        public decimal QuantityOnHand { get; set; }
+        public decimal ReorderLevel { get; set; }
+        public decimal AdjustAmount { get; set; } = 1;
+    }
+
+    private List<InventoryRow> rows = new();
+    private bool isLoading = true;
+
+    private readonly Guid businessId = Guid.Parse("11111111-1111-1111-1111-111111111111");
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadData();
+    }
+
+    private async Task LoadData()
+    {
+        var products = await ProductApiService.GetProductsAsync(businessId);
+        var inventory = await InventoryApiService.GetInventoryAsync(businessId);
+
+        rows = products.Select(p =>
+        {
+            var invRecord = inventory.FirstOrDefault(i => i.ProductId == p.Id);
+            return new InventoryRow
+            {
+                ProductId = p.Id,
+                ProductName = p.Name,
+                Sku = p.Sku,
+                QuantityOnHand = invRecord?.QuantityOnHand ?? 0,
+                ReorderLevel = invRecord?.ReorderLevel ?? 0
+            };
+        }).ToList();
+
+        isLoading = false;
+    }
+
+    private async Task Adjust(InventoryRow row)
+    {
+        await InventoryApiService.AdjustQuantityAsync(businessId, row.ProductId, row.AdjustAmount);
+        await LoadData();
+    }
+
+    private async Task Remove(InventoryRow row)
+    {
+        await InventoryApiService.AdjustQuantityAsync(businessId, row.ProductId, -row.AdjustAmount);
+        await LoadData();
+    }
+}
