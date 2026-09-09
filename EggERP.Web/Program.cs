@@ -101,6 +101,11 @@ builder.Services.AddHttpClient<IPurchaseApiService, PurchaseApiService>(client =
 {
     client.BaseAddress = new Uri("https://localhost:7062/");
 });
+// Expense API client (calls this same app's own API endpoints)
+builder.Services.AddHttpClient<IExpenseApiService, ExpenseApiService>(client =>
+{
+    client.BaseAddress = new Uri("https://localhost:7062/");
+});
 
 var app = builder.Build();
 
