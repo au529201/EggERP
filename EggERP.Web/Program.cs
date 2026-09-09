@@ -63,6 +63,11 @@ builder.Services.AddHttpClient<IInventoryApiService, InventoryApiService>(client
 {
     client.BaseAddress = new Uri("https://localhost:7062/");
 });
+// Customer API client (calls this same app's own API endpoints)
+builder.Services.AddHttpClient<ICustomerApiService, CustomerApiService>(client =>
+{
+    client.BaseAddress = new Uri("https://localhost:7062/");
+});
 
 var app = builder.Build();
 
