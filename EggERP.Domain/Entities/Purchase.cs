@@ -18,6 +18,10 @@ public class Purchase
 
     public decimal TotalAmount { get; set; }
 
+    public string PaymentMethod { get; set; } = "Cash";
+
+    public string? ReferenceNumber { get; set; }
+
     public string Status { get; set; } = "Completed";
 
     public DateTime CreatedAtUtc { get; set; }

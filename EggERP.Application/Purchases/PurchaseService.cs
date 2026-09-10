@@ -22,8 +22,10 @@ public class PurchaseService : IPurchaseService
     {
         return _purchaseRepository.GetItemsByPurchaseIdAsync(purchaseId);
     }
-    public async Task<Purchase> CreatePurchaseAsync(Guid businessId, Guid? supplierId, List<CreatePurchaseItemRequest> items)
+    public async Task<Purchase> CreatePurchaseAsync(Guid businessId, Guid? supplierId, List<CreatePurchaseItemRequest> items, string paymentMethod, string? referenceNumber)
     {
+        PaymentValidation.EnsureValid(paymentMethod, referenceNumber);
+
         var purchaseItems = items.Select(i => new PurchaseItem
         {
             Id = Guid.NewGuid(),
@@ -47,6 +49,8 @@ public class PurchaseService : IPurchaseService
             TaxAmount = 0,
             DiscountAmount = 0,
             TotalAmount = subtotal,
+            PaymentMethod = paymentMethod,
+            ReferenceNumber = referenceNumber,
             Status = "Completed",
             CreatedAtUtc = DateTime.UtcNow
         };

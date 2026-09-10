@@ -2,7 +2,6 @@ using EggERP.Application.Categories;
 using EggERP.Application.Customers;
 using EggERP.Application.Expenses;
 using EggERP.Application.Inventory;
-using EggERP.Application.Payments;
 using EggERP.Application.Products;
 using EggERP.Application.Purchases;
 using EggERP.Application.Sales;
@@ -11,7 +10,6 @@ using EggERP.Infrastructure.Categories;
 using EggERP.Infrastructure.Customers;
 using EggERP.Infrastructure.Expenses;
 using EggERP.Infrastructure.Inventory;
-using EggERP.Infrastructure.Payments;
 using EggERP.Infrastructure.Persistence;
 using EggERP.Infrastructure.Products;
 using EggERP.Infrastructure.Purchases;
@@ -53,9 +51,6 @@ builder.Services.AddScoped<IPurchaseService, PurchaseService>();
 // Expense services
 builder.Services.AddScoped<IExpenseRepository, ExpenseRepository>();
 builder.Services.AddScoped<IExpenseService, ExpenseService>();
-// Payment services
-builder.Services.AddScoped<IPaymentRepository, PaymentRepository>();
-builder.Services.AddScoped<IPaymentService, PaymentService>();
 
 // API Controllers
 builder.Services.AddControllers();
@@ -111,11 +106,7 @@ builder.Services.AddHttpClient<IExpenseApiService, ExpenseApiService>(client =>
 {
     client.BaseAddress = new Uri("https://localhost:7062/");
 });
-// Payment API client (calls this same app's own API endpoints)
-builder.Services.AddHttpClient<IPaymentApiService, PaymentApiService>(client =>
-{
-    client.BaseAddress = new Uri("https://localhost:7062/");
-});
+
 
 var app = builder.Build();
 

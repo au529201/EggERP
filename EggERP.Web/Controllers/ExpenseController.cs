@@ -30,7 +30,14 @@ public class ExpenseController : ControllerBase
     [HttpPost]
     public async Task<IActionResult> CreateExpense(Expense expense)
     {
-        var created = await _expenseService.CreateExpenseAsync(expense);
-        return CreatedAtAction(nameof(GetExpenses), new { businessId = created.BusinessId }, created);
+        try
+        {
+            var created = await _expenseService.CreateExpenseAsync(expense);
+            return CreatedAtAction(nameof(GetExpenses), new { businessId = created.BusinessId }, created);
+        }
+        catch (InvalidOperationException ex)
+        {
+            return BadRequest(ex.Message);
+        }
     }
 }

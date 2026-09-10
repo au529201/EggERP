@@ -32,6 +32,8 @@ public class PurchaseController : ControllerBase
         public Guid BusinessId { get; set; }
         public Guid? SupplierId { get; set; }
         public List<CreatePurchaseItemRequest> Items { get; set; } = new();
+        public string PaymentMethod { get; set; } = "Cash";
+        public string? ReferenceNumber { get; set; }
     }
     [HttpPost]
     public async Task<IActionResult> CreatePurchase(CreatePurchaseRequest request)
@@ -41,7 +43,14 @@ public class PurchaseController : ControllerBase
             return BadRequest("A purchase must have at least one item.");
         }
 
-        var purchase = await _purchaseService.CreatePurchaseAsync(request.BusinessId, request.SupplierId, request.Items);
-        return CreatedAtAction(nameof(GetPurchases), new { businessId = purchase.BusinessId }, purchase);
+        try
+        {
+            var purchase = await _purchaseService.CreatePurchaseAsync(request.BusinessId, request.SupplierId, request.Items, request.PaymentMethod, request.ReferenceNumber);
+            return CreatedAtAction(nameof(GetPurchases), new { businessId = purchase.BusinessId }, purchase);
+        }
+        catch (InvalidOperationException ex)
+        {
+            return BadRequest(ex.Message);
+        }
     }
 }

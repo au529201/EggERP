@@ -17,6 +17,8 @@ public class ExpenseService : IExpenseService
     }
     public async Task<Expense> CreateExpenseAsync(Expense expense)
     {
+        PaymentValidation.EnsureValid(expense.PaymentMethod, expense.ReferenceNumber);
+
         expense.Id = Guid.NewGuid();
         expense.CreatedAtUtc = DateTime.UtcNow;
         if (expense.ExpenseDateUtc == default)

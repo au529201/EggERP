@@ -22,8 +22,10 @@ public class SaleService : ISaleService
     {
         return _saleRepository.GetItemsBySaleIdAsync(saleId);
     }
-    public async Task<SaleCreationResult> CreateSaleAsync(Guid businessId, Guid? customerId, List<CreateSaleItemRequest> items)
+    public async Task<SaleCreationResult> CreateSaleAsync(Guid businessId, Guid? customerId, List<CreateSaleItemRequest> items, string paymentMethod, string? referenceNumber)
     {
+        PaymentValidation.EnsureValid(paymentMethod, referenceNumber);
+
         var saleItems = new List<SaleItem>();
         var adjustments = new List<SaleItemAdjustment>();
 
@@ -86,6 +88,8 @@ public class SaleService : ISaleService
             TaxAmount = 0,
             DiscountAmount = 0,
             TotalAmount = subtotal,
+            PaymentMethod = paymentMethod,
+            ReferenceNumber = referenceNumber,
             Status = "Completed",
             CreatedAtUtc = DateTime.UtcNow
         };

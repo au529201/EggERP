@@ -11,5 +11,7 @@
         public Guid BusinessId { get; set; }
         public Guid? SupplierId { get; set; }
         public List<CreatePurchaseItemInput> Items { get; set; } = new();
+        public string PaymentMethod { get; set; } = "Cash";
+        public string? ReferenceNumber { get; set; }
     }
 }

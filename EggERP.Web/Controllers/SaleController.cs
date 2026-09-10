@@ -32,6 +32,8 @@ public class SaleController : ControllerBase
         public Guid BusinessId { get; set; }
         public Guid? CustomerId { get; set; }
         public List<CreateSaleItemRequest> Items { get; set; } = new();
+        public string PaymentMethod { get; set; } = "Cash";
+        public string? ReferenceNumber { get; set; }
     }
     [HttpPost]
     public async Task<IActionResult> CreateSale(CreateSaleRequest request)
@@ -43,7 +45,7 @@ public class SaleController : ControllerBase
 
         try
         {
-            var result = await _saleService.CreateSaleAsync(request.BusinessId, request.CustomerId, request.Items);
+            var result = await _saleService.CreateSaleAsync(request.BusinessId, request.CustomerId, request.Items, request.PaymentMethod, request.ReferenceNumber);
             return CreatedAtAction(nameof(GetSales), new { businessId = result.Sale.BusinessId }, result);
         }
         catch (InvalidOperationException ex)
