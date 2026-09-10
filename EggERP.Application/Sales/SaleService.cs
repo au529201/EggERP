@@ -22,18 +22,57 @@ public class SaleService : ISaleService
     {
         return _saleRepository.GetItemsBySaleIdAsync(saleId);
     }
-    public async Task<Sale> CreateSaleAsync(Guid businessId, Guid? customerId, List<CreateSaleItemRequest> items)
+    public async Task<SaleCreationResult> CreateSaleAsync(Guid businessId, Guid? customerId, List<CreateSaleItemRequest> items)
     {
-        var saleItems = items.Select(i => new SaleItem
+        var saleItems = new List<SaleItem>();
+        var adjustments = new List<SaleItemAdjustment>();
+
+        foreach (var i in items)
         {
-            Id = Guid.NewGuid(),
-            ProductId = i.ProductId,
-            Quantity = i.Quantity,
-            UnitPrice = i.UnitPrice,
-            DiscountAmount = 0,
-            TaxAmount = 0,
-            TotalAmount = i.Quantity * i.UnitPrice
-        }).ToList();
+            var inventory = await _inventoryService.GetByProductIdAsync(businessId, i.ProductId);
+            var available = inventory?.QuantityOnHand ?? 0;
+
+            if (available <= 0)
+            {
+                adjustments.Add(new SaleItemAdjustment
+                {
+                    ProductId = i.ProductId,
+                    RequestedQuantity = i.Quantity,
+                    SoldQuantity = 0,
+                    WasDropped = true
+                });
+                continue;
+            }
+
+            var quantityToSell = Math.Min(i.Quantity, available);
+
+            if (quantityToSell < i.Quantity)
+            {
+                adjustments.Add(new SaleItemAdjustment
+                {
+                    ProductId = i.ProductId,
+                    RequestedQuantity = i.Quantity,
+                    SoldQuantity = quantityToSell,
+                    WasDropped = false
+                });
+            }
+
+            saleItems.Add(new SaleItem
+            {
+                Id = Guid.NewGuid(),
+                ProductId = i.ProductId,
+                Quantity = quantityToSell,
+                UnitPrice = i.UnitPrice,
+                DiscountAmount = 0,
+                TaxAmount = 0,
+                TotalAmount = quantityToSell * i.UnitPrice
+            });
+        }
+
+        if (saleItems.Count == 0)
+        {
+            throw new InvalidOperationException("No items could be sold: all requested products are out of stock.");
+        }
 
         var subtotal = saleItems.Sum(si => si.TotalAmount);
 
@@ -63,6 +102,10 @@ public class SaleService : ISaleService
             await _inventoryService.AdjustQuantityAsync(businessId, item.ProductId, -item.Quantity);
         }
 
-        return createdSale;
+        return new SaleCreationResult
+        {
+            Sale = createdSale,
+            Adjustments = adjustments
+        };
     }
 }

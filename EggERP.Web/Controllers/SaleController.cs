@@ -41,7 +41,14 @@ public class SaleController : ControllerBase
             return BadRequest("A sale must have at least one item.");
         }
 
-        var sale = await _saleService.CreateSaleAsync(request.BusinessId, request.CustomerId, request.Items);
-        return CreatedAtAction(nameof(GetSales), new { businessId = sale.BusinessId }, sale);
+        try
+        {
+            var result = await _saleService.CreateSaleAsync(request.BusinessId, request.CustomerId, request.Items);
+            return CreatedAtAction(nameof(GetSales), new { businessId = result.Sale.BusinessId }, result);
+        }
+        catch (InvalidOperationException ex)
+        {
+            return BadRequest(ex.Message);
+        }
     }
 }
