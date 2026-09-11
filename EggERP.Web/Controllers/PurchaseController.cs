@@ -33,6 +33,7 @@ public class PurchaseController : ControllerBase
         public Guid? SupplierId { get; set; }
         public List<CreatePurchaseItemRequest> Items { get; set; } = new();
         public string PaymentMethod { get; set; } = "Cash";
+        public string? PaymentSource { get; set; }
         public string? ReferenceNumber { get; set; }
     }
     [HttpPost]
@@ -45,7 +46,7 @@ public class PurchaseController : ControllerBase
 
         try
         {
-            var purchase = await _purchaseService.CreatePurchaseAsync(request.BusinessId, request.SupplierId, request.Items, request.PaymentMethod, request.ReferenceNumber);
+            var purchase = await _purchaseService.CreatePurchaseAsync(request.BusinessId, request.SupplierId, request.Items, request.PaymentMethod, request.PaymentSource, request.ReferenceNumber);
             return CreatedAtAction(nameof(GetPurchases), new { businessId = purchase.BusinessId }, purchase);
         }
         catch (InvalidOperationException ex)
