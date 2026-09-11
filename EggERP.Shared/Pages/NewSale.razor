@@ -25,6 +25,28 @@ else
         </select>
     </div>
 
+    <div class="mb-3" style="max-width:400px;">
+        <label>Payment Method</label>
+        <select class="form-select" @bind="paymentMethod">
+            <option value="Cash">Cash</option>
+            <option value="Bank Transfer">Bank Transfer</option>
+            <option value="GCash">GCash</option>
+            <option value="Check">Check</option>
+        </select>
+    </div>
+
+    @if (paymentMethod != "Cash")
+    {
+        <div class="mb-3" style="max-width:400px;">
+            <label>Payment Source</label>
+            <input class="form-control" @bind="paymentSource" placeholder="e.g. GCash, Maya, BDO, BPI" />
+        </div>
+        <div class="mb-3" style="max-width:400px;">
+            <label>Reference Number</label>
+            <input class="form-control" @bind="referenceNumber" placeholder="Required for non-cash payments" />
+        </div>
+    }
+
     <table class="table">
         <thead>
             <tr>
@@ -87,6 +109,9 @@ else
     private List<CustomerDto> customers = new();
     private List<SaleLine> lines = new();
     private string selectedCustomerId = string.Empty;
+    private string paymentMethod = "Cash";
+    private string paymentSource = string.Empty;
+    private string referenceNumber = string.Empty;
     private bool isLoading = true;
     private string? errorMessage;
 
@@ -140,6 +165,9 @@ else
         {
             BusinessId = businessId,
             CustomerId = customerId,
+            PaymentMethod = paymentMethod,
+            PaymentSource = string.IsNullOrWhiteSpace(paymentSource) ? null : paymentSource,
+            ReferenceNumber = string.IsNullOrWhiteSpace(referenceNumber) ? null : referenceNumber,
             Items = validLines.Select(l => new CreateSaleItemInput
             {
                 ProductId = Guid.Parse(l.ProductId),

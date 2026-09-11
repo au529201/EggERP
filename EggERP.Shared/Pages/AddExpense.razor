@@ -29,6 +29,18 @@
         </select>
     </div>
 
+    @if (newExpense.PaymentMethod != "Cash")
+    {
+        <div class="mb-3">
+            <label>Payment Source</label>
+            <InputText class="form-control" @bind-Value="newExpense.PaymentSource" placeholder="e.g. GCash, Maya, BDO, BPI" />
+        </div>
+        <div class="mb-3">
+            <label>Reference Number</label>
+            <InputText class="form-control" @bind-Value="newExpense.ReferenceNumber" placeholder="Required for non-cash payments" />
+        </div>
+    }
+
     @if (!string.IsNullOrEmpty(errorMessage))
     {
         <p style="color:red">@errorMessage</p>
