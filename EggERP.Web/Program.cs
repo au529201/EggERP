@@ -19,6 +19,9 @@ using EggERP.Shared.Models;
 using EggERP.Shared.Services;
 using EggERP.Web.Components;
 using EggERP.Web.Services;
+using EggERP.Application.Businesses;
+using EggERP.Infrastructure.Businesses;
+
 using Microsoft.EntityFrameworkCore;
 var builder = WebApplication.CreateBuilder(args);
 
@@ -27,6 +30,9 @@ builder.Services.AddDbContext<EggERPDbContext>(options =>
     options.UseSqlServer(
         builder.Configuration.GetConnectionString("EggERPConnection")));
 
+// Business services
+builder.Services.AddScoped<IBusinessRepository, BusinessRepository>();
+builder.Services.AddScoped<IBusinessService, BusinessService>();
 // Product services
 builder.Services.AddScoped<IProductRepository, ProductRepository>();
 builder.Services.AddScoped<IProductService, ProductService>();
@@ -66,6 +72,11 @@ builder.Services.AddRazorComponents()
 // Add device-specific services used by the EggERP.Shared project
 builder.Services.AddSingleton<IFormFactor, FormFactor>();
 
+// Business API client (calls this same app's own API endpoints)
+builder.Services.AddHttpClient<IBusinessApiService, BusinessApiService>(client =>
+{
+    client.BaseAddress = new Uri("https://localhost:7062/");
+});
 // Product API client (calls this same app's own API endpoints)
 builder.Services.AddHttpClient<IProductApiService, ProductApiService>(client =>
 {

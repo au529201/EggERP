@@ -1,0 +1,131 @@
+﻿@page "/settings/business"
+@using EggERP.Shared.Models
+@using EggERP.Shared.Services
+@inject IBusinessApiService BusinessApiService
+
+<h3>Business Settings</h3>
+
+@if (isLoading)
+{
+    <p>Loading...</p>
+}
+else if (notFound)
+{
+    <p>Business record not found.</p>
+}
+else
+{
+    <EditForm Model="@editModel" OnValidSubmit="HandleSave">
+        <div class="mb-3">
+            <label>Business Name</label>
+            <InputText class="form-control" @bind-Value="editModel.Name" />
+        </div>
+        <div class="mb-3">
+            <label>Legal Name</label>
+            <InputText class="form-control" @bind-Value="editModel.LegalName" />
+        </div>
+        <div class="mb-3">
+            <label>Tax Identification Number</label>
+            <InputText class="form-control" @bind-Value="editModel.TaxIdentificationNumber" />
+        </div>
+        <div class="mb-3">
+            <label>Email</label>
+            <InputText class="form-control" @bind-Value="editModel.Email" />
+        </div>
+        <div class="mb-3">
+            <label>Phone</label>
+            <InputText class="form-control" @bind-Value="editModel.Phone" />
+        </div>
+        <div class="mb-3">
+            <label>Address Line 1</label>
+            <InputText class="form-control" @bind-Value="editModel.AddressLine1" />
+        </div>
+        <div class="mb-3">
+            <label>Address Line 2</label>
+            <InputText class="form-control" @bind-Value="editModel.AddressLine2" />
+        </div>
+        <div class="mb-3">
+            <label>City</label>
+            <InputText class="form-control" @bind-Value="editModel.City" />
+        </div>
+        <div class="mb-3">
+            <label>Province</label>
+            <InputText class="form-control" @bind-Value="editModel.Province" />
+        </div>
+        <div class="mb-3">
+            <label>Postal Code</label>
+            <InputText class="form-control" @bind-Value="editModel.PostalCode" />
+        </div>
+        <div class="mb-3">
+            <label>Country Code</label>
+            <InputText class="form-control" @bind-Value="editModel.CountryCode" />
+        </div>
+
+        @if (!string.IsNullOrEmpty(errorMessage))
+        {
+            <p style="color:red">@errorMessage</p>
+        }
+        @if (!string.IsNullOrEmpty(successMessage))
+        {
+            <p style="color:green">@successMessage</p>
+        }
+
+        <button type="submit" class="btn btn-primary">Save</button>
+    </EditForm>
+}
+
+@code {
+    private readonly Guid businessId = Guid.Parse("11111111-1111-1111-1111-111111111111");
+
+    private UpdateBusinessRequest editModel = new();
+    private bool isLoading = true;
+    private bool notFound = false;
+    private string? errorMessage;
+    private string? successMessage;
+
+    protected override async Task OnInitializedAsync()
+    {
+        var business = await BusinessApiService.GetBusinessAsync(businessId);
+
+        if (business is null)
+        {
+            notFound = true;
+            isLoading = false;
+            return;
+        }
+
+        editModel = new UpdateBusinessRequest
+        {
+            Id = business.Id,
+            Name = business.Name,
+            LegalName = business.LegalName,
+            TaxIdentificationNumber = business.TaxIdentificationNumber,
+            Email = business.Email,
+            Phone = business.Phone,
+            AddressLine1 = business.AddressLine1,
+            AddressLine2 = business.AddressLine2,
+            City = business.City,
+            Province = business.Province,
+            PostalCode = business.PostalCode,
+            CountryCode = business.CountryCode
+        };
+
+        isLoading = false;
+    }
+
+    private async Task HandleSave()
+    {
+        errorMessage = null;
+        successMessage = null;
+
+        try
+        {
+            await BusinessApiService.UpdateBusinessAsync(editModel);
+            successMessage = "Business details saved.";
+        }
+        catch (Exception ex)
+        {
+            errorMessage = $"Failed to save business details: {ex.Message}";
+        }
+    }
+}

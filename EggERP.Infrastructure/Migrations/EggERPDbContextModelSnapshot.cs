@@ -74,7 +74,7 @@ namespace EggERP.Infrastructure.Migrations
 
                     b.HasKey("Id");
 
-                    b.ToTable("Businesses");
+                    b.ToTable("Businesses", (string)null);
                 });
 
             modelBuilder.Entity("EggERP.Domain.Entities.Category", b =>
@@ -104,7 +104,7 @@ namespace EggERP.Infrastructure.Migrations
 
                     b.HasKey("Id");
 
-                    b.ToTable("Categories");
+                    b.ToTable("Categories", (string)null);
                 });
 
             modelBuilder.Entity("EggERP.Domain.Entities.Customer", b =>
@@ -140,7 +140,7 @@ namespace EggERP.Infrastructure.Migrations
 
                     b.HasKey("Id");
 
-                    b.ToTable("Customers");
+                    b.ToTable("Customers", (string)null);
                 });
 
             modelBuilder.Entity("EggERP.Domain.Entities.Expense", b =>
@@ -191,7 +191,7 @@ namespace EggERP.Infrastructure.Migrations
 
                     b.HasKey("Id");
 
-                    b.ToTable("Expenses");
+                    b.ToTable("Expenses", (string)null);
                 });
 
             modelBuilder.Entity("EggERP.Domain.Entities.Inventory", b =>
@@ -220,7 +220,7 @@ namespace EggERP.Infrastructure.Migrations
 
                     b.HasKey("Id");
 
-                    b.ToTable("Inventories");
+                    b.ToTable("Inventories", (string)null);
                 });
 
             modelBuilder.Entity("EggERP.Domain.Entities.Product", b =>
@@ -266,7 +266,7 @@ namespace EggERP.Infrastructure.Migrations
 
                     b.HasKey("Id");
 
-                    b.ToTable("Products");
+                    b.ToTable("Products", (string)null);
                 });
 
             modelBuilder.Entity("EggERP.Domain.Entities.Purchase", b =>
@@ -318,7 +318,7 @@ namespace EggERP.Infrastructure.Migrations
 
                     b.HasKey("Id");
 
-                    b.ToTable("Purchases");
+                    b.ToTable("Purchases", (string)null);
                 });
 
             modelBuilder.Entity("EggERP.Domain.Entities.PurchaseItem", b =>
@@ -350,7 +350,7 @@ namespace EggERP.Infrastructure.Migrations
 
                     b.HasKey("Id");
 
-                    b.ToTable("PurchaseItems");
+                    b.ToTable("PurchaseItems", (string)null);
                 });
 
             modelBuilder.Entity("EggERP.Domain.Entities.Sale", b =>
@@ -402,7 +402,7 @@ namespace EggERP.Infrastructure.Migrations
 
                     b.HasKey("Id");
 
-                    b.ToTable("Sales");
+                    b.ToTable("Sales", (string)null);
                 });
 
             modelBuilder.Entity("EggERP.Domain.Entities.SaleItem", b =>
@@ -434,7 +434,7 @@ namespace EggERP.Infrastructure.Migrations
 
                     b.HasKey("Id");
 
-                    b.ToTable("SaleItems");
+                    b.ToTable("SaleItems", (string)null);
                 });
 
             modelBuilder.Entity("EggERP.Domain.Entities.Supplier", b =>
@@ -473,7 +473,7 @@ namespace EggERP.Infrastructure.Migrations
 
                     b.HasKey("Id");
 
-                    b.ToTable("Suppliers");
+                    b.ToTable("Suppliers", (string)null);
                 });
 
             modelBuilder.Entity("EggERP.Domain.Entities.TaxRate", b =>
@@ -503,7 +503,7 @@ namespace EggERP.Infrastructure.Migrations
 
                     b.HasKey("Id");
 
-                    b.ToTable("TaxRates");
+                    b.ToTable("TaxRates", (string)null);
                 });
 #pragma warning restore 612, 618
         }
