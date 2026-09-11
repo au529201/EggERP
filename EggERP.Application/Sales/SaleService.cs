@@ -22,59 +22,46 @@ public class SaleService : ISaleService
     {
         return _saleRepository.GetItemsBySaleIdAsync(saleId);
     }
-    public async Task<SaleCreationResult> CreateSaleAsync(Guid businessId, Guid? customerId, List<CreateSaleItemRequest> items, string paymentMethod, string? referenceNumber)
+    public async Task<Sale> CreateSaleAsync(Guid businessId, Guid? customerId, List<CreateSaleItemRequest> items, string paymentMethod, string? paymentSource, string? referenceNumber)
     {
-        PaymentValidation.EnsureValid(paymentMethod, referenceNumber);
+        PaymentValidation.EnsureValid(paymentMethod, referenceNumber, paymentSource);
 
-        var saleItems = new List<SaleItem>();
-        var adjustments = new List<SaleItemAdjustment>();
+        if (items is null || items.Count == 0)
+        {
+            throw new InvalidOperationException("A sale must have at least one item.");
+        }
+
+        // Validate every line against current stock BEFORE creating anything.
+        // If any single line fails, the entire sale is rejected and nothing is written.
+        var stockErrors = new List<string>();
 
         foreach (var i in items)
         {
             var inventory = await _inventoryService.GetByProductIdAsync(businessId, i.ProductId);
             var available = inventory?.QuantityOnHand ?? 0;
 
-            if (available <= 0)
+            if (i.Quantity > available)
             {
-                adjustments.Add(new SaleItemAdjustment
-                {
-                    ProductId = i.ProductId,
-                    RequestedQuantity = i.Quantity,
-                    SoldQuantity = 0,
-                    WasDropped = true
-                });
-                continue;
+                stockErrors.Add($"only {available} in stock, but {i.Quantity} requested");
             }
-
-            var quantityToSell = Math.Min(i.Quantity, available);
-
-            if (quantityToSell < i.Quantity)
-            {
-                adjustments.Add(new SaleItemAdjustment
-                {
-                    ProductId = i.ProductId,
-                    RequestedQuantity = i.Quantity,
-                    SoldQuantity = quantityToSell,
-                    WasDropped = false
-                });
-            }
-
-            saleItems.Add(new SaleItem
-            {
-                Id = Guid.NewGuid(),
-                ProductId = i.ProductId,
-                Quantity = quantityToSell,
-                UnitPrice = i.UnitPrice,
-                DiscountAmount = 0,
-                TaxAmount = 0,
-                TotalAmount = quantityToSell * i.UnitPrice
-            });
         }
 
-        if (saleItems.Count == 0)
+        if (stockErrors.Count > 0)
         {
-            throw new InvalidOperationException("No items could be sold: all requested products are out of stock.");
+            throw new InvalidOperationException(
+                $"Cannot complete sale: {string.Join("; ", stockErrors)}. Adjust the quantity or remove the affected item(s) before continuing.");
         }
+
+        var saleItems = items.Select(i => new SaleItem
+        {
+            Id = Guid.NewGuid(),
+            ProductId = i.ProductId,
+            Quantity = i.Quantity,
+            UnitPrice = i.UnitPrice,
+            DiscountAmount = 0,
+            TaxAmount = 0,
+            TotalAmount = i.Quantity * i.UnitPrice
+        }).ToList();
 
         var subtotal = saleItems.Sum(si => si.TotalAmount);
 
@@ -89,6 +76,7 @@ public class SaleService : ISaleService
             DiscountAmount = 0,
             TotalAmount = subtotal,
             PaymentMethod = paymentMethod,
+            PaymentSource = paymentSource,
             ReferenceNumber = referenceNumber,
             Status = "Completed",
             CreatedAtUtc = DateTime.UtcNow
@@ -106,10 +94,6 @@ public class SaleService : ISaleService
             await _inventoryService.AdjustQuantityAsync(businessId, item.ProductId, -item.Quantity);
         }
 
-        return new SaleCreationResult
-        {
-            Sale = createdSale,
-            Adjustments = adjustments
-        };
+        return createdSale;
     }
 }
