@@ -20,3 +20,4 @@ namespace EggERP.Infrastructure.Migrations
         }
     }
 }
+

@@ -16,9 +16,10 @@ public class Expense
 
     public string PaymentMethod { get; set; } = "Cash";
 
-    public string Status { get; set; } = "Paid";
+    public string? PaymentSource { get; set; }
 
     public string? ReferenceNumber { get; set; }
+    public string Status { get; set; } = "Paid";
 
     public string? Notes { get; set; }
 
