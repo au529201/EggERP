@@ -10,7 +10,9 @@ using EggERP.Infrastructure.Categories;
 using EggERP.Infrastructure.Customers;
 using EggERP.Infrastructure.Expenses;
 using EggERP.Infrastructure.Inventory;
+using EggERP.Infrastructure.Identity;
 using EggERP.Infrastructure.Persistence;
+using Microsoft.AspNetCore.Identity;
 using EggERP.Infrastructure.Products;
 using EggERP.Infrastructure.Purchases;
 using EggERP.Infrastructure.Sales;
@@ -29,6 +31,11 @@ var builder = WebApplication.CreateBuilder(args);
 builder.Services.AddDbContext<EggERPDbContext>(options =>
     options.UseSqlServer(
         builder.Configuration.GetConnectionString("EggERPConnection")));
+
+// Identity (registration only for this pass — no cookie/auth middleware, no login UI yet)
+builder.Services.AddIdentity<ApplicationUser, IdentityRole<Guid>>()
+    .AddEntityFrameworkStores<EggERPDbContext>()
+    .AddDefaultTokenProviders();
 
 // Business services
 builder.Services.AddScoped<IBusinessRepository, BusinessRepository>();
