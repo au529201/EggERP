@@ -36,26 +36,16 @@
                 <span class="bi bi-list-nested-nav-menu" aria-hidden="true"></span> Sales
             </NavLink>
         </div>
-        <div class="nav-item px-3">
-            <NavLink class="nav-link" href="purchases">
-                <span class="bi bi-list-nested-nav-menu" aria-hidden="true"></span> Purchases
-            </NavLink>
-        </div>
-        <div class="nav-item px-3">
-            <NavLink class="nav-link" href="expenses">
-                <span class="bi bi-list-nested-nav-menu" aria-hidden="true"></span> Expenses
-            </NavLink>
-        </div>
-        <div class="nav-item px-3">
-            <NavLink class="nav-link" href="settings/business">
-                <span class="bi bi-list-nested-nav-menu" aria-hidden="true"></span> Settings
-            </NavLink>
-        </div>
-        <AuthorizeView Roles="SuperAdmin">
+        <AuthorizeView Roles="Admin,Manager">
             <Authorized>
                 <div class="nav-item px-3">
-                    <NavLink class="nav-link" href="superadmin">
-                        <span class="bi bi-list-nested-nav-menu" aria-hidden="true"></span> SuperAdmin
+                    <NavLink class="nav-link" href="purchases">
+                        <span class="bi bi-list-nested-nav-menu" aria-hidden="true"></span> Purchases
+                    </NavLink>
+                </div>
+                <div class="nav-item px-3">
+                    <NavLink class="nav-link" href="expenses">
+                        <span class="bi bi-list-nested-nav-menu" aria-hidden="true"></span> Expenses
                     </NavLink>
                 </div>
             </Authorized>
@@ -63,8 +53,22 @@
         <AuthorizeView Roles="Admin">
             <Authorized>
                 <div class="nav-item px-3">
-                    <NavLink class="nav-link" href="admin">
-                        <span class="bi bi-list-nested-nav-menu" aria-hidden="true"></span> Admin
+                    <NavLink class="nav-link" href="settings/business">
+                        <span class="bi bi-list-nested-nav-menu" aria-hidden="true"></span> Settings
+                    </NavLink>
+                </div>
+            </Authorized>
+        </AuthorizeView>
+        <AuthorizeView Roles="Admin">
+            <Authorized>
+                <div class="nav-item px-3">
+                    <NavLink class="nav-link" href="settings/business">
+                        <span class="bi bi-list-nested-nav-menu" aria-hidden="true"></span> Settings
+                    </NavLink>
+                </div>
+                <div class="nav-item px-3">
+                    <NavLink class="nav-link" href="settings/users">
+                        <span class="bi bi-list-nested-nav-menu" aria-hidden="true"></span> Users
                     </NavLink>
                 </div>
             </Authorized>

@@ -1,4 +1,5 @@
 ﻿@page "/categories/add"
+@attribute [Authorize(Roles = "Admin,Manager")]
 @using EggERP.Shared.Models
 @using EggERP.Shared.Services
 @inject ICategoryApiService CategoryApiService

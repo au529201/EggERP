@@ -17,7 +17,9 @@ using EggERP.Infrastructure.Persistence;
 using EggERP.Infrastructure.Products;
 using EggERP.Infrastructure.Purchases;
 using EggERP.Infrastructure.Sales;
+using EggERP.Application.Users;
 using EggERP.Infrastructure.Suppliers;
+using EggERP.Infrastructure.Users;
 using EggERP.Shared.Models;
 using EggERP.Shared.Services;
 using EggERP.Web.Components;
@@ -86,6 +88,8 @@ builder.Services.AddScoped<IPurchaseService, PurchaseService>();
 // Expense services
 builder.Services.AddScoped<IExpenseRepository, ExpenseRepository>();
 builder.Services.AddScoped<IExpenseService, ExpenseService>();
+// User management services
+builder.Services.AddScoped<IUserManagementService, UserManagementService>();
 
 // API Controllers
 builder.Services.AddControllers();
@@ -143,6 +147,11 @@ builder.Services.AddHttpClient<IPurchaseApiService, PurchaseApiService>(client =
 });
 // Expense API client (calls this same app's own API endpoints)
 builder.Services.AddHttpClient<IExpenseApiService, ExpenseApiService>(client =>
+{
+    client.BaseAddress = new Uri("https://localhost:7062/");
+});
+// User management API client (calls this same app's own API endpoints)
+builder.Services.AddHttpClient<IUserManagementApiService, UserManagementApiService>(client =>
 {
     client.BaseAddress = new Uri("https://localhost:7062/");
 });

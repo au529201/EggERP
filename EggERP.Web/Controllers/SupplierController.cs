@@ -1,9 +1,11 @@
 ﻿using EggERP.Application.Suppliers;
 using EggERP.Domain.Entities;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 namespace EggERP.Web.Controllers;
 [ApiController]
 [Route("api/suppliers")]
+[Authorize(Roles = "Admin,Manager,Staff")]
 public class SupplierController : ControllerBase
 {
     private readonly ISupplierService _supplierService;
@@ -28,6 +30,7 @@ public class SupplierController : ControllerBase
         return Ok(supplier);
     }
     [HttpPost]
+    [Authorize(Roles = "Admin,Manager")]
     public async Task<IActionResult> CreateSupplier(Supplier supplier)
     {
         var createdSupplier = await _supplierService.CreateSupplierAsync(supplier);
@@ -37,6 +40,7 @@ public class SupplierController : ControllerBase
             createdSupplier);
     }
     [HttpPut("{id:guid}")]
+    [Authorize(Roles = "Admin,Manager")]
     public async Task<IActionResult> UpdateSupplier(Guid id, Supplier supplier)
     {
         if (id != supplier.Id)
@@ -51,6 +55,7 @@ public class SupplierController : ControllerBase
         return NoContent();
     }
     [HttpDelete("{businessId:guid}/{id:guid}")]
+    [Authorize(Roles = "Admin,Manager")]
     public async Task<IActionResult> DeactivateSupplier(Guid businessId, Guid id)
     {
         var deactivated = await _supplierService.DeactivateSupplierAsync(businessId, id);

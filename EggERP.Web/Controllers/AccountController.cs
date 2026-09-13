@@ -55,7 +55,11 @@ public class AccountController : ControllerBase
             return Redirect("/Account/Login?error=Invalid login attempt.");
         }
 
-        var result = await _signInManager.PasswordSignInAsync(user, password, isPersistent: true, lockoutOnFailure: false);
+        var result = await _signInManager.PasswordSignInAsync(user, password, isPersistent: true, lockoutOnFailure: true);
+        if (result.IsLockedOut)
+        {
+            return Redirect("/Account/Login?error=This account has been deactivated.");
+        }
         if (!result.Succeeded)
         {
             return Redirect("/Account/Login?error=Invalid login attempt.");

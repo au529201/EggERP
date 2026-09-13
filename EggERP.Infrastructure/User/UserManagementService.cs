@@ -1,0 +1,129 @@
+﻿using EggERP.Application.Users;
+using EggERP.Infrastructure.Identity;
+using Microsoft.AspNetCore.Identity;
+
+namespace EggERP.Infrastructure.Users;
+
+public class UserManagementService : IUserManagementService
+{
+    private readonly UserManager<ApplicationUser> _userManager;
+
+    public UserManagementService(UserManager<ApplicationUser> userManager)
+    {
+        _userManager = userManager;
+    }
+
+    public async Task<List<BusinessUserDto>> GetUsersForBusinessAsync(Guid businessId)
+    {
+        var users = _userManager.Users.Where(u => u.BusinessId == businessId).ToList();
+        var result = new List<BusinessUserDto>();
+
+        foreach (var user in users)
+        {
+            var roles = await _userManager.GetRolesAsync(user);
+            result.Add(new BusinessUserDto
+            {
+                Id = user.Id,
+                Email = user.Email ?? string.Empty,
+                FullName = user.FullName,
+                Role = roles.FirstOrDefault() ?? string.Empty,
+                IsActive = user.IsActive
+            });
+        }
+
+        return result.OrderBy(u => u.FullName).ToList();
+    }
+
+    public async Task<(bool Succeeded, string? Error)> CreateUserAsync(CreateBusinessUserRequest request)
+    {
+        if (request.Role != "Manager" && request.Role != "Staff")
+        {
+            return (false, "Role must be Manager or Staff.");
+        }
+
+        var existing = await _userManager.FindByEmailAsync(request.Email);
+        if (existing is not null)
+        {
+            return (false, "A user with this email already exists.");
+        }
+
+        var user = new ApplicationUser
+        {
+            UserName = request.Email,
+            Email = request.Email,
+            EmailConfirmed = true,
+            BusinessId = request.BusinessId,
+            FullName = request.FullName,
+            IsActive = true
+        };
+
+        var createResult = await _userManager.CreateAsync(user, request.Password);
+        if (!createResult.Succeeded)
+        {
+            return (false, string.Join("; ", createResult.Errors.Select(e => e.Description)));
+        }
+
+        var roleResult = await _userManager.AddToRoleAsync(user, request.Role);
+        if (!roleResult.Succeeded)
+        {
+            return (false, string.Join("; ", roleResult.Errors.Select(e => e.Description)));
+        }
+
+        return (true, null);
+    }
+
+    public async Task<(bool Succeeded, string? Error)> UpdateUserAsync(UpdateBusinessUserRequest request)
+    {
+        var user = await _userManager.FindByIdAsync(request.Id.ToString());
+        if (user is null || user.BusinessId != request.BusinessId)
+        {
+            return (false, "User not found in this business.");
+        }
+
+        user.FullName = request.FullName;
+        var updateResult = await _userManager.UpdateAsync(user);
+        if (!updateResult.Succeeded)
+        {
+            return (false, string.Join("; ", updateResult.Errors.Select(e => e.Description)));
+        }
+
+        var currentRoles = await _userManager.GetRolesAsync(user);
+        if (!currentRoles.Contains(request.Role))
+        {
+            if (request.Role != "Manager" && request.Role != "Staff")
+            {
+                return (false, "Role must be Manager or Staff.");
+            }
+
+            await _userManager.RemoveFromRolesAsync(user, currentRoles);
+            var addRoleResult = await _userManager.AddToRoleAsync(user, request.Role);
+            if (!addRoleResult.Succeeded)
+            {
+                return (false, string.Join("; ", addRoleResult.Errors.Select(e => e.Description)));
+            }
+        }
+
+        return (true, null);
+    }
+
+    public async Task<(bool Succeeded, string? Error)> DeactivateUserAsync(Guid businessId, Guid userId)
+    {
+        var user = await _userManager.FindByIdAsync(userId.ToString());
+        if (user is null || user.BusinessId != businessId)
+        {
+            return (false, "User not found in this business.");
+        }
+
+        user.IsActive = false;
+        user.LockoutEnd = DateTimeOffset.MaxValue; // prevents login even if IsActive check is bypassed elsewhere
+        user.LockoutEnabled = true;
+
+        var result = await _userManager.UpdateAsync(user);
+        if (!result.Succeeded)
+        {
+            return (false, string.Join("; ", result.Errors.Select(e => e.Description)));
+        }
+
+        return (true, null);
+    }
+}

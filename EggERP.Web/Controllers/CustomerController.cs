@@ -1,9 +1,11 @@
 ﻿using EggERP.Application.Customers;
 using EggERP.Domain.Entities;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 namespace EggERP.Web.Controllers;
 [ApiController]
 [Route("api/customers")]
+[Authorize(Roles = "Admin,Manager,Staff")]
 public class CustomerController : ControllerBase
 {
     private readonly ICustomerService _customerService;
@@ -37,6 +39,7 @@ public class CustomerController : ControllerBase
             createdCustomer);
     }
     [HttpPut("{id:guid}")]
+    [Authorize(Roles = "Admin,Manager")]
     public async Task<IActionResult> UpdateCustomer(Guid id, Customer customer)
     {
         if (id != customer.Id)
@@ -51,6 +54,7 @@ public class CustomerController : ControllerBase
         return NoContent();
     }
     [HttpDelete("{businessId:guid}/{id:guid}")]
+    [Authorize(Roles = "Admin,Manager")]
     public async Task<IActionResult> DeactivateCustomer(Guid businessId, Guid id)
     {
         var deactivated = await _customerService.DeactivateCustomerAsync(businessId, id);

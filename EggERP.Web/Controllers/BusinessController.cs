@@ -1,9 +1,11 @@
 ﻿using EggERP.Application.Businesses;
 using EggERP.Domain.Entities;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 namespace EggERP.Web.Controllers;
 [ApiController]
 [Route("api/business")]
+[Authorize(Roles = "Admin")]
 public class BusinessController : ControllerBase
 {
     private readonly IBusinessService _businessService;

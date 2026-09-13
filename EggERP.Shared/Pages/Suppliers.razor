@@ -1,12 +1,16 @@
 ﻿@page "/suppliers"
+@attribute [Authorize(Roles = "Admin,Manager,Staff")]
 @using EggERP.Shared.Models
 @using EggERP.Shared.Services
 @inject ISupplierApiService SupplierApiService
 @inject IJSRuntime JsRuntime
 
 <h3>Suppliers</h3>
-<a class="btn btn-primary mb-3" href="/suppliers/add">+ Add Supplier</a>
-
+<AuthorizeView Roles="Admin,Manager,Staff">
+    <Authorized>
+        <a class="btn btn-primary mb-3" href="/suppliers/add">+ Add Supplier</a>
+    </Authorized>
+</AuthorizeView>
 @if (suppliers is null)
 {
     <p>Loading...</p>
@@ -38,8 +42,12 @@ else
                     <td>@supplier.Phone</td>
                     <td>@supplier.Address</td>
                     <td>
-                        <a class="btn btn-sm btn-secondary" href="@($"/suppliers/edit/{supplier.Id}")">Edit</a>
-                        <button class="btn btn-sm btn-danger" @onclick="() => DeactivateSupplier(supplier.Id, supplier.Name)">Deactivate</button>
+                        <AuthorizeView Roles="Admin,Manager">
+                            <Authorized>
+                                <a class="btn btn-sm btn-secondary" href="@($"/suppliers/edit/{supplier.Id}")">Edit</a>
+                                <button class="btn btn-sm btn-danger" @onclick="() => DeactivateSupplier(supplier.Id, supplier.Name)">Deactivate</button>
+                            </Authorized>
+                        </AuthorizeView>
                     </td>
                 </tr>
             }

@@ -1,12 +1,16 @@
 ﻿@page "/categories"
+@attribute [Authorize(Roles = "Admin,Manager,Staff")]
 @using EggERP.Shared.Models
 @using EggERP.Shared.Services
 @inject ICategoryApiService CategoryApiService
 @inject IJSRuntime JsRuntime
 
 <h3>Categories</h3>
-<a class="btn btn-primary mb-3" href="/categories/add">+ Add Category</a>
-
+<AuthorizeView Roles="Admin,Manager">
+    <Authorized>
+        <a class="btn btn-primary mb-3" href="/categories/add">+ Add Category</a>
+    </Authorized>
+</AuthorizeView>
 @if (categories is null)
 {
     <p>Loading...</p>
@@ -32,8 +36,12 @@ else
                     <td>@category.Name</td>
                     <td>@category.Description</td>
                     <td>
-                        <a class="btn btn-sm btn-secondary" href="@($"/categories/edit/{category.Id}")">Edit</a>
-                        <button class="btn btn-sm btn-danger" @onclick="() => DeactivateCategory(category.Id, category.Name)">Deactivate</button>
+                        <AuthorizeView Roles="Admin,Manager">
+                            <Authorized>
+                                <a class="btn btn-sm btn-secondary" href="@($"/categories/edit/{category.Id}")">Edit</a>
+                                <button class="btn btn-sm btn-danger" @onclick="() => DeactivateCategory(category.Id, category.Name)">Deactivate</button>
+                            </Authorized>
+                        </AuthorizeView>
                     </td>
                 </tr>
             }

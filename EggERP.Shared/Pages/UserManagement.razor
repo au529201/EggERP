@@ -1,0 +1,72 @@
+﻿@page "/settings/users"
+@attribute [Authorize(Roles = "Admin")]
+@using EggERP.Shared.Models
+@using EggERP.Shared.Services
+@inject IUserManagementApiService UserManagementApiService
+@inject IJSRuntime JsRuntime
+
+<h3>User Management</h3>
+<a class="btn btn-primary mb-3" href="/settings/users/add">+ Add User</a>
+
+@if (users is null)
+{
+    <p>Loading...</p>
+}
+else if (users.Count == 0)
+{
+    <p>No users found.</p>
+}
+else
+{
+    <table class="table">
+        <thead>
+            <tr>
+                <th>Full Name</th>
+                <th>Email</th>
+                <th>Role</th>
+                <th>Status</th>
+                <th></th>
+            </tr>
+        </thead>
+        <tbody>
+            @foreach (var user in users)
+            {
+                <tr>
+                    <td>@user.FullName</td>
+                    <td>@user.Email</td>
+                    <td>@user.Role</td>
+                    <td>@(user.IsActive ? "Active" : "Deactivated")</td>
+                    <td>
+                        @if (user.IsActive)
+                        {
+                            <a class="btn btn-sm btn-secondary" href="@($"/settings/users/edit/{user.Id}")">Edit</a>
+                            <button class="btn btn-sm btn-danger" @onclick="() => DeactivateUser(user.Id, user.FullName)">Deactivate</button>
+                        }
+                    </td>
+                </tr>
+            }
+        </tbody>
+    </table>
+}
+
+@code {
+    private readonly Guid businessId = Guid.Parse("11111111-1111-1111-1111-111111111111");
+    private List<UserDto>? users;
+
+    protected override async Task OnInitializedAsync()
+    {
+        users = await UserManagementApiService.GetUsersAsync(businessId);
+    }
+
+    private async Task DeactivateUser(Guid id, string name)
+    {
+        var confirmed = await JsRuntime.InvokeAsync<bool>("confirm", $"Deactivate '{name}'? They will no longer be able to log in.");
+        if (!confirmed)
+        {
+            return;
+        }
+
+        await UserManagementApiService.DeactivateUserAsync(businessId, id);
+        users = await UserManagementApiService.GetUsersAsync(businessId);
+    }
+}

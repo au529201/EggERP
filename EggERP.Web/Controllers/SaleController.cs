@@ -1,8 +1,10 @@
 ﻿using EggERP.Application.Sales;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 namespace EggERP.Web.Controllers;
 [ApiController]
 [Route("api/sales")]
+[Authorize(Roles = "Admin,Manager,Staff")]
 public class SaleController : ControllerBase
 {
     private readonly ISaleService _saleService;

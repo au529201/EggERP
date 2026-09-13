@@ -29,7 +29,7 @@ namespace EggERP.Shared.Services
             var response = await _http.PostAsJsonAsync("api/products", request);
             response.EnsureSuccessStatusCode();
         }
-        public async Task<ProductDetailDto?> GetProductByIdAsync(Guid businessId, Guid id)
+        public       async Task<ProductDetailDto?> GetProductByIdAsync(Guid businessId, Guid id)
         {
             var response = await _http.GetAsync($"api/products/{businessId}/{id}");
 

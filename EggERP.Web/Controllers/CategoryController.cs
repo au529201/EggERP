@@ -1,9 +1,11 @@
 ﻿using EggERP.Application.Categories;
 using EggERP.Domain.Entities;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 namespace EggERP.Web.Controllers;
 [ApiController]
 [Route("api/categories")]
+[Authorize(Roles = "Admin,Manager,Staff")]
 public class CategoryController : ControllerBase
 {
     private readonly ICategoryService _categoryService;
@@ -28,6 +30,7 @@ public class CategoryController : ControllerBase
         return Ok(category);
     }
     [HttpPost]
+    [Authorize(Roles = "Admin,Manager")]
     public async Task<IActionResult> CreateCategory(Category category)
     {
         var createdCategory = await _categoryService.CreateCategoryAsync(category);
@@ -37,6 +40,7 @@ public class CategoryController : ControllerBase
             createdCategory);
     }
     [HttpPut("{id:guid}")]
+    [Authorize(Roles = "Admin,Manager")]
     public async Task<IActionResult> UpdateCategory(Guid id, Category category)
     {
         if (id != category.Id)
@@ -51,6 +55,7 @@ public class CategoryController : ControllerBase
         return NoContent();
     }
     [HttpDelete("{businessId:guid}/{id:guid}")]
+    [Authorize(Roles = "Admin,Manager")]
     public async Task<IActionResult> DeactivateCategory(Guid businessId, Guid id)
     {
         var deactivated = await _categoryService.DeactivateCategoryAsync(businessId, id);

@@ -1,8 +1,10 @@
 ﻿using EggERP.Application.Purchases;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 namespace EggERP.Web.Controllers;
 [ApiController]
 [Route("api/purchases")]
+[Authorize(Roles = "Admin,Manager")]
 public class PurchaseController : ControllerBase
 {
     private readonly IPurchaseService _purchaseService;

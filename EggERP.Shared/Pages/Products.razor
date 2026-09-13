@@ -1,11 +1,16 @@
 ﻿@page "/products"
+@attribute [Authorize(Roles = "Admin,Manager,Staff")]
 @using EggERP.Shared.Models
 @using EggERP.Shared.Services
 @inject IProductApiService ProductApiService
 @inject ICategoryApiService CategoryApiService
 @inject IJSRuntime JsRuntime
 <h3>Products</h3>
-<a class="btn btn-primary mb-3" href="/products/add">+ Add Product</a>
+<AuthorizeView Roles="Admin,Manager">
+    <Authorized>
+        <a class="btn btn-primary mb-3" href="/products/add">+ Add Product</a>
+    </Authorized>
+</AuthorizeView>
 <div class="row mb-3">
     <div class="col-md-6">
         <input class="form-control" placeholder="Search products..." @bind="searchText" @bind:event="oninput" />
@@ -54,8 +59,12 @@ else
                     <td>@product.CostPrice</td>
                     <td>@product.SellingPrice</td>
                     <td>
-                        <a class="btn btn-sm btn-secondary" href="@($"/products/edit/{product.Id}")">Edit</a>
-                        <button class="btn btn-sm btn-danger" @onclick="() => DeactivateProduct(product.Id, product.Name)">Deactivate</button>
+                        <AuthorizeView Roles="Admin,Manager">
+                            <Authorized>
+                                <a class="btn btn-sm btn-secondary" href="@($"/products/edit/{product.Id}")">Edit</a>
+                                <button class="btn btn-sm btn-danger" @onclick="() => DeactivateProduct(product.Id, product.Name)">Deactivate</button>
+                            </Authorized>
+                        </AuthorizeView>
                     </td>
                 </tr>
             }

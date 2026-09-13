@@ -1,8 +1,10 @@
 ﻿using EggERP.Application.Inventory;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 namespace EggERP.Web.Controllers;
 [ApiController]
 [Route("api/inventory")]
+[Authorize(Roles = "Admin,Manager,Staff")]
 public class InventoryController : ControllerBase
 {
     private readonly IInventoryService _inventoryService;

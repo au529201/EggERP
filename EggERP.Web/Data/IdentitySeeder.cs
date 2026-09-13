@@ -14,7 +14,7 @@ public static class IdentitySeeder
         var userManager = services.GetRequiredService<UserManager<ApplicationUser>>();
         var logger = services.GetRequiredService<ILoggerFactory>().CreateLogger("IdentitySeeder");
 
-        string[] roles = { "SuperAdmin", "Admin", "Manager", "Staff" };
+        string[] roles = { "Admin", "Manager", "Staff" };
         foreach (var role in roles)
         {
             if (!await roleManager.RoleExistsAsync(role))
@@ -29,7 +29,6 @@ public static class IdentitySeeder
         }
 
         // Dev-only seed credentials. Rotate before any real deployment.
-        await EnsureUserAsync(userManager, logger, "superadmin@egg.erp", "Superadmin4134", "SuperAdmin", businessId: null, fullName: "Super Admin");
         await EnsureUserAsync(userManager, logger, "admin@egg.erp", "Admin4134", "Admin", businessId: DefaultBusinessId, fullName: "Business Admin");
     }
 

@@ -1,0 +1,59 @@
+﻿@page "/settings/users/add"
+@attribute [Authorize(Roles = "Admin")]
+@using EggERP.Shared.Models
+@using EggERP.Shared.Services
+@inject IUserManagementApiService UserManagementApiService
+@inject NavigationManager Navigation
+
+<h3>Add User</h3>
+
+<EditForm Model="@newUser" OnValidSubmit="HandleSave">
+    <div class="mb-3">
+        <label>Full Name</label>
+        <InputText class="form-control" @bind-Value="newUser.FullName" />
+    </div>
+    <div class="mb-3">
+        <label>Email</label>
+        <InputText class="form-control" @bind-Value="newUser.Email" />
+    </div>
+    <div class="mb-3">
+        <label>Temporary Password</label>
+        <InputText class="form-control" @bind-Value="newUser.Password" />
+        <small class="form-text text-muted">At least 8 characters, including an uppercase letter, a lowercase letter, and a number. Share this with the user directly; they can change it after logging in.</small>
+    </div>
+    <div class="mb-3">
+        <label>Role</label>
+        <select class="form-select" @bind="newUser.Role">
+            <option value="Manager">Manager</option>
+            <option value="Staff">Staff</option>
+        </select>
+    </div>
+
+    @if (!string.IsNullOrEmpty(errorMessage))
+    {
+        <p style="color:red">@errorMessage</p>
+    }
+
+    <button type="submit" class="btn btn-primary">Save</button>
+</EditForm>
+
+@code {
+    private readonly Guid businessId = Guid.Parse("11111111-1111-1111-1111-111111111111");
+    private CreateUserRequest newUser = new() { Role = "Staff" };
+    private string? errorMessage;
+
+    private async Task HandleSave()
+    {
+        errorMessage = null;
+        newUser.BusinessId = businessId;
+
+        var error = await UserManagementApiService.CreateUserAsync(newUser);
+        if (error is not null)
+        {
+            errorMessage = error;
+            return;
+        }
+
+        Navigation.NavigateTo("/settings/users");
+    }
+}

@@ -1,9 +1,11 @@
 ﻿using EggERP.Application.Expenses;
 using EggERP.Domain.Entities;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 namespace EggERP.Web.Controllers;
 [ApiController]
 [Route("api/expenses")]
+[Authorize(Roles = "Admin,Manager")]
 public class ExpenseController : ControllerBase
 {
     private readonly IExpenseService _expenseService;

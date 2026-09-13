@@ -1,11 +1,13 @@
 ﻿using EggERP.Application.Products;
 using EggERP.Domain.Entities;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
 namespace EggERP.Web.Controllers;
 
 [ApiController]
 [Route("api/products")]
+[Authorize(Roles = "Admin,Manager,Staff")]
 public class ProductController : ControllerBase
 {
     private readonly IProductService _productService;
@@ -36,6 +38,7 @@ public class ProductController : ControllerBase
     }
 
     [HttpPost]
+    [Authorize(Roles = "Admin,Manager")]
     public async Task<IActionResult> CreateProduct(Product product)
     {
         var createdProduct = await _productService.CreateProductAsync(product);
@@ -46,6 +49,7 @@ public class ProductController : ControllerBase
     }
 
     [HttpPut("{id:guid}")]
+    [Authorize(Roles = "Admin,Manager")]
     public async Task<IActionResult> UpdateProduct(Guid id, Product product)
     {
         if (id != product.Id)
@@ -61,6 +65,7 @@ public class ProductController : ControllerBase
     }
 
     [HttpDelete("{businessId:guid}/{id:guid}")]
+    [Authorize(Roles = "Admin,Manager")]
     public async Task<IActionResult> DeactivateProduct(Guid businessId, Guid id)
     {
         var deactivated = await _productService.DeactivateProductAsync(businessId, id);
