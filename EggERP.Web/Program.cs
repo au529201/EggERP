@@ -1,3 +1,4 @@
+using EggERP.Application.Businesses;
 using EggERP.Application.Categories;
 using EggERP.Application.Customers;
 using EggERP.Application.Expenses;
@@ -6,13 +7,13 @@ using EggERP.Application.Products;
 using EggERP.Application.Purchases;
 using EggERP.Application.Sales;
 using EggERP.Application.Suppliers;
+using EggERP.Infrastructure.Businesses;
 using EggERP.Infrastructure.Categories;
 using EggERP.Infrastructure.Customers;
 using EggERP.Infrastructure.Expenses;
-using EggERP.Infrastructure.Inventory;
 using EggERP.Infrastructure.Identity;
+using EggERP.Infrastructure.Inventory;
 using EggERP.Infrastructure.Persistence;
-using Microsoft.AspNetCore.Identity;
 using EggERP.Infrastructure.Products;
 using EggERP.Infrastructure.Purchases;
 using EggERP.Infrastructure.Sales;
@@ -20,10 +21,9 @@ using EggERP.Infrastructure.Suppliers;
 using EggERP.Shared.Models;
 using EggERP.Shared.Services;
 using EggERP.Web.Components;
+using EggERP.Web.Data;
 using EggERP.Web.Services;
-using EggERP.Application.Businesses;
-using EggERP.Infrastructure.Businesses;
-
+using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 var builder = WebApplication.CreateBuilder(args);
 
@@ -32,10 +32,32 @@ builder.Services.AddDbContext<EggERPDbContext>(options =>
     options.UseSqlServer(
         builder.Configuration.GetConnectionString("EggERPConnection")));
 
-// Identity (registration only for this pass — no cookie/auth middleware, no login UI yet)
-builder.Services.AddIdentity<ApplicationUser, IdentityRole<Guid>>()
+// Identity (registration + authentication)
+builder.Services.AddIdentity<ApplicationUser, IdentityRole<Guid>>(options =>
+{
+    // Simplified password policy: small business owners should not be forced
+    // into special-character requirements. Still requires reasonable length,
+    // uppercase, lowercase, and a digit.
+    options.Password.RequireNonAlphanumeric = false;
+    options.Password.RequireUppercase = true;
+    options.Password.RequireLowercase = true;
+    options.Password.RequireDigit = true;
+    options.Password.RequiredLength = 8;
+})
     .AddEntityFrameworkStores<EggERPDbContext>()
     .AddDefaultTokenProviders();
+
+builder.Services.ConfigureApplicationCookie(options =>
+{
+    options.LoginPath = "/Account/Login";
+    options.AccessDeniedPath = "/Account/Login";
+    options.ExpireTimeSpan = TimeSpan.FromDays(7);
+    options.SlidingExpiration = true;
+});
+
+// Enable [Authorize] support inside Blazor components
+builder.Services.AddAuthorizationCore();
+builder.Services.AddCascadingAuthenticationState();
 
 // Business services
 builder.Services.AddScoped<IBusinessRepository, BusinessRepository>();
@@ -128,6 +150,12 @@ builder.Services.AddHttpClient<IExpenseApiService, ExpenseApiService>(client =>
 
 var app = builder.Build();
 
+// Seed Identity roles and initial SuperAdmin/Admin accounts
+using (var scope = app.Services.CreateScope())
+{
+    await IdentitySeeder.SeedAsync(scope.ServiceProvider);
+}
+
 // Configure the HTTP request pipeline.
 if (!app.Environment.IsDevelopment())
 {
@@ -145,6 +173,10 @@ if (app.Environment.IsDevelopment())
 app.UseHttpsRedirection();
 
 app.UseStaticFiles();
+
+app.UseAuthentication();
+app.UseAuthorization();
+
 app.UseAntiforgery();
 
 // API Controllers
