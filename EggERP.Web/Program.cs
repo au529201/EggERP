@@ -105,57 +105,63 @@ builder.Services.AddRazorComponents()
 // Add device-specific services used by the EggERP.Shared project
 builder.Services.AddSingleton<IFormFactor, FormFactor>();
 
+// Forwards the logged-in user's auth cookie from Blazor Server's internal
+// HttpClient calls to this same app's own API controllers, so [Authorize]
+// endpoints correctly recognize the current user instead of rejecting
+// these server-to-server calls as anonymous.
+builder.Services.AddHttpContextAccessor();
+builder.Services.AddTransient<CookieForwardingHandler>();
+
 // Business API client (calls this same app's own API endpoints)
 builder.Services.AddHttpClient<IBusinessApiService, BusinessApiService>(client =>
 {
     client.BaseAddress = new Uri("https://localhost:7062/");
-});
+}).AddHttpMessageHandler<CookieForwardingHandler>();
 // Product API client (calls this same app's own API endpoints)
 builder.Services.AddHttpClient<IProductApiService, ProductApiService>(client =>
 {
     client.BaseAddress = new Uri("https://localhost:7062/");
-});
+}).AddHttpMessageHandler<CookieForwardingHandler>();
 // Category API client (calls this same app's own API endpoints)
 builder.Services.AddHttpClient<ICategoryApiService, CategoryApiService>(client =>
 {
     client.BaseAddress = new Uri("https://localhost:7062/");
-});
+}).AddHttpMessageHandler<CookieForwardingHandler>();
 // Inventory API client (calls this same app's own API endpoints)
 builder.Services.AddHttpClient<IInventoryApiService, InventoryApiService>(client =>
 {
     client.BaseAddress = new Uri("https://localhost:7062/");
-});
+}).AddHttpMessageHandler<CookieForwardingHandler>();
 // Customer API client (calls this same app's own API endpoints)
 builder.Services.AddHttpClient<ICustomerApiService, CustomerApiService>(client =>
 {
     client.BaseAddress = new Uri("https://localhost:7062/");
-});
+}).AddHttpMessageHandler<CookieForwardingHandler>();
 // Supplier API client (calls this same app's own API endpoints)
 builder.Services.AddHttpClient<ISupplierApiService, SupplierApiService>(client =>
 {
     client.BaseAddress = new Uri("https://localhost:7062/");
-});
+}).AddHttpMessageHandler<CookieForwardingHandler>();
 // Sale API client (calls this same app's own API endpoints)
 builder.Services.AddHttpClient<ISaleApiService, SaleApiService>(client =>
 {
     client.BaseAddress = new Uri("https://localhost:7062/");
-});
+}).AddHttpMessageHandler<CookieForwardingHandler>();
 // Purchase API client (calls this same app's own API endpoints)
 builder.Services.AddHttpClient<IPurchaseApiService, PurchaseApiService>(client =>
 {
     client.BaseAddress = new Uri("https://localhost:7062/");
-});
+}).AddHttpMessageHandler<CookieForwardingHandler>();
 // Expense API client (calls this same app's own API endpoints)
 builder.Services.AddHttpClient<IExpenseApiService, ExpenseApiService>(client =>
 {
     client.BaseAddress = new Uri("https://localhost:7062/");
-});
+}).AddHttpMessageHandler<CookieForwardingHandler>();
 // User management API client (calls this same app's own API endpoints)
 builder.Services.AddHttpClient<IUserManagementApiService, UserManagementApiService>(client =>
 {
     client.BaseAddress = new Uri("https://localhost:7062/");
-});
-
+}).AddHttpMessageHandler<CookieForwardingHandler>();
 
 var app = builder.Build();
 
