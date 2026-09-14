@@ -4,10 +4,10 @@ namespace EggERP.Infrastructure.Identity;
 
 public class ApplicationUser : IdentityUser<Guid>
 {
-    // Nullable: SuperAdmin accounts are not tied to a single business.
+    // Each user belongs to exactly one business.
     // Intentionally a plain scalar property, no navigation to Business,
-    // so EF does not generate a foreign key aginst the Businesses table.
-    public Guid? BusinessId { get; set; }
+    // so EF does not generate a foreign key against the Businesses table.
+    public Guid BusinessId { get; set; }
 
     public string FullName { get; set; } = string.Empty;
 

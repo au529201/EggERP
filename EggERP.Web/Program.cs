@@ -165,7 +165,7 @@ builder.Services.AddHttpClient<IUserManagementApiService, UserManagementApiServi
 
 var app = builder.Build();
 
-// Seed Identity roles and initial SuperAdmin/Admin accounts
+// Seed Identity roles and initial Admin account
 using (var scope = app.Services.CreateScope())
 {
     await IdentitySeeder.SeedAsync(scope.ServiceProvider);

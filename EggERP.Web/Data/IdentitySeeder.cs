@@ -32,7 +32,14 @@ public static class IdentitySeeder
         await EnsureUserAsync(userManager, logger, "admin@egg.erp", "Admin4134", "Admin", businessId: DefaultBusinessId, fullName: "Business Admin");
     }
 
-    private static async Task EnsureUserAsync(UserManager<ApplicationUser> userManager, ILogger logger, string email, string password, string role, Guid? businessId, string fullName)
+    private static async Task EnsureUserAsync(
+        UserManager<ApplicationUser> userManager,
+        ILogger logger,
+        string email,
+        string password,
+        string role,
+        Guid businessId,
+        string fullName)
     {
         var existing = await userManager.FindByEmailAsync(email);
         if (existing is not null)
