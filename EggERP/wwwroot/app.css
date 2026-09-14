@@ -17,3 +17,24 @@
         padding-left: env(safe-area-inset-left);
     }
 }
+/* =========================================================
+   EggERP Global Background
+   ========================================================= */
+
+body {
+    background-image: url("images/cwe.jpg");
+    background-size: cover;
+    background-position: center;
+    background-repeat: no-repeat;
+    background-attachment: fixed;
+}
+
+    /* Subtle dark overlay */
+    body::before {
+        content: "";
+        position: fixed;
+        inset: 0;
+        background: rgba(45, 25, 12, 0.35);
+        pointer-events: none;
+        z-index: -1;
+    }

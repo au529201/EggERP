@@ -71,4 +71,8 @@
     <ProjectReference Include="..\EggERP.Shared\EggERP.Shared.csproj" />
   </ItemGroup>
 
+  <ItemGroup>
+    <Folder Include="wwwroot\images\" />
+  </ItemGroup>
+
 </Project>

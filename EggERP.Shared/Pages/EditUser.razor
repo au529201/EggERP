@@ -22,6 +22,7 @@ else
             <label>Full Name</label>
             <InputText class="form-control" @bind-Value="editModel.FullName" />
         </div>
+
         <div class="mb-3">
             <label>Role</label>
             <select class="form-select" @bind="editModel.Role">
@@ -43,7 +44,6 @@ else
     [Parameter]
     public Guid Id { get; set; }
 
-    private readonly Guid businessId = Guid.Parse("11111111-1111-1111-1111-111111111111");
     private UpdateUserRequest editModel = new();
     private bool isLoading = true;
     private bool notFound = false;
@@ -51,7 +51,7 @@ else
 
     protected override async Task OnInitializedAsync()
     {
-        var users = await UserManagementApiService.GetUsersAsync(businessId);
+        var users = await UserManagementApiService.GetUsersAsync();
         var user = users.FirstOrDefault(u => u.Id == Id);
 
         if (user is null)
@@ -64,7 +64,6 @@ else
         editModel = new UpdateUserRequest
         {
             Id = user.Id,
-            BusinessId = businessId,
             FullName = user.FullName,
             Role = user.Role
         };
@@ -77,6 +76,7 @@ else
         errorMessage = null;
 
         var error = await UserManagementApiService.UpdateUserAsync(editModel);
+
         if (error is not null)
         {
             errorMessage = error;

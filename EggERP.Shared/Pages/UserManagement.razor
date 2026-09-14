@@ -39,8 +39,15 @@ else
                     <td>
                         @if (user.IsActive)
                         {
-                            <a class="btn btn-sm btn-secondary" href="@($"/settings/users/edit/{user.Id}")">Edit</a>
-                            <button class="btn btn-sm btn-danger" @onclick="() => DeactivateUser(user.Id, user.FullName)">Deactivate</button>
+                            <a class="btn btn-sm btn-secondary"
+                               href="@($"/settings/users/edit/{user.Id}")">
+                                Edit
+                            </a>
+
+                            <button class="btn btn-sm btn-danger"
+                                    @onclick="() => DeactivateUser(user.Id, user.FullName)">
+                                Deactivate
+                            </button>
                         }
                     </td>
                 </tr>
@@ -50,23 +57,26 @@ else
 }
 
 @code {
-    private readonly Guid businessId = Guid.Parse("11111111-1111-1111-1111-111111111111");
     private List<UserDto>? users;
 
     protected override async Task OnInitializedAsync()
     {
-        users = await UserManagementApiService.GetUsersAsync(businessId);
+        users = await UserManagementApiService.GetUsersAsync();
     }
 
     private async Task DeactivateUser(Guid id, string name)
     {
-        var confirmed = await JsRuntime.InvokeAsync<bool>("confirm", $"Deactivate '{name}'? They will no longer be able to log in.");
+        var confirmed = await JsRuntime.InvokeAsync<bool>(
+            "confirm",
+            $"Deactivate '{name}'? They will no longer be able to log in.");
+
         if (!confirmed)
         {
             return;
         }
 
-        await UserManagementApiService.DeactivateUserAsync(businessId, id);
-        users = await UserManagementApiService.GetUsersAsync(businessId);
+        await UserManagementApiService.DeactivateUserAsync(id);
+
+        users = await UserManagementApiService.GetUsersAsync();
     }
 }
