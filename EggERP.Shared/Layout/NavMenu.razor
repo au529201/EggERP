@@ -8,44 +8,44 @@
     <nav class="flex-column">
         <div class="nav-item px-3">
             <NavLink class="nav-link" href="" Match="NavLinkMatch.All">
-                <span class="bi bi-house-door-fill-nav-menu" aria-hidden="true"></span> Dashboard
+                <i class="bi bi-house-door-fill me-2" aria-hidden="true"></i> Dashboard
             </NavLink>
         </div>
         <div class="nav-item px-3">
             <NavLink class="nav-link" href="products">
-                <span class="bi bi-list-nested-nav-menu" aria-hidden="true"></span> Products
+                <i class="bi bi-box-seam-fill me-2" aria-hidden="true"></i> Products
             </NavLink>
         </div>
         <div class="nav-item px-3">
             <NavLink class="nav-link" href="inventory">
-                <span class="bi bi-list-nested-nav-menu" aria-hidden="true"></span> Inventory
+                <i class="bi bi-boxes me-2" aria-hidden="true"></i> Inventory
             </NavLink>
         </div>
         <div class="nav-item px-3">
             <NavLink class="nav-link" href="customers">
-                <span class="bi bi-list-nested-nav-menu" aria-hidden="true"></span> Customers
+                <i class="bi bi-people-fill me-2" aria-hidden="true"></i> Customers
             </NavLink>
         </div>
         <div class="nav-item px-3">
             <NavLink class="nav-link" href="suppliers">
-                <span class="bi bi-list-nested-nav-menu" aria-hidden="true"></span> Suppliers
+                <i class="bi bi-truck me-2" aria-hidden="true"></i> Suppliers
             </NavLink>
         </div>
         <div class="nav-item px-3">
             <NavLink class="nav-link" href="sales">
-                <span class="bi bi-list-nested-nav-menu" aria-hidden="true"></span> Sales
+                <i class="bi bi-cart-check-fill me-2" aria-hidden="true"></i> Sales
             </NavLink>
         </div>
         <AuthorizeView Roles="Admin,Manager">
             <Authorized>
                 <div class="nav-item px-3">
                     <NavLink class="nav-link" href="purchases">
-                        <span class="bi bi-list-nested-nav-menu" aria-hidden="true"></span> Purchases
+                        <i class="bi bi-bag-plus-fill me-2" aria-hidden="true"></i> Purchases
                     </NavLink>
                 </div>
                 <div class="nav-item px-3">
                     <NavLink class="nav-link" href="expenses">
-                        <span class="bi bi-list-nested-nav-menu" aria-hidden="true"></span> Expenses
+                        <i class="bi bi-cash-stack me-2" aria-hidden="true"></i> Expenses
                     </NavLink>
                 </div>
             </Authorized>
@@ -54,12 +54,12 @@
             <Authorized>
                 <div class="nav-item px-3">
                     <NavLink class="nav-link" href="settings/business">
-                        <span class="bi bi-list-nested-nav-menu" aria-hidden="true"></span> Settings
+                        <i class="bi bi-gear-fill me-2" aria-hidden="true"></i> Settings
                     </NavLink>
                 </div>
                 <div class="nav-item px-3">
                     <NavLink class="nav-link" href="settings/users">
-                        <span class="bi bi-list-nested-nav-menu" aria-hidden="true"></span> Users
+                        <i class="bi bi-person-badge-fill me-2" aria-hidden="true"></i> Users
                     </NavLink>
                 </div>
             </Authorized>
@@ -67,9 +67,9 @@
         <AuthorizeView>
             <Authorized>
                 <div class="nav-item px-3">
-                    <form method="post" action="/Account/Logout">
+                    <form method="post" action="/Account/Logout" onsubmit="return confirm('Are you sure you want to log out?');">
                         <button type="submit" class="nav-link btn btn-link text-start w-100 border-0">
-                            <span class="bi bi-list-nested-nav-menu" aria-hidden="true"></span> Logout (@context.User.Identity?.Name)
+                            <i class="bi bi-box-arrow-right me-2" aria-hidden="true"></i> Logout (@context.User.Identity?.Name)
                         </button>
                     </form>
                 </div>
@@ -77,7 +77,7 @@
             <NotAuthorized>
                 <div class="nav-item px-3">
                     <a class="nav-link" href="/Account/Login">
-                        <span class="bi bi-list-nested-nav-menu" aria-hidden="true"></span> Login
+                        <i class="bi bi-box-arrow-in-right me-2" aria-hidden="true"></i> Login
                     </a>
                 </div>
             </NotAuthorized>
