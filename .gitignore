@@ -3,3 +3,6 @@
 **/obj/
 *.user
 *.suo
+EggERP.Web/appsettings.Production.json
+EggERP.Web/ezee.runasp.net-WebDeploy.publishSettings
+EggERP.Web/Properties/PublishProfiles/
