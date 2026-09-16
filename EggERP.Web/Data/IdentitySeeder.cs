@@ -12,6 +12,7 @@ public static class IdentitySeeder
     {
         var roleManager = services.GetRequiredService<RoleManager<IdentityRole<Guid>>>();
         var userManager = services.GetRequiredService<UserManager<ApplicationUser>>();
+        var configuration = services.GetRequiredService<IConfiguration>();
         var logger = services.GetRequiredService<ILoggerFactory>().CreateLogger("IdentitySeeder");
 
         string[] roles = { "Admin", "Manager", "Staff" };
@@ -28,8 +29,26 @@ public static class IdentitySeeder
             }
         }
 
-        // Dev-only seed credentials. Rotate before any real deployment.
-        await EnsureUserAsync(userManager, logger, "admin@egg.erp", "Admin4134", "Admin", businessId: DefaultBusinessId, fullName: "Business Admin");
+        var seedEmail = configuration["Seed:AdminEmail"];
+        var seedPassword = configuration["Seed:AdminPassword"];
+        var seedFullName = configuration["Seed:AdminFullName"];
+
+        if (string.IsNullOrWhiteSpace(seedEmail) || string.IsNullOrWhiteSpace(seedPassword))
+        {
+            logger.LogWarning(
+                "Seed:AdminEmail / Seed:AdminPassword not configured — skipping admin seed. " +
+                "Set these via user-secrets (local) or environment/appsettings.Production.json (production).");
+            return;
+        }
+
+        await EnsureUserAsync(
+            userManager,
+            logger,
+            seedEmail,
+            seedPassword,
+            "Admin",
+            businessId: DefaultBusinessId,
+            fullName: string.IsNullOrWhiteSpace(seedFullName) ? seedEmail : seedFullName);
     }
 
     private static async Task EnsureUserAsync(
