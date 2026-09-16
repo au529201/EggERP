@@ -112,55 +112,62 @@ builder.Services.AddSingleton<IFormFactor, FormFactor>();
 builder.Services.AddHttpContextAccessor();
 builder.Services.AddTransient<CookieForwardingHandler>();
 
+// Base address for this app's own API, read from configuration so it can
+// differ between local development (localhost:7062) and production
+// (the real hosted domain) without code changes. Falls back to the local
+// dev address only if the setting is somehow missing, so a misconfigured
+// deployment fails loudly via a bad host rather than silently via null.
+var apiBaseUrl = new Uri(builder.Configuration["ApiBaseUrl"] ?? "https://localhost:7062/");
+
 // Business API client (calls this same app's own API endpoints)
 builder.Services.AddHttpClient<IBusinessApiService, BusinessApiService>(client =>
 {
-    client.BaseAddress = new Uri("https://localhost:7062/");
+    client.BaseAddress = apiBaseUrl;
 }).AddHttpMessageHandler<CookieForwardingHandler>();
 // Product API client (calls this same app's own API endpoints)
 builder.Services.AddHttpClient<IProductApiService, ProductApiService>(client =>
 {
-    client.BaseAddress = new Uri("https://localhost:7062/");
+    client.BaseAddress = apiBaseUrl;
 }).AddHttpMessageHandler<CookieForwardingHandler>();
 // Category API client (calls this same app's own API endpoints)
 builder.Services.AddHttpClient<ICategoryApiService, CategoryApiService>(client =>
 {
-    client.BaseAddress = new Uri("https://localhost:7062/");
+    client.BaseAddress = apiBaseUrl;
 }).AddHttpMessageHandler<CookieForwardingHandler>();
 // Inventory API client (calls this same app's own API endpoints)
 builder.Services.AddHttpClient<IInventoryApiService, InventoryApiService>(client =>
 {
-    client.BaseAddress = new Uri("https://localhost:7062/");
+    client.BaseAddress = apiBaseUrl;
 }).AddHttpMessageHandler<CookieForwardingHandler>();
 // Customer API client (calls this same app's own API endpoints)
 builder.Services.AddHttpClient<ICustomerApiService, CustomerApiService>(client =>
 {
-    client.BaseAddress = new Uri("https://localhost:7062/");
+    client.BaseAddress = apiBaseUrl;
 }).AddHttpMessageHandler<CookieForwardingHandler>();
 // Supplier API client (calls this same app's own API endpoints)
 builder.Services.AddHttpClient<ISupplierApiService, SupplierApiService>(client =>
 {
-    client.BaseAddress = new Uri("https://localhost:7062/");
+    client.BaseAddress = apiBaseUrl;
 }).AddHttpMessageHandler<CookieForwardingHandler>();
 // Sale API client (calls this same app's own API endpoints)
 builder.Services.AddHttpClient<ISaleApiService, SaleApiService>(client =>
 {
-    client.BaseAddress = new Uri("https://localhost:7062/");
+    client.BaseAddress = apiBaseUrl;
 }).AddHttpMessageHandler<CookieForwardingHandler>();
 // Purchase API client (calls this same app's own API endpoints)
 builder.Services.AddHttpClient<IPurchaseApiService, PurchaseApiService>(client =>
 {
-    client.BaseAddress = new Uri("https://localhost:7062/");
+    client.BaseAddress = apiBaseUrl;
 }).AddHttpMessageHandler<CookieForwardingHandler>();
 // Expense API client (calls this same app's own API endpoints)
 builder.Services.AddHttpClient<IExpenseApiService, ExpenseApiService>(client =>
 {
-    client.BaseAddress = new Uri("https://localhost:7062/");
+    client.BaseAddress = apiBaseUrl;
 }).AddHttpMessageHandler<CookieForwardingHandler>();
 // User management API client (calls this same app's own API endpoints)
 builder.Services.AddHttpClient<IUserManagementApiService, UserManagementApiService>(client =>
 {
-    client.BaseAddress = new Uri("https://localhost:7062/");
+    client.BaseAddress = apiBaseUrl;
 }).AddHttpMessageHandler<CookieForwardingHandler>();
 
 var app = builder.Build();
