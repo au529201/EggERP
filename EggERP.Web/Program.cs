@@ -27,6 +27,8 @@ using EggERP.Web.Data;
 using EggERP.Web.Services;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
+using EggERP.Application.Email;
+using EggERP.Infrastructure.Email;
 var builder = WebApplication.CreateBuilder(args);
 
 // Database
@@ -67,6 +69,9 @@ builder.Services.AddScoped<IBusinessService, BusinessService>();
 // Product services
 builder.Services.AddScoped<IProductRepository, ProductRepository>();
 builder.Services.AddScoped<IProductService, ProductService>();
+// Email
+builder.Services.Configure<EmailSettings>(builder.Configuration.GetSection("Email"));
+builder.Services.AddScoped<IEmailSender, BrevoEmailSender>();
 // Category services
 builder.Services.AddScoped<ICategoryRepository, CategoryRepository>();
 builder.Services.AddScoped<ICategoryService, CategoryService>();
