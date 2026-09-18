@@ -1,16 +1,27 @@
-﻿using EggERP.Application.Users;
+﻿using EggERP.Application.Email;
+using EggERP.Application.Users;
 using EggERP.Infrastructure.Identity;
 using Microsoft.AspNetCore.Identity;
+using Microsoft.AspNetCore.WebUtilities;
+using Microsoft.Extensions.Configuration;
+using System.Security.Cryptography;
 
 namespace EggERP.Infrastructure.Users;
 
 public class UserManagementService : IUserManagementService
 {
     private readonly UserManager<ApplicationUser> _userManager;
+    private readonly IEmailSender _emailSender;
+    private readonly IConfiguration _configuration;
 
-    public UserManagementService(UserManager<ApplicationUser> userManager)
+    public UserManagementService(
+        UserManager<ApplicationUser> userManager,
+        IEmailSender emailSender,
+        IConfiguration configuration)
     {
         _userManager = userManager;
+        _emailSender = emailSender;
+        _configuration = configuration;
     }
 
     public async Task<List<BusinessUserDto>> GetUsersForBusinessAsync(Guid businessId)
@@ -51,13 +62,19 @@ public class UserManagementService : IUserManagementService
         {
             UserName = request.Email,
             Email = request.Email,
-            EmailConfirmed = true,
+            EmailConfirmed = false,
             BusinessId = request.BusinessId,
             FullName = request.FullName,
             IsActive = true
         };
 
-        var createResult = await _userManager.CreateAsync(user, request.Password);
+        // Identity's CreateAsync requires a password that satisfies the
+        // configured policy, but this one is never communicated to the user
+        // and never used to log in: they set their own password via the
+        // invite link below, which overwrites this value entirely.
+        var placeholderPassword = GenerateUnusedPlaceholderPassword();
+
+        var createResult = await _userManager.CreateAsync(user, placeholderPassword);
         if (!createResult.Succeeded)
         {
             return (false, string.Join("; ", createResult.Errors.Select(e => e.Description)));
@@ -68,6 +85,8 @@ public class UserManagementService : IUserManagementService
         {
             return (false, string.Join("; ", roleResult.Errors.Select(e => e.Description)));
         }
+
+        await SendInviteEmailAsync(user);
 
         return (true, null);
     }
@@ -125,5 +144,32 @@ public class UserManagementService : IUserManagementService
         }
 
         return (true, null);
+    }
+
+    private async Task SendInviteEmailAsync(ApplicationUser user)
+    {
+        var token = await _userManager.GeneratePasswordResetTokenAsync(user);
+        var encodedToken = WebEncoders.Base64UrlEncode(System.Text.Encoding.UTF8.GetBytes(token));
+        var encodedEmail = Uri.EscapeDataString(user.Email!);
+
+        var baseUrl = (_configuration["ApiBaseUrl"] ?? "https://localhost:7062/").TrimEnd('/');
+        var setPasswordUrl = $"{baseUrl}/Account/SetPassword?email={encodedEmail}&token={encodedToken}";
+
+        var subject = "You've been invited to EggERP";
+        var html = $@"
+            <p>Hi {user.FullName},</p>
+            <p>You've been invited to EggERP. Click the link below to set your password and activate your account:</p>
+            <p><a href='{setPasswordUrl}'>Set your password</a></p>
+            <p>If you weren't expecting this invitation, you can ignore this email.</p>";
+
+        await _emailSender.SendEmailAsync(user.Email!, subject, html);
+    }
+
+    private static string GenerateUnusedPlaceholderPassword()
+    {
+        // Satisfies Identity's password policy (upper, lower, digit, 8+ chars)
+        // but is never shown to anyone and never used to sign in.
+        var randomBytes = RandomNumberGenerator.GetBytes(24);
+        return "Aa1" + Convert.ToBase64String(randomBytes).Replace("+", "A").Replace("/", "B").Replace("=", "C");
     }
 }

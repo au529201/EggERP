@@ -19,15 +19,6 @@
     </div>
 
     <div class="mb-3">
-        <label>Temporary Password</label>
-        <InputText class="form-control" @bind-Value="newUser.Password" />
-        <small class="form-text text-muted">
-            At least 8 characters, including an uppercase letter, a lowercase letter, and a number.
-            Share this with the user directly; they can change it after logging in.
-        </small>
-    </div>
-
-    <div class="mb-3">
         <label>Role</label>
         <select class="form-select" @bind="newUser.Role">
             <option value="Manager">Manager</option>
