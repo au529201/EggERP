@@ -55,7 +55,7 @@ public class CustomerController : ControllerBase
     }
     [HttpDelete("{businessId:guid}/{id:guid}")]
     [Authorize(Roles = "Admin,Manager")]
-    public async Task<IActionResult> DeactivateCustomer(Guid businessId, Guid id)
+     public async Task<IActionResult> DeactivateCustomer(Guid businessId, Guid id)
     {
         var deactivated = await _customerService.DeactivateCustomerAsync(businessId, id);
         if (!deactivated)

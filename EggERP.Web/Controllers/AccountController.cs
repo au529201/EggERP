@@ -26,38 +26,167 @@ public class AccountController : ControllerBase
         _configuration = configuration;
     }
 
-    [HttpGet("/Account/Login")]
-    public ContentResult LoginPage(string? error = null, string? message = null)
+    // Shared page shell: logo, farm-photo background, cream card.
+    // authBody is the form/content that goes inside the card.
+    private static string RenderAuthPage(string title, string authBody)
     {
-        var errorHtml = string.IsNullOrEmpty(error) ? "" : $"<p style='color:red'>{error}</p>";
-        var messageHtml = string.IsNullOrEmpty(message) ? "" : $"<p style='color:green'>{message}</p>";
-        var html = $@"
+        return $@"
 <!DOCTYPE html>
 <html>
 <head>
     <meta charset='utf-8' />
-    <title>EggERP - Login</title>
+    <meta name='viewport' content='width=device-width, initial-scale=1.0' />
+    <title>EggERP - {title}</title>
     <link rel='stylesheet' href='/_content/EggERP.Shared/bootstrap/bootstrap.min.css' />
+    <link rel='stylesheet' href='/_content/EggERP.Shared/app.css' />
+    <style>
+        html, body {{
+            height: 100%;
+        }}
+
+        .auth-page {{
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 24px;
+            background-color: var(--egg-bg);
+            background-image:
+                linear-gradient(rgba(74, 46, 31, 0.55), rgba(74, 46, 31, 0.55)),
+                url('/images/logoEEE.png');
+            background-size: cover;
+            background-position: center;
+        }}
+
+        .auth-card {{
+            width: 100%;
+            max-width: 420px;
+            background-color: var(--egg-card);
+            border: 1px solid #E5D9BE;
+            border-radius: 14px;
+            box-shadow: 0 12px 32px rgba(0, 0, 0, 0.25);
+            padding: 40px 36px;
+        }}
+
+        .auth-logo {{
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 10px;
+            margin-bottom: 24px;
+        }}
+
+        .auth-logo img {{
+            height: 44px;
+            width: 44px;
+            object-fit: contain;
+        }}
+
+        .auth-logo span {{
+            font-family: 'Fraunces', Georgia, serif;
+            font-size: 1.5rem;
+            font-weight: 600;
+            color: var(--egg-brown);
+        }}
+
+        .auth-card h3 {{
+            text-align: center;
+            margin-bottom: 6px;
+        }}
+
+        .auth-subtitle {{
+            text-align: center;
+            color: var(--egg-clay);
+            font-size: 0.9rem;
+            margin-bottom: 20px;
+        }}
+
+        .auth-card label {{
+            font-weight: 500;
+            color: var(--egg-brown);
+        }}
+
+        .auth-card .form-control {{
+            border-color: #E5D9BE;
+            padding: 10px 12px;
+        }}
+
+        .auth-card .form-control:focus {{
+            border-color: var(--egg-gold);
+            box-shadow: 0 0 0 0.2rem rgba(200, 134, 43, 0.25);
+        }}
+
+        .auth-card .btn-primary {{
+            width: 100%;
+            padding: 10px;
+            font-weight: 600;
+        }}
+
+        .auth-alert {{
+            border-radius: 8px;
+            padding: 10px 14px;
+            font-size: 0.9rem;
+            margin-bottom: 16px;
+        }}
+
+        .auth-alert-error {{
+            background-color: #FBEAEA;
+            color: #A33A3A;
+            border: 1px solid #E9C6C6;
+        }}
+
+        .auth-alert-success {{
+            background-color: #E9F3EA;
+            color: var(--egg-sage);
+            border: 1px solid #C9E0CB;
+        }}
+
+        .auth-links {{
+            text-align: center;
+            margin-top: 18px;
+            font-size: 0.9rem;
+        }}
+    </style>
 </head>
-<body style='padding:40px; max-width:400px; margin:0 auto;'>
-    <h3>EggERP Login</h3>
-    {errorHtml}
-    {messageHtml}
-    <form method='post' action='/Account/Login'>
-        <div class='mb-3'>
-            <label>Email</label>
-            <input type='email' name='email' class='form-control' required />
+<body>
+    <div class='auth-page'>
+        <div class='auth-card'>
+            <div class='auth-logo'>
+                <img src='/images/ezeggerp-logo.png' alt='EggERP' />
+                <span>EggERP</span>
+            </div>
+            {authBody}
         </div>
-        <div class='mb-3'>
-            <label>Password</label>
-            <input type='password' name='password' class='form-control' required />
-        </div>
-        <button type='submit' class='btn btn-primary'>Log in</button>
-    </form>
-    <p style='margin-top:16px;'><a href='/Account/ForgotPassword'>Forgot Password?</a></p>
+    </div>
 </body>
 </html>";
-        return Content(html, "text/html");
+    }
+
+    [HttpGet("/Account/Login")]
+    public ContentResult LoginPage(string? error = null, string? message = null)
+    {
+        var errorHtml = string.IsNullOrEmpty(error) ? "" : $"<div class='auth-alert auth-alert-error'>{error}</div>";
+        var messageHtml = string.IsNullOrEmpty(message) ? "" : $"<div class='auth-alert auth-alert-success'>{message}</div>";
+        var body = $@"
+            <h3>Welcome Back</h3>
+            <p class='auth-subtitle'>Sign in to your EggERP account</p>
+            {errorHtml}
+            {messageHtml}
+            <form method='post' action='/Account/Login'>
+                <div class='mb-3'>
+                    <label>Email</label>
+                    <input type='email' name='email' class='form-control' required />
+                </div>
+                <div class='mb-3'>
+                    <label>Password</label>
+                    <input type='password' name='password' class='form-control' required />
+                </div>
+                <button type='submit' class='btn btn-primary'>Log In</button>
+            </form>
+            <div class='auth-links'>
+                <a href='/Account/ForgotPassword'>Forgot Password?</a>
+            </div>";
+        return Content(RenderAuthPage("Login", body), "text/html");
     }
 
     [HttpPost("/Account/Login")]
@@ -97,36 +226,26 @@ public class AccountController : ControllerBase
     [HttpGet("/Account/SetPassword")]
     public ContentResult SetPasswordPage(string email, string token, string? error = null)
     {
-        var errorHtml = string.IsNullOrEmpty(error) ? "" : $"<p style='color:red'>{error}</p>";
-        var html = $@"
-<!DOCTYPE html>
-<html>
-<head>
-    <meta charset='utf-8' />
-    <title>EggERP - Set Password</title>
-    <link rel='stylesheet' href='/_content/EggERP.Shared/bootstrap/bootstrap.min.css' />
-</head>
-<body style='padding:40px; max-width:400px; margin:0 auto;'>
-    <h3>Set Your Password</h3>
-    <p>Choose a password to activate your EggERP account.</p>
-    {errorHtml}
-    <form method='post' action='/Account/SetPassword'>
-        <input type='hidden' name='email' value='{email}' />
-        <input type='hidden' name='token' value='{token}' />
-        <div class='mb-3'>
-            <label>New Password</label>
-            <input type='password' name='password' class='form-control' required />
-            <small class='form-text text-muted'>At least 8 characters, including an uppercase letter, a lowercase letter, and a number.</small>
-        </div>
-        <div class='mb-3'>
-            <label>Confirm Password</label>
-            <input type='password' name='confirmPassword' class='form-control' required />
-        </div>
-        <button type='submit' class='btn btn-primary'>Set Password</button>
-    </form>
-</body>
-</html>";
-        return Content(html, "text/html");
+        var errorHtml = string.IsNullOrEmpty(error) ? "" : $"<div class='auth-alert auth-alert-error'>{error}</div>";
+        var body = $@"
+            <h3>Set Your Password</h3>
+            <p class='auth-subtitle'>Choose a password to activate your EggERP account</p>
+            {errorHtml}
+            <form method='post' action='/Account/SetPassword'>
+                <input type='hidden' name='email' value='{email}' />
+                <input type='hidden' name='token' value='{token}' />
+                <div class='mb-3'>
+                    <label>New Password</label>
+                    <input type='password' name='password' class='form-control' required />
+                    <small class='form-text text-muted'>At least 8 characters, including an uppercase letter, a lowercase letter, and a number.</small>
+                </div>
+                <div class='mb-3'>
+                    <label>Confirm Password</label>
+                    <input type='password' name='confirmPassword' class='form-control' required />
+                </div>
+                <button type='submit' class='btn btn-primary'>Set Password</button>
+            </form>";
+        return Content(RenderAuthPage("Set Password", body), "text/html");
     }
 
     [HttpPost("/Account/SetPassword")]
@@ -169,30 +288,22 @@ public class AccountController : ControllerBase
     [HttpGet("/Account/ForgotPassword")]
     public ContentResult ForgotPasswordPage(string? message = null)
     {
-        var messageHtml = string.IsNullOrEmpty(message) ? "" : $"<p style='color:green'>{message}</p>";
-        var html = $@"
-<!DOCTYPE html>
-<html>
-<head>
-    <meta charset='utf-8' />
-    <title>EggERP - Forgot Password</title>
-    <link rel='stylesheet' href='/_content/EggERP.Shared/bootstrap/bootstrap.min.css' />
-</head>
-<body style='padding:40px; max-width:400px; margin:0 auto;'>
-    <h3>Forgot Password</h3>
-    <p>Enter your email and we'll send you a link to reset your password.</p>
-    {messageHtml}
-    <form method='post' action='/Account/ForgotPassword'>
-        <div class='mb-3'>
-            <label>Email</label>
-            <input type='email' name='email' class='form-control' required />
-        </div>
-        <button type='submit' class='btn btn-primary'>Send Reset Link</button>
-    </form>
-    <p style='margin-top:16px;'><a href='/Account/Login'>Back to Login</a></p>
-</body>
-</html>";
-        return Content(html, "text/html");
+        var messageHtml = string.IsNullOrEmpty(message) ? "" : $"<div class='auth-alert auth-alert-success'>{message}</div>";
+        var body = $@"
+            <h3>Forgot Password</h3>
+            <p class='auth-subtitle'>Enter your email and we'll send you a link to reset your password</p>
+            {messageHtml}
+            <form method='post' action='/Account/ForgotPassword'>
+                <div class='mb-3'>
+                    <label>Email</label>
+                    <input type='email' name='email' class='form-control' required />
+                </div>
+                <button type='submit' class='btn btn-primary'>Send Reset Link</button>
+            </form>
+            <div class='auth-links'>
+                <a href='/Account/Login'>Back to Login</a>
+            </div>";
+        return Content(RenderAuthPage("Forgot Password", body), "text/html");
     }
 
     [HttpPost("/Account/ForgotPassword")]
