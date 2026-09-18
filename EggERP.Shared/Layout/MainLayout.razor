@@ -7,6 +7,14 @@
 
     <main>
         <div class="top-row px-4">
+            <AuthorizeView>
+                <Authorized>
+                    <div class="top-row-user">
+                        <i class="bi bi-person-circle" aria-hidden="true"></i>
+                        <span>@context.User.Identity?.Name</span>
+                    </div>
+                </Authorized>
+            </AuthorizeView>
         </div>
 
         <article class="content px-4">

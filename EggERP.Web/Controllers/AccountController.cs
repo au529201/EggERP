@@ -39,24 +39,25 @@ public class AccountController : ControllerBase
     <title>EggERP - {title}</title>
     <link rel='stylesheet' href='/_content/EggERP.Shared/bootstrap/bootstrap.min.css' />
     <link rel='stylesheet' href='/_content/EggERP.Shared/app.css' />
+<link rel='stylesheet' href='https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css' />
     <style>
         html, body {{
             height: 100%;
         }}
 
-        .auth-page {{
-            min-height: 100vh;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            padding: 24px;
-            background-color: var(--egg-bg);
-            background-image:
-                linear-gradient(rgba(74, 46, 31, 0.55), rgba(74, 46, 31, 0.55)),
-                url('/images/logoEEE.png');
-            background-size: cover;
-            background-position: center;
-        }}
+.auth-page {{
+    min-height: 100vh;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 24px;
+    background-color: var(--egg-bg);
+    background-image:
+        linear-gradient(rgba(74, 46, 31, 0.55), rgba(74, 46, 31, 0.55)),
+        url('/_content/EggERP.Shared/images/egg_in_nest.jpg');
+    background-size: cover;
+    background-position: center;
+}}
 
         .auth-card {{
             width: 100%;
@@ -67,6 +68,31 @@ public class AccountController : ControllerBase
             box-shadow: 0 12px 32px rgba(0, 0, 0, 0.25);
             padding: 40px 36px;
         }}
+.password-field-wrapper {{
+    position: relative;
+}}
+
+.password-field-wrapper input {{
+    padding-right: 44px;
+}}
+
+.password-toggle {{
+    position: absolute;
+    right: 10px;
+    top: 50%;
+    transform: translateY(-50%);
+    background: none;
+    border: none;
+    color: var(--egg-clay);
+    cursor: pointer;
+    padding: 4px;
+    display: flex;
+    align-items: center;
+}}
+
+.password-toggle:hover {{
+    color: var(--egg-brown);
+}}
 
         .auth-logo {{
             display: flex;
@@ -152,12 +178,27 @@ public class AccountController : ControllerBase
     <div class='auth-page'>
         <div class='auth-card'>
             <div class='auth-logo'>
-                <img src='/images/ezeggerp-logo.png' alt='EggERP' />
-                <span>EggERP</span>
+<img src='/_content/EggERP.Shared/images/logoEEE.png' alt='EggERP' />
+<span>EggERP</span>
             </div>
             {authBody}
         </div>
     </div>
+<script>
+    function togglePassword(inputId, btn) {{
+        var input = document.getElementById(inputId);
+        var icon = btn.querySelector('i');
+        if (input.type === 'password') {{
+            input.type = 'text';
+            icon.classList.remove('bi-eye');
+            icon.classList.add('bi-eye-slash');
+        }} else {{
+            input.type = 'password';
+            icon.classList.remove('bi-eye-slash');
+            icon.classList.add('bi-eye');
+        }}
+    }}
+</script>
 </body>
 </html>";
     }
@@ -168,24 +209,29 @@ public class AccountController : ControllerBase
         var errorHtml = string.IsNullOrEmpty(error) ? "" : $"<div class='auth-alert auth-alert-error'>{error}</div>";
         var messageHtml = string.IsNullOrEmpty(message) ? "" : $"<div class='auth-alert auth-alert-success'>{message}</div>";
         var body = $@"
-            <h3>Welcome Back</h3>
-            <p class='auth-subtitle'>Sign in to your EggERP account</p>
-            {errorHtml}
-            {messageHtml}
-            <form method='post' action='/Account/Login'>
-                <div class='mb-3'>
-                    <label>Email</label>
-                    <input type='email' name='email' class='form-control' required />
-                </div>
-                <div class='mb-3'>
-                    <label>Password</label>
-                    <input type='password' name='password' class='form-control' required />
-                </div>
-                <button type='submit' class='btn btn-primary'>Log In</button>
-            </form>
-            <div class='auth-links'>
-                <a href='/Account/ForgotPassword'>Forgot Password?</a>
-            </div>";
+    <h3>Welcome Back</h3>
+    <p class='auth-subtitle'>Sign in to your EggERP account</p>
+    {errorHtml}
+    {messageHtml}
+    <form method='post' action='/Account/Login'>
+        <div class='mb-3'>
+            <label>Email</label>
+            <input type='email' name='email' class='form-control' required />
+        </div>
+        <div class='mb-3'>
+            <label>Password</label>
+            <div class='password-field-wrapper'>
+                <input type='password' name='password' id='loginPassword' class='form-control' required />
+                <button type='button' class='password-toggle' onclick='togglePassword(""loginPassword"", this)'>
+                    <i class='bi bi-eye'></i>
+                </button>
+            </div>
+        </div>
+        <button type='submit' class='btn btn-primary'>Log In</button>
+    </form>
+    <div class='auth-links'>
+        <a href='/Account/ForgotPassword'>Forgot Password?</a>
+    </div>";
         return Content(RenderAuthPage("Login", body), "text/html");
     }
 

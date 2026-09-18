@@ -16,10 +16,34 @@ main {
     background-color: transparent;
     border-bottom: none;
     justify-content: flex-end;
-    height: 1.5rem;
+    height: 3rem;
     display: flex;
     align-items: center;
 }
+
+.top-row-user {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    color: var(--egg-brown, #4A2E1F);
+    font-weight: 500;
+    background-color: rgba(253, 248, 237, 0.85);
+    padding: 0.35rem 1rem;
+    border-radius: 999px;
+    max-width: 320px;
+}
+
+    .top-row-user i {
+        font-size: 1.25rem;
+        flex-shrink: 0;
+    }
+
+    .top-row-user span {
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+        min-width: 0;
+    }
 
     .top-row ::deep a, .top-row ::deep .btn-link {
         white-space: nowrap;
@@ -37,7 +61,7 @@ main {
         }
 
 .content-card {
-    background-color: var(--egg-card);
+    background-color: rgba(253, 248, 237, 0.88);
     border-radius: 16px;
     box-shadow: 0 8px 24px rgba(0, 0, 0, 0.25);
     padding: 2rem;
