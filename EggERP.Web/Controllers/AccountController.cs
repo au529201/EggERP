@@ -54,7 +54,7 @@ public class AccountController : ControllerBase
     background-color: var(--egg-bg);
     background-image:
         linear-gradient(rgba(74, 46, 31, 0.55), rgba(74, 46, 31, 0.55)),
-        url('/_content/EggERP.Shared/images/egg_in_nest.jpg');
+        url('/_content/EggERP.Shared/images/farm_flock.jpg');
     background-size: cover;
     background-position: center;
 }}

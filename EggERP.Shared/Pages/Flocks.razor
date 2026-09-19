@@ -1,0 +1,61 @@
+﻿@page "/flocks"
+@using EggERP.Shared.Models
+@using EggERP.Shared.Services
+@inject IFlockApiService FlockApiService
+
+<h3>Flocks</h3>
+
+<AuthorizeView Roles="Admin,Manager">
+    <Authorized>
+        <a class="btn btn-primary mb-3" href="/flocks/add">+ Add Flock</a>
+    </Authorized>
+</AuthorizeView>
+<a class="btn btn-secondary mb-3 ms-2" href="/flocks/movements/add">Record Movement</a>
+
+@if (flocks is null)
+{
+    <p>Loading...</p>
+}
+else if (flocks.Count == 0)
+{
+    <p>No flocks found.</p>
+}
+else
+{
+    <table class="table">
+        <thead>
+            <tr>
+                <th>Bird Type</th>
+                <th>Source</th>
+                <th>Acquisition Date</th>
+                <th>Initial Count</th>
+                <th>Current Count</th>
+                <th>Cost</th>
+                <th>Notes</th>
+            </tr>
+        </thead>
+        <tbody>
+            @foreach (var flock in flocks)
+            {
+                <tr>
+                    <td>@flock.BirdType</td>
+                    <td>@flock.Source</td>
+                    <td>@flock.AcquisitionDate.ToString("d")</td>
+                    <td>@flock.InitialCount</td>
+                    <td>@flock.CurrentCount</td>
+                    <td>@(flock.AcquisitionCost?.ToString("N2") ?? "-")</td>
+                    <td>@flock.Notes</td>
+                </tr>
+            }
+        </tbody>
+    </table>
+}
+
+@code {
+    private List<FlockDto>? flocks;
+
+    protected override async Task OnInitializedAsync()
+    {
+        flocks = await FlockApiService.GetFlocksAsync();
+    }
+}

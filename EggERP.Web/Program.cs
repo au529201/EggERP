@@ -29,6 +29,8 @@ using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 using EggERP.Application.Email;
 using EggERP.Infrastructure.Email;
+using EggERP.Application.Flocks;
+using EggERP.Infrastructure.Flocks;
 var builder = WebApplication.CreateBuilder(args);
 
 // Database
@@ -93,6 +95,9 @@ builder.Services.AddScoped<IPurchaseService, PurchaseService>();
 // Expense services
 builder.Services.AddScoped<IExpenseRepository, ExpenseRepository>();
 builder.Services.AddScoped<IExpenseService, ExpenseService>();
+// Flock services
+builder.Services.AddScoped<IFlockRepository, FlockRepository>();
+builder.Services.AddScoped<IFlockService, FlockService>();
 // User management services
 builder.Services.AddScoped<IUserManagementService, UserManagementService>();
 
@@ -129,6 +134,12 @@ builder.Services.AddHttpClient<IBusinessApiService, BusinessApiService>(client =
 {
     client.BaseAddress = apiBaseUrl;
 }).AddHttpMessageHandler<CookieForwardingHandler>();
+// Flock API client (calls this same app's own API endpoints)
+builder.Services.AddHttpClient<IFlockApiService, FlockApiService>(client =>
+{
+    client.BaseAddress = apiBaseUrl;
+}).AddHttpMessageHandler<CookieForwardingHandler>();
+
 // Product API client (calls this same app's own API endpoints)
 builder.Services.AddHttpClient<IProductApiService, ProductApiService>(client =>
 {

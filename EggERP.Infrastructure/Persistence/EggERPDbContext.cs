@@ -25,6 +25,8 @@ public class EggERPDbContext : IdentityDbContext<ApplicationUser, IdentityRole<G
     public DbSet<PurchaseItem> PurchaseItems => Set<PurchaseItem>();
     public DbSet<Expense> Expenses => Set<Expense>();
     public DbSet<TaxRate> TaxRates => Set<TaxRate>();
+    public DbSet<Flock> Flocks => Set<Flock>();
+    public DbSet<FlockMovement> FlockMovements => Set<FlockMovement>();
 
     protected override void OnModelCreating(ModelBuilder builder)
     {

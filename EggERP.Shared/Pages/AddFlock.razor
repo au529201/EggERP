@@ -1,0 +1,81 @@
+﻿@page "/flocks/add"
+@attribute [Authorize(Roles = "Admin,Manager")]
+@using EggERP.Shared.Models
+@using EggERP.Shared.Services
+@inject IFlockApiService FlockApiService
+@inject NavigationManager Navigation
+
+<h3>Add Flock</h3>
+
+<EditForm Model="@newFlock" OnValidSubmit="HandleSave">
+    <div class="mb-3">
+        <label>Bird Type</label>
+        <select class="form-select" @bind="newFlock.BirdType">
+            @foreach (var type in birdTypes)
+            {
+                <option value="@type">@type</option>
+            }
+        </select>
+    </div>
+
+    <div class="mb-3">
+        <label>Source</label>
+        <select class="form-select" @bind="newFlock.Source">
+            @foreach (var source in sources)
+            {
+                <option value="@source">@source</option>
+            }
+        </select>
+    </div>
+
+    <div class="mb-3">
+        <label>Acquisition Date</label>
+        <InputDate class="form-control" @bind-Value="newFlock.AcquisitionDate" />
+    </div>
+
+    <div class="mb-3">
+        <label>Initial Count</label>
+        <InputNumber class="form-control" @bind-Value="newFlock.InitialCount" />
+    </div>
+
+    <div class="mb-3">
+        <label>Acquisition Cost (optional)</label>
+        <InputNumber class="form-control" @bind-Value="newFlock.AcquisitionCost" />
+    </div>
+
+    <div class="mb-3">
+        <label>Notes</label>
+        <InputTextArea class="form-control" @bind-Value="newFlock.Notes" />
+    </div>
+
+    @if (!string.IsNullOrEmpty(errorMessage))
+    {
+        <p style="color:red">@errorMessage</p>
+    }
+
+    <button type="submit" class="btn btn-primary">Save</button>
+</EditForm>
+
+@code {
+    // Mirrors EggERP.Application.Flocks.FlockOptions server-side allowed values.
+    private readonly string[] birdTypes = { "Chicken", "Duck", "Quail", "Other" };
+    private readonly string[] sources = { "Bought", "Hatched", "Given", "Other" };
+
+    private CreateFlockRequest newFlock = new();
+    private string? errorMessage;
+
+    private async Task HandleSave()
+    {
+        errorMessage = null;
+
+        var error = await FlockApiService.CreateFlockAsync(newFlock);
+
+        if (error is not null)
+        {
+            errorMessage = error;
+            return;
+        }
+
+        Navigation.NavigateTo("/flocks");
+    }
+}
