@@ -31,4 +31,5 @@ public interface IUserManagementService
     Task<(bool Succeeded, string? Error)> CreateUserAsync(CreateBusinessUserRequest request);
     Task<(bool Succeeded, string? Error)> UpdateUserAsync(UpdateBusinessUserRequest request);
     Task<(bool Succeeded, string? Error)> DeactivateUserAsync(Guid businessId, Guid userId);
+    Task<(bool Succeeded, string? Error)> ActivateUserAsync(Guid businessId, Guid userId);
 }

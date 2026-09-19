@@ -9,6 +9,7 @@ namespace EggERP.Shared.Services
         Task<string?> CreateUserAsync(CreateUserRequest request);
         Task<string?> UpdateUserAsync(UpdateUserRequest request);
         Task<string?> DeactivateUserAsync(Guid userId);
+        Task<string?> ActivateUserAsync(Guid userId);
     }
 
     public class UserManagementApiService : IUserManagementApiService
@@ -60,6 +61,20 @@ namespace EggERP.Shared.Services
         {
             var response = await _http.DeleteAsync(
                 $"api/users/{userId}");
+
+            if (response.IsSuccessStatusCode)
+            {
+                return null;
+            }
+
+            return await response.Content.ReadAsStringAsync();
+        }
+
+        public async Task<string?> ActivateUserAsync(Guid userId)
+        {
+            var response = await _http.PostAsync(
+                $"api/users/{userId}/activate",
+                null);
 
             if (response.IsSuccessStatusCode)
             {

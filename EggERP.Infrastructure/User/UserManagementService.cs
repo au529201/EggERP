@@ -145,6 +145,26 @@ public class UserManagementService : IUserManagementService
 
         return (true, null);
     }
+    public async Task<(bool Succeeded, string? Error)> ActivateUserAsync(Guid businessId, Guid userId)
+    {
+        var user = await _userManager.FindByIdAsync(userId.ToString());
+        if (user is null || user.BusinessId != businessId)
+        {
+            return (false, "User not found in this business.");
+        }
+
+        user.IsActive = true;
+        user.LockoutEnd = null;
+        user.LockoutEnabled = false;
+
+        var result = await _userManager.UpdateAsync(user);
+        if (!result.Succeeded)
+        {
+            return (false, string.Join("; ", result.Errors.Select(e => e.Description)));
+        }
+
+        return (true, null);
+    }
 
     private async Task SendInviteEmailAsync(ApplicationUser user)
     {

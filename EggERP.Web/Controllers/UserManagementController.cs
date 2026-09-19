@@ -113,4 +113,26 @@ public class UserManagementController : ControllerBase
 
         return NoContent();
     }
+    [HttpPost("{id:guid}/activate")]
+    public async Task<IActionResult> ActivateUser(Guid id)
+    {
+        var currentUser = await _userManager.GetUserAsync(User);
+
+        if (currentUser is null)
+        {
+            return Unauthorized();
+        }
+
+        var (succeeded, error) =
+            await _userManagementService.ActivateUserAsync(
+                currentUser.BusinessId,
+                id);
+
+        if (!succeeded)
+        {
+            return BadRequest(error);
+        }
+
+        return NoContent();
+    }
 }
