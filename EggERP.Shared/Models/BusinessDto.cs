@@ -6,6 +6,8 @@
         public string Name { get; set; } = string.Empty;
         public string? LegalName { get; set; }
         public string? TaxIdentificationNumber { get; set; }
+        public string TaxStatus { get; set; } = "Non-VAT";
+        public string? PercentageTaxOption { get; set; }
         public string? Email { get; set; }
         public string? Phone { get; set; }
         public string? AddressLine1 { get; set; }
@@ -14,6 +16,5 @@
         public string? Province { get; set; }
         public string? PostalCode { get; set; }
         public string CountryCode { get; set; } = "PH";
-        public bool IsActive { get; set; }
     }
 }

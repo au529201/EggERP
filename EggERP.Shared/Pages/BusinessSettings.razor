@@ -61,6 +61,29 @@ else
             <label>Country Code</label>
             <InputText class="form-control" @bind-Value="editModel.CountryCode" />
         </div>
+        <div class="mb-3">
+            <label>Tax Status</label>
+            <select class="form-select" @bind="editModel.TaxStatus">
+                <option value="Non-VAT">Non-VAT</option>
+                <option value="VAT-Registered">VAT-Registered</option>
+                <option value="VAT-Exempt">VAT-Exempt</option>
+            </select>
+            <small class="form-text text-muted">
+                Most small poultry/egg businesses under ₱3,000,000 annual gross sales are Non-VAT.
+                Live poultry and eggs sold in their original state are VAT-exempt under PH tax law.
+            </small>
+        </div>
+
+        @if (editModel.TaxStatus == "Non-VAT")
+        {
+            <div class="mb-3">
+                <label>Percentage Tax Option</label>
+                <select class="form-select" @bind="editModel.PercentageTaxOption">
+                    <option value="3% Percentage Tax">3% Percentage Tax (BIR Form 2551Q)</option>
+                    <option value="8% Flat Income Tax">8% Flat Income Tax</option>
+                </select>
+            </div>
+        }
 
         @if (!string.IsNullOrEmpty(errorMessage))
         {
@@ -108,7 +131,9 @@ else
             City = business.City,
             Province = business.Province,
             PostalCode = business.PostalCode,
-            CountryCode = business.CountryCode
+            CountryCode = business.CountryCode,
+            TaxStatus = business.TaxStatus,
+            PercentageTaxOption = business.PercentageTaxOption
         };
 
         isLoading = false;

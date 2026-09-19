@@ -32,6 +32,8 @@ public class BusinessRepository : IBusinessRepository
         existing.Province = business.Province;
         existing.PostalCode = business.PostalCode;
         existing.CountryCode = business.CountryCode;
+        existing.TaxStatus = business.TaxStatus;
+        existing.PercentageTaxOption = business.PercentageTaxOption;
         existing.UpdatedAtUtc = DateTime.UtcNow;
         await _dbContext.SaveChangesAsync();
         return true;

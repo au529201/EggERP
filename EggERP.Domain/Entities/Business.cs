@@ -25,6 +25,9 @@ public class Business
     public string? PostalCode { get; set; }
 
     public string CountryCode { get; set; } = "PH";
+    public string TaxStatus { get; set; } = "Non-VAT";
+
+    public string? PercentageTaxOption { get; set; }
 
     public bool IsActive { get; set; } = true;
 
