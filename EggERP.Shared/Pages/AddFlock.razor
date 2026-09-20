@@ -3,6 +3,7 @@
 @using EggERP.Shared.Models
 @using EggERP.Shared.Services
 @inject IFlockApiService FlockApiService
+@inject IProductApiService ProductApiService
 @inject NavigationManager Navigation
 
 <h3>Add Flock</h3>
@@ -44,6 +45,24 @@
     </div>
 
     <div class="mb-3">
+        <label>Linked Egg Product (optional)</label>
+        <select class="form-select" @bind="selectedProductId">
+            <option value="">-- None --</option>
+            @if (products is not null)
+            {
+                @foreach (var product in products)
+                {
+                    <option value="@product.Id">@product.Name</option>
+                }
+            }
+        </select>
+        <small class="form-text text-muted">
+            Required only if you plan to record egg production for this flock —
+            production will be added to this product's inventory.
+        </small>
+    </div>
+
+    <div class="mb-3">
         <label>Notes</label>
         <InputTextArea class="form-control" @bind-Value="newFlock.Notes" />
     </div>
@@ -62,11 +81,22 @@
     private readonly string[] sources = { "Bought", "Hatched", "Given", "Other" };
 
     private CreateFlockRequest newFlock = new();
+    private List<ProductDto>? products;
+    private string selectedProductId = "";
     private string? errorMessage;
+
+    private readonly Guid businessId = Guid.Parse("11111111-1111-1111-1111-111111111111");
+
+    protected override async Task OnInitializedAsync()
+    {
+        products = await ProductApiService.GetProductsAsync(businessId);
+    }
 
     private async Task HandleSave()
     {
         errorMessage = null;
+
+        newFlock.LinkedProductId = Guid.TryParse(selectedProductId, out var pid) ? pid : null;
 
         var error = await FlockApiService.CreateFlockAsync(newFlock);
 

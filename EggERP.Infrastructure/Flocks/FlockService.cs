@@ -1,4 +1,6 @@
 ﻿using EggERP.Application.Flocks;
+using EggERP.Application.Inventory;
+using EggERP.Application.Products;
 using EggERP.Domain.Entities;
 
 namespace EggERP.Infrastructure.Flocks;
@@ -6,28 +8,50 @@ namespace EggERP.Infrastructure.Flocks;
 public class FlockService : IFlockService
 {
     private readonly IFlockRepository _flockRepository;
+    private readonly IInventoryService _inventoryService;
+    private readonly IProductRepository _productRepository;
 
-    public FlockService(IFlockRepository flockRepository)
+    public FlockService(
+        IFlockRepository flockRepository,
+        IInventoryService inventoryService,
+        IProductRepository productRepository)
     {
         _flockRepository = flockRepository;
+        _inventoryService = inventoryService;
+        _productRepository = productRepository;
     }
 
     public async Task<List<FlockDto>> GetFlocksForBusinessAsync(Guid businessId)
     {
         var flocks = await _flockRepository.GetActiveByBusinessIdAsync(businessId);
+        var dtos = new List<FlockDto>();
 
-        return flocks.Select(f => new FlockDto
+        foreach (var f in flocks)
         {
-            Id = f.Id,
-            BirdType = f.BirdType,
-            Source = f.Source,
-            AcquisitionDate = f.AcquisitionDate,
-            InitialCount = f.InitialCount,
-            CurrentCount = f.CurrentCount,
-            AcquisitionCost = f.AcquisitionCost,
-            Notes = f.Notes,
-            IsActive = f.IsActive
-        }).ToList();
+            string? productName = null;
+            if (f.LinkedProductId.HasValue)
+            {
+                var product = await _productRepository.GetByIdAsync(businessId, f.LinkedProductId.Value);
+                productName = product?.Name;
+            }
+
+            dtos.Add(new FlockDto
+            {
+                Id = f.Id,
+                BirdType = f.BirdType,
+                Source = f.Source,
+                AcquisitionDate = f.AcquisitionDate,
+                InitialCount = f.InitialCount,
+                CurrentCount = f.CurrentCount,
+                AcquisitionCost = f.AcquisitionCost,
+                Notes = f.Notes,
+                IsActive = f.IsActive,
+                LinkedProductId = f.LinkedProductId,
+                LinkedProductName = productName
+            });
+        }
+
+        return dtos;
     }
 
     public async Task<(bool Succeeded, string? Error)> CreateFlockAsync(CreateFlockRequest request)
@@ -47,6 +71,15 @@ public class FlockService : IFlockService
             return (false, "Initial count must be greater than zero.");
         }
 
+        if (request.LinkedProductId.HasValue)
+        {
+            var product = await _productRepository.GetByIdAsync(request.BusinessId, request.LinkedProductId.Value);
+            if (product is null)
+            {
+                return (false, "Linked product not found in this business.");
+            }
+        }
+
         var flock = new Flock
         {
             Id = Guid.NewGuid(),
@@ -59,6 +92,7 @@ public class FlockService : IFlockService
             AcquisitionCost = request.AcquisitionCost,
             Notes = request.Notes,
             IsActive = true,
+            LinkedProductId = request.LinkedProductId,
             CreatedAtUtc = DateTime.UtcNow
         };
 
@@ -105,6 +139,43 @@ public class FlockService : IFlockService
         };
 
         await _flockRepository.AddMovementAsync(movement);
+        return (true, null);
+    }
+
+    public async Task<(bool Succeeded, string? Error)> RecordEggProductionAsync(RecordEggProductionRequest request)
+    {
+        if (request.QuantityProduced <= 0)
+        {
+            return (false, "Quantity produced must be greater than zero.");
+        }
+
+        var flock = await _flockRepository.GetByIdAsync(request.BusinessId, request.FlockId);
+        if (flock is null)
+        {
+            return (false, "Flock not found in this business.");
+        }
+
+        if (!flock.LinkedProductId.HasValue)
+        {
+            return (false, "This flock has no linked product. Edit the flock to link it to an egg product before recording production.");
+        }
+
+        var production = new EggProduction
+        {
+            Id = Guid.NewGuid(),
+            FlockId = flock.Id,
+            ProductionDate = request.ProductionDate,
+            QuantityProduced = request.QuantityProduced,
+            Notes = request.Notes,
+            CreatedAtUtc = DateTime.UtcNow
+        };
+
+        await _flockRepository.AddEggProductionAsync(production);
+
+        // Egg production adds to the linked product's sellable inventory.
+        await _inventoryService.AdjustQuantityAsync(
+            request.BusinessId, flock.LinkedProductId.Value, request.QuantityProduced);
+
         return (true, null);
     }
 }

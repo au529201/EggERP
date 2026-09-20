@@ -89,4 +89,29 @@ public class FlockController : ControllerBase
 
         return Ok();
     }
+
+    [HttpPost("egg-production")]
+    public async Task<IActionResult> RecordEggProduction(RecordEggProductionRequest request)
+    {
+        var currentUser = await _userManager.GetUserAsync(User);
+        if (currentUser is null)
+        {
+            return Unauthorized();
+        }
+
+        request.BusinessId = currentUser.BusinessId;
+
+        var (succeeded, error) = await _flockService.RecordEggProductionAsync(request);
+        if (!succeeded)
+        {
+            return BadRequest(error);
+        }
+
+        await _activityLogService.LogAsync(
+            currentUser.BusinessId, currentUser.Id, currentUser.FullName,
+            "Recorded Egg Production", "EggProduction", request.FlockId,
+            $"{request.QuantityProduced} egg(s) on {request.ProductionDate:d}");
+
+        return Ok();
+    }
 }

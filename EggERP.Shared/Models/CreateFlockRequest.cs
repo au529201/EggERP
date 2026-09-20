@@ -9,5 +9,6 @@
         public int InitialCount { get; set; }
         public decimal? AcquisitionCost { get; set; }
         public string? Notes { get; set; }
+        public Guid? LinkedProductId { get; set; }
     }
 }

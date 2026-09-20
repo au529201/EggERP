@@ -9,4 +9,5 @@ public interface IFlockRepository
     Task<Flock> AddAsync(Flock flock);
     Task<bool> UpdateAsync(Flock flock);
     Task<FlockMovement> AddMovementAsync(FlockMovement movement);
+    Task<EggProduction> AddEggProductionAsync(EggProduction production);
 }

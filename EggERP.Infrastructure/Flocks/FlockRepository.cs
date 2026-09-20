@@ -48,4 +48,11 @@ public class FlockRepository : IFlockRepository
         await _dbContext.SaveChangesAsync();
         return movement;
     }
+
+    public async Task<EggProduction> AddEggProductionAsync(EggProduction production)
+    {
+        _dbContext.EggProductions.Add(production);
+        await _dbContext.SaveChangesAsync();
+        return production;
+    }
 }

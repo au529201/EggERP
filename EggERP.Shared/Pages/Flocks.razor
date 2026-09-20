@@ -11,6 +11,7 @@
     </Authorized>
 </AuthorizeView>
 <a class="btn btn-secondary mb-3 ms-2" href="/flocks/movements/add">Record Movement</a>
+<a class="btn btn-secondary mb-3 ms-2" href="/flocks/eggs/add">Record Egg Production</a>
 
 @if (flocks is null)
 {
@@ -31,6 +32,7 @@ else
                 <th>Initial Count</th>
                 <th>Current Count</th>
                 <th>Cost</th>
+                <th>Linked Egg Product</th>
                 <th>Notes</th>
             </tr>
         </thead>
@@ -44,6 +46,7 @@ else
                     <td>@flock.InitialCount</td>
                     <td>@flock.CurrentCount</td>
                     <td>@(flock.AcquisitionCost?.ToString("N2") ?? "-")</td>
+                    <td>@(flock.LinkedProductName ?? "-")</td>
                     <td>@flock.Notes</td>
                 </tr>
             }

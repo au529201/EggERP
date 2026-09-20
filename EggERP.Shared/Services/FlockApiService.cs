@@ -8,6 +8,7 @@ namespace EggERP.Shared.Services
         Task<List<FlockDto>> GetFlocksAsync();
         Task<string?> CreateFlockAsync(CreateFlockRequest request);
         Task<string?> RecordMovementAsync(RecordFlockMovementRequest request);
+        Task<string?> RecordEggProductionAsync(RecordEggProductionRequest request);
     }
 
     public class FlockApiService : IFlockApiService
@@ -38,6 +39,16 @@ namespace EggERP.Shared.Services
         public async Task<string?> RecordMovementAsync(RecordFlockMovementRequest request)
         {
             var response = await _http.PostAsJsonAsync("api/flocks/movements", request);
+            if (response.IsSuccessStatusCode)
+            {
+                return null;
+            }
+            return await response.Content.ReadAsStringAsync();
+        }
+
+        public async Task<string?> RecordEggProductionAsync(RecordEggProductionRequest request)
+        {
+            var response = await _http.PostAsJsonAsync("api/flocks/egg-production", request);
             if (response.IsSuccessStatusCode)
             {
                 return null;

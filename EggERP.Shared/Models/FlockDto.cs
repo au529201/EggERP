@@ -11,5 +11,7 @@
         public decimal? AcquisitionCost { get; set; }
         public string? Notes { get; set; }
         public bool IsActive { get; set; }
+        public Guid? LinkedProductId { get; set; }
+        public string? LinkedProductName { get; set; }
     }
 }
