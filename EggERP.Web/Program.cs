@@ -31,6 +31,9 @@ using EggERP.Application.Email;
 using EggERP.Infrastructure.Email;
 using EggERP.Application.Flocks;
 using EggERP.Infrastructure.Flocks;
+using EggERP.Application.ActivityLogs;
+using EggERP.Infrastructure.ActivityLogs;
+
 var builder = WebApplication.CreateBuilder(args);
 
 // Database
@@ -98,6 +101,9 @@ builder.Services.AddScoped<IExpenseService, ExpenseService>();
 // Flock services
 builder.Services.AddScoped<IFlockRepository, FlockRepository>();
 builder.Services.AddScoped<IFlockService, FlockService>();
+// Activity log services
+builder.Services.AddScoped<IActivityLogRepository, ActivityLogRepository>();
+builder.Services.AddScoped<IActivityLogService, ActivityLogService>();
 // User management services
 builder.Services.AddScoped<IUserManagementService, UserManagementService>();
 
@@ -131,6 +137,11 @@ var apiBaseUrl = new Uri(builder.Configuration["ApiBaseUrl"] ?? "https://localho
 
 // Business API client (calls this same app's own API endpoints)
 builder.Services.AddHttpClient<IBusinessApiService, BusinessApiService>(client =>
+{
+    client.BaseAddress = apiBaseUrl;
+}).AddHttpMessageHandler<CookieForwardingHandler>();
+// Activity log API client (calls this same app's own API endpoints)
+builder.Services.AddHttpClient<IActivityLogApiService, ActivityLogApiService>(client =>
 {
     client.BaseAddress = apiBaseUrl;
 }).AddHttpMessageHandler<CookieForwardingHandler>();

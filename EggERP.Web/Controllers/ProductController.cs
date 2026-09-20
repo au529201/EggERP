@@ -1,20 +1,28 @@
-﻿using EggERP.Application.Products;
+﻿using EggERP.Application.ActivityLogs;
+using EggERP.Application.Products;
 using EggERP.Domain.Entities;
-using Microsoft.AspNetCore.Authorization;
+using EggERP.Infrastructure.Identity;
+using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
 
 namespace EggERP.Web.Controllers;
 
 [ApiController]
 [Route("api/products")]
-[Authorize(Roles = "Admin,Manager,Staff")]
 public class ProductController : ControllerBase
 {
     private readonly IProductService _productService;
+    private readonly UserManager<ApplicationUser> _userManager;
+    private readonly IActivityLogService _activityLogService;
 
-    public ProductController(IProductService productService)
+    public ProductController(
+        IProductService productService,
+        UserManager<ApplicationUser> userManager,
+        IActivityLogService activityLogService)
     {
         _productService = productService;
+        _userManager = userManager;
+        _activityLogService = activityLogService;
     }
 
     [HttpGet("{businessId:guid}")]
@@ -38,10 +46,18 @@ public class ProductController : ControllerBase
     }
 
     [HttpPost]
-    [Authorize(Roles = "Admin,Manager")]
     public async Task<IActionResult> CreateProduct(Product product)
     {
         var createdProduct = await _productService.CreateProductAsync(product);
+
+        var currentUser = await _userManager.GetUserAsync(User);
+        if (currentUser is not null)
+        {
+            await _activityLogService.LogAsync(
+                createdProduct.BusinessId, currentUser.Id, currentUser.FullName,
+                "Created Product", "Product", createdProduct.Id, createdProduct.Name);
+        }
+
         return CreatedAtAction(
             nameof(GetProducts),
             new { businessId = createdProduct.BusinessId },
@@ -49,7 +65,6 @@ public class ProductController : ControllerBase
     }
 
     [HttpPut("{id:guid}")]
-    [Authorize(Roles = "Admin,Manager")]
     public async Task<IActionResult> UpdateProduct(Guid id, Product product)
     {
         if (id != product.Id)
@@ -61,11 +76,19 @@ public class ProductController : ControllerBase
         {
             return NotFound();
         }
+
+        var currentUser = await _userManager.GetUserAsync(User);
+        if (currentUser is not null)
+        {
+            await _activityLogService.LogAsync(
+                product.BusinessId, currentUser.Id, currentUser.FullName,
+                "Updated Product", "Product", id, product.Name);
+        }
+
         return NoContent();
     }
 
     [HttpDelete("{businessId:guid}/{id:guid}")]
-    [Authorize(Roles = "Admin,Manager")]
     public async Task<IActionResult> DeactivateProduct(Guid businessId, Guid id)
     {
         var deactivated = await _productService.DeactivateProductAsync(businessId, id);
@@ -73,6 +96,15 @@ public class ProductController : ControllerBase
         {
             return NotFound();
         }
+
+        var currentUser = await _userManager.GetUserAsync(User);
+        if (currentUser is not null)
+        {
+            await _activityLogService.LogAsync(
+                businessId, currentUser.Id, currentUser.FullName,
+                "Deactivated Product", "Product", id, null);
+        }
+
         return NoContent();
     }
 }

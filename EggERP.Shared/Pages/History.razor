@@ -1,0 +1,96 @@
+﻿@page "/history"
+@attribute [Authorize(Roles = "Admin,Manager")]
+@using EggERP.Shared.Models
+@using EggERP.Shared.Services
+@inject IActivityLogApiService ActivityLogApiService
+
+<h3>History</h3>
+
+<div class="row mb-3">
+    <div class="col-md-4">
+        <label>Search</label>
+        <input class="form-control" @bind="searchText" @bind:event="oninput" placeholder="User, action, details..." />
+    </div>
+    <div class="col-md-3">
+        <label>Entity Type</label>
+        <select class="form-select" @bind="entityType">
+            <option value="">All</option>
+            <option value="Product">Product</option>
+            <option value="Category">Category</option>
+            <option value="Customer">Customer</option>
+            <option value="Supplier">Supplier</option>
+            <option value="Inventory">Inventory</option>
+            <option value="Sale">Sale</option>
+            <option value="Purchase">Purchase</option>
+            <option value="Expense">Expense</option>
+            <option value="User">User</option>
+            <option value="Business">Business</option>
+            <option value="Flock">Flock</option>
+            <option value="FlockMovement">Flock Movement</option>
+        </select>
+    </div>
+    <div class="col-md-2">
+        <label>From</label>
+        <input type="date" class="form-control" @bind="startDate" />
+    </div>
+    <div class="col-md-2">
+        <label>To</label>
+        <input type="date" class="form-control" @bind="endDate" />
+    </div>
+    <div class="col-md-1 d-flex align-items-end">
+        <button class="btn btn-primary w-100" @onclick="LoadLogs">Filter</button>
+    </div>
+</div>
+
+@if (logs is null)
+{
+    <p>Loading...</p>
+}
+else if (logs.Count == 0)
+{
+    <p>No activity found.</p>
+}
+else
+{
+    <table class="table">
+        <thead>
+            <tr>
+                <th>Timestamp</th>
+                <th>User</th>
+                <th>Action</th>
+                <th>Type</th>
+                <th>Details</th>
+            </tr>
+        </thead>
+        <tbody>
+            @foreach (var log in logs)
+            {
+                <tr>
+                    <td>@log.TimestampUtc.ToLocalTime().ToString("g")</td>
+                    <td>@log.UserName</td>
+                    <td>@log.Action</td>
+                    <td>@log.EntityType</td>
+                    <td>@log.Details</td>
+                </tr>
+            }
+        </tbody>
+    </table>
+}
+
+@code {
+    private List<ActivityLogDto>? logs;
+    private string? searchText;
+    private string? entityType;
+    private DateTime? startDate;
+    private DateTime? endDate;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadLogs();
+    }
+
+    private async Task LoadLogs()
+    {
+        logs = await ActivityLogApiService.SearchAsync(searchText, entityType, startDate, endDate);
+    }
+}

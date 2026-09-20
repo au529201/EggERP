@@ -1,4 +1,5 @@
-﻿using EggERP.Application.Users;
+﻿using EggERP.Application.ActivityLogs;
+using EggERP.Application.Users;
 using EggERP.Infrastructure.Identity;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Identity;
@@ -13,13 +14,16 @@ public class UserManagementController : ControllerBase
 {
     private readonly IUserManagementService _userManagementService;
     private readonly UserManager<ApplicationUser> _userManager;
+    private readonly IActivityLogService _activityLogService;
 
     public UserManagementController(
         IUserManagementService userManagementService,
-        UserManager<ApplicationUser> userManager)
+        UserManager<ApplicationUser> userManager,
+        IActivityLogService activityLogService)
     {
         _userManagementService = userManagementService;
         _userManager = userManager;
+        _activityLogService = activityLogService;
     }
 
     [HttpGet]
@@ -58,6 +62,10 @@ public class UserManagementController : ControllerBase
             return BadRequest(error);
         }
 
+        await _activityLogService.LogAsync(
+            currentUser.BusinessId, currentUser.Id, currentUser.FullName,
+            "Created User", "User", null, $"{request.FullName} ({request.Email}) as {request.Role}");
+
         return Ok();
     }
 
@@ -88,6 +96,10 @@ public class UserManagementController : ControllerBase
             return BadRequest(error);
         }
 
+        await _activityLogService.LogAsync(
+            currentUser.BusinessId, currentUser.Id, currentUser.FullName,
+            "Updated User", "User", id, $"{request.FullName} — role: {request.Role}");
+
         return NoContent();
     }
 
@@ -111,8 +123,13 @@ public class UserManagementController : ControllerBase
             return BadRequest(error);
         }
 
+        await _activityLogService.LogAsync(
+            currentUser.BusinessId, currentUser.Id, currentUser.FullName,
+            "Deactivated User", "User", id, null);
+
         return NoContent();
     }
+
     [HttpPost("{id:guid}/activate")]
     public async Task<IActionResult> ActivateUser(Guid id)
     {
@@ -132,6 +149,10 @@ public class UserManagementController : ControllerBase
         {
             return BadRequest(error);
         }
+
+        await _activityLogService.LogAsync(
+            currentUser.BusinessId, currentUser.Id, currentUser.FullName,
+            "Activated User", "User", id, null);
 
         return NoContent();
     }

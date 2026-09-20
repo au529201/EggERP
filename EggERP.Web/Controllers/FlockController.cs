@@ -1,4 +1,5 @@
-﻿using EggERP.Application.Flocks;
+﻿using EggERP.Application.ActivityLogs;
+using EggERP.Application.Flocks;
 using EggERP.Infrastructure.Identity;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Identity;
@@ -13,11 +14,16 @@ public class FlockController : ControllerBase
 {
     private readonly IFlockService _flockService;
     private readonly UserManager<ApplicationUser> _userManager;
+    private readonly IActivityLogService _activityLogService;
 
-    public FlockController(IFlockService flockService, UserManager<ApplicationUser> userManager)
+    public FlockController(
+        IFlockService flockService,
+        UserManager<ApplicationUser> userManager,
+        IActivityLogService activityLogService)
     {
         _flockService = flockService;
         _userManager = userManager;
+        _activityLogService = activityLogService;
     }
 
     [HttpGet]
@@ -51,6 +57,11 @@ public class FlockController : ControllerBase
             return BadRequest(error);
         }
 
+        await _activityLogService.LogAsync(
+            currentUser.BusinessId, currentUser.Id, currentUser.FullName,
+            "Created Flock", "Flock", null,
+            $"{request.BirdType} — {request.InitialCount} birds ({request.Source})");
+
         return Ok();
     }
 
@@ -70,6 +81,11 @@ public class FlockController : ControllerBase
         {
             return BadRequest(error);
         }
+
+        await _activityLogService.LogAsync(
+            currentUser.BusinessId, currentUser.Id, currentUser.FullName,
+            "Recorded Flock Movement", "FlockMovement", request.FlockId,
+            $"{request.Reason}: {request.Quantity} bird(s)");
 
         return Ok();
     }

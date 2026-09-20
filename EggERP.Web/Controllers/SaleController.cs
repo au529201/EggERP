@@ -1,23 +1,38 @@
-﻿using EggERP.Application.Sales;
+﻿using EggERP.Application.ActivityLogs;
+using EggERP.Application.Sales;
+using EggERP.Infrastructure.Identity;
 using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
+
 namespace EggERP.Web.Controllers;
+
 [ApiController]
 [Route("api/sales")]
 [Authorize(Roles = "Admin,Manager,Staff")]
 public class SaleController : ControllerBase
 {
     private readonly ISaleService _saleService;
-    public SaleController(ISaleService saleService)
+    private readonly UserManager<ApplicationUser> _userManager;
+    private readonly IActivityLogService _activityLogService;
+
+    public SaleController(
+        ISaleService saleService,
+        UserManager<ApplicationUser> userManager,
+        IActivityLogService activityLogService)
     {
         _saleService = saleService;
+        _userManager = userManager;
+        _activityLogService = activityLogService;
     }
+
     [HttpGet("{businessId:guid}")]
     public async Task<IActionResult> GetSales(Guid businessId)
     {
         var sales = await _saleService.GetSalesAsync(businessId);
         return Ok(sales);
     }
+
     [HttpGet("{businessId:guid}/{id:guid}")]
     public async Task<IActionResult> GetSaleById(Guid businessId, Guid id)
     {
@@ -29,6 +44,7 @@ public class SaleController : ControllerBase
         var items = await _saleService.GetSaleItemsAsync(id);
         return Ok(new { sale, items });
     }
+
     public class CreateSaleRequest
     {
         public Guid BusinessId { get; set; }
@@ -38,6 +54,7 @@ public class SaleController : ControllerBase
         public string? PaymentSource { get; set; }
         public string? ReferenceNumber { get; set; }
     }
+
     [HttpPost]
     public async Task<IActionResult> CreateSale(CreateSaleRequest request)
     {
@@ -49,6 +66,16 @@ public class SaleController : ControllerBase
         try
         {
             var sale = await _saleService.CreateSaleAsync(request.BusinessId, request.CustomerId, request.Items, request.PaymentMethod, request.PaymentSource, request.ReferenceNumber);
+
+            var currentUser = await _userManager.GetUserAsync(User);
+            if (currentUser is not null)
+            {
+                await _activityLogService.LogAsync(
+                    request.BusinessId, currentUser.Id, currentUser.FullName,
+                    "Created Sale", "Sale", sale.Id,
+                    $"{request.Items.Count} item(s) — Total: {sale.TotalAmount:N2} ({request.PaymentMethod})");
+            }
+
             return CreatedAtAction(nameof(GetSales), new { businessId = sale.BusinessId }, sale);
         }
         catch (InvalidOperationException ex)
