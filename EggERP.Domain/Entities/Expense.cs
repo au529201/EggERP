@@ -5,6 +5,7 @@ public class Expense
     public Guid Id { get; set; }
 
     public Guid BusinessId { get; set; }
+    public Guid? FlockId { get; set; }
 
     public DateTime ExpenseDateUtc { get; set; }
 

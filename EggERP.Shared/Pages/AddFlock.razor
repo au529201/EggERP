@@ -10,33 +10,42 @@
 
 <EditForm Model="@newFlock" OnValidSubmit="HandleSave">
     <div class="mb-3">
-        <label>Bird Type</label>
-        <select class="form-select" @bind="newFlock.BirdType">
-            @foreach (var type in birdTypes)
+        <label>Name</label>
+        <InputText class="form-control" @bind-Value="newFlock.Name" placeholder="e.g. White Layers A" />
+    </div>
+
+    <div class="mb-3">
+        <label>Species</label>
+        <select class="form-select" @bind="newFlock.Species">
+            @foreach (var s in species)
             {
-                <option value="@type">@type</option>
+                <option value="@s">@s</option>
             }
         </select>
     </div>
 
     <div class="mb-3">
-        <label>Source</label>
-        <select class="form-select" @bind="newFlock.Source">
-            @foreach (var source in sources)
-            {
-                <option value="@source">@source</option>
-            }
+        <label>Breed (optional)</label>
+        <InputText class="form-control" @bind-Value="newFlock.Breed" />
+    </div>
+
+    <div class="mb-3">
+        <label>Placement Date</label>
+        <InputDate class="form-control" @bind-Value="newFlock.PlacementDate" />
+    </div>
+
+    <div class="mb-3">
+        <label>Initial Quantity</label>
+        <InputNumber class="form-control" @bind-Value="newFlock.InitialQuantity" />
+    </div>
+
+    <div class="mb-3">
+        <label>Initial Source</label>
+        <select class="form-select" @bind="newFlock.InitialSource">
+            <option value="Bought">Bought</option>
+            <option value="Given">Given</option>
+            <option value="Hatched">Hatched</option>
         </select>
-    </div>
-
-    <div class="mb-3">
-        <label>Acquisition Date</label>
-        <InputDate class="form-control" @bind-Value="newFlock.AcquisitionDate" />
-    </div>
-
-    <div class="mb-3">
-        <label>Initial Count</label>
-        <InputNumber class="form-control" @bind-Value="newFlock.InitialCount" />
     </div>
 
     <div class="mb-3">
@@ -56,10 +65,7 @@
                 }
             }
         </select>
-        <small class="form-text text-muted">
-            Required only if you plan to record egg production for this flock —
-            production will be added to this product's inventory.
-        </small>
+        <small class="form-text text-muted">Required only if you plan to record egg movements for this flock.</small>
     </div>
 
     <div class="mb-3">
@@ -76,9 +82,7 @@
 </EditForm>
 
 @code {
-    // Mirrors EggERP.Application.Flocks.FlockOptions server-side allowed values.
-    private readonly string[] birdTypes = { "Chicken", "Duck", "Quail", "Other" };
-    private readonly string[] sources = { "Bought", "Hatched", "Given", "Other" };
+    private readonly string[] species = { "Chicken", "Duck", "Quail", "Goose", "Other" };
 
     private CreateFlockRequest newFlock = new();
     private List<ProductDto>? products;
@@ -95,11 +99,9 @@
     private async Task HandleSave()
     {
         errorMessage = null;
-
         newFlock.LinkedProductId = Guid.TryParse(selectedProductId, out var pid) ? pid : null;
 
         var error = await FlockApiService.CreateFlockAsync(newFlock);
-
         if (error is not null)
         {
             errorMessage = error;

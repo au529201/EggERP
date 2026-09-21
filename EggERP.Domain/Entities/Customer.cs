@@ -7,6 +7,7 @@ public class Customer
     public Guid BusinessId { get; set; }
 
     public string Name { get; set; } = string.Empty;
+    public string? Type { get; set; } // WalkIn, Vendor, SariSari, Restaurant, Direct, Other
 
     public string? Email { get; set; }
 

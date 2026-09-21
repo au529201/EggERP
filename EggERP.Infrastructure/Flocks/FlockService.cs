@@ -35,19 +35,21 @@ public class FlockService : IFlockService
                 productName = product?.Name;
             }
 
+            var population = await _flockRepository.GetFlockPopulationAsync(f.Id);
+
             dtos.Add(new FlockDto
             {
                 Id = f.Id,
-                BirdType = f.BirdType,
-                Source = f.Source,
-                AcquisitionDate = f.AcquisitionDate,
-                InitialCount = f.InitialCount,
-                CurrentCount = f.CurrentCount,
+                Name = f.Name,
+                Species = f.Species,
+                Breed = f.Breed,
+                PlacementDate = f.PlacementDate,
+                CloseDate = f.CloseDate,
                 AcquisitionCost = f.AcquisitionCost,
                 Notes = f.Notes,
-                IsActive = f.IsActive,
                 LinkedProductId = f.LinkedProductId,
-                LinkedProductName = productName
+                LinkedProductName = productName,
+                CurrentPopulation = population
             });
         }
 
@@ -56,19 +58,19 @@ public class FlockService : IFlockService
 
     public async Task<(bool Succeeded, string? Error)> CreateFlockAsync(CreateFlockRequest request)
     {
-        if (!FlockOptions.BirdTypes.Contains(request.BirdType))
+        if (!FlockOptions.Species.Contains(request.Species))
         {
-            return (false, "Invalid bird type.");
+            return (false, "Invalid species.");
         }
 
-        if (!FlockOptions.Sources.Contains(request.Source))
+        if (!FlockOptions.FlockInReasons.Contains(request.InitialSource))
         {
-            return (false, "Invalid source.");
+            return (false, "Invalid initial source.");
         }
 
-        if (request.InitialCount <= 0)
+        if (request.InitialQuantity <= 0)
         {
-            return (false, "Initial count must be greater than zero.");
+            return (false, "Initial quantity must be greater than zero.");
         }
 
         if (request.LinkedProductId.HasValue)
@@ -84,27 +86,46 @@ public class FlockService : IFlockService
         {
             Id = Guid.NewGuid(),
             BusinessId = request.BusinessId,
-            BirdType = request.BirdType,
-            Source = request.Source,
-            AcquisitionDate = request.AcquisitionDate,
-            InitialCount = request.InitialCount,
-            CurrentCount = request.InitialCount,
+            Name = request.Name,
+            Species = request.Species,
+            Breed = request.Breed,
+            PlacementDate = request.PlacementDate,
             AcquisitionCost = request.AcquisitionCost,
             Notes = request.Notes,
-            IsActive = true,
             LinkedProductId = request.LinkedProductId,
             CreatedAtUtc = DateTime.UtcNow
         };
 
         await _flockRepository.AddAsync(flock);
+
+        // Starting population is the flock's first movement, keeping population
+        // fully computed rather than duplicated as a separately-stored count.
+        await _flockRepository.AddFlockMovementAsync(new FlockMovement
+        {
+            Id = Guid.NewGuid(),
+            FlockId = flock.Id,
+            MovementDate = request.PlacementDate,
+            Direction = "In",
+            Reason = request.InitialSource,
+            Quantity = request.InitialQuantity,
+            Notes = "Initial population",
+            CreatedAtUtc = DateTime.UtcNow
+        });
+
         return (true, null);
     }
 
     public async Task<(bool Succeeded, string? Error)> RecordMovementAsync(RecordFlockMovementRequest request)
     {
-        if (!FlockOptions.MovementReasons.Contains(request.Reason))
+        if (request.Direction != "In" && request.Direction != "Out")
         {
-            return (false, "Invalid movement reason.");
+            return (false, "Direction must be 'In' or 'Out'.");
+        }
+
+        var validReasons = request.Direction == "In" ? FlockOptions.FlockInReasons : FlockOptions.FlockOutReasons;
+        if (!validReasons.Contains(request.Reason))
+        {
+            return (false, $"'{request.Reason}' is not a valid reason for {request.Direction} movements.");
         }
 
         if (request.Quantity <= 0)
@@ -118,63 +139,108 @@ public class FlockService : IFlockService
             return (false, "Flock not found in this business.");
         }
 
-        if (request.Quantity > flock.CurrentCount)
+        if (request.Direction == "Out")
         {
-            return (false, $"Quantity exceeds current count ({flock.CurrentCount}).");
+            var population = await _flockRepository.GetFlockPopulationAsync(request.FlockId);
+            if (request.Quantity > population)
+            {
+                return (false, $"Quantity exceeds current population ({population}).");
+            }
         }
 
-        flock.CurrentCount -= request.Quantity;
-        flock.UpdatedAtUtc = DateTime.UtcNow;
-        await _flockRepository.UpdateAsync(flock);
-
-        var movement = new FlockMovement
+        await _flockRepository.AddFlockMovementAsync(new FlockMovement
         {
             Id = Guid.NewGuid(),
-            FlockId = flock.Id,
+            FlockId = request.FlockId,
+            MovementDate = request.MovementDate,
+            Direction = request.Direction,
             Reason = request.Reason,
             Quantity = request.Quantity,
-            MovementDate = request.MovementDate,
             Notes = request.Notes,
             CreatedAtUtc = DateTime.UtcNow
-        };
+        });
 
-        await _flockRepository.AddMovementAsync(movement);
         return (true, null);
     }
 
-    public async Task<(bool Succeeded, string? Error)> RecordEggProductionAsync(RecordEggProductionRequest request)
+    public async Task<(bool Succeeded, string? Error)> RecordEggMovementAsync(RecordEggMovementRequest request)
     {
-        if (request.QuantityProduced <= 0)
+        if (request.Direction != "In" && request.Direction != "Out")
         {
-            return (false, "Quantity produced must be greater than zero.");
+            return (false, "Direction must be 'In' or 'Out'.");
         }
 
-        var flock = await _flockRepository.GetByIdAsync(request.BusinessId, request.FlockId);
-        if (flock is null)
+        if (request.Reason == "Sold")
         {
-            return (false, "Flock not found in this business.");
+            return (false, "Sold egg movements are recorded automatically through the Sales page.");
         }
 
-        if (!flock.LinkedProductId.HasValue)
+        var validReasons = request.Direction == "In" ? FlockOptions.EggInReasons : FlockOptions.EggOutReasons;
+        if (!validReasons.Contains(request.Reason))
         {
-            return (false, "This flock has no linked product. Edit the flock to link it to an egg product before recording production.");
+            return (false, $"'{request.Reason}' is not a valid reason for {request.Direction} egg movements.");
         }
 
-        var production = new EggProduction
+        if (request.Quantity <= 0)
+        {
+            return (false, "Quantity must be greater than zero.");
+        }
+
+        var product = await _productRepository.GetByIdAsync(request.BusinessId, request.ProductId);
+        if (product is null)
+        {
+            return (false, "Product not found in this business.");
+        }
+
+        if (request.Reason == "Hatched" && !request.FlockId.HasValue)
+        {
+            return (false, "A flock must be selected for hatched eggs, since it adds birds to that flock.");
+        }
+
+        if (request.Direction == "Out")
+        {
+            var stock = await _flockRepository.GetProductEggStockAsync(request.BusinessId, request.ProductId);
+            if (request.Quantity > stock)
+            {
+                return (false, $"Quantity exceeds current egg stock ({stock}).");
+            }
+        }
+
+        await _flockRepository.AddEggMovementAsync(new EggMovement
         {
             Id = Guid.NewGuid(),
-            FlockId = flock.Id,
-            ProductionDate = request.ProductionDate,
-            QuantityProduced = request.QuantityProduced,
+            BusinessId = request.BusinessId,
+            ProductId = request.ProductId,
+            FlockId = request.FlockId,
+            MovementDate = request.MovementDate,
+            Direction = request.Direction,
+            Reason = request.Reason,
+            Quantity = request.Quantity,
             Notes = request.Notes,
             CreatedAtUtc = DateTime.UtcNow
-        };
+        });
 
-        await _flockRepository.AddEggProductionAsync(production);
+        // Keep today's stored Inventory number in sync alongside the new
+        // ledger, without yet making the ledger the sole source of truth
+        // (that switch is Step 2, when Sale is wired to this same ledger).
+        var delta = request.Direction == "In" ? (decimal)request.Quantity : -(decimal)request.Quantity;
+        await _inventoryService.AdjustQuantityAsync(request.BusinessId, request.ProductId, delta);
 
-        // Egg production adds to the linked product's sellable inventory.
-        await _inventoryService.AdjustQuantityAsync(
-            request.BusinessId, flock.LinkedProductId.Value, request.QuantityProduced);
+        // Hatched eggs become new birds in the same flock.
+        if (request.Reason == "Hatched")
+        {
+            await _flockRepository.AddFlockMovementAsync(new FlockMovement
+            {
+                Id = Guid.NewGuid(),
+                FlockId = request.FlockId!.Value,
+                MovementDate = request.MovementDate,
+                Direction = "In",
+                Reason = "Hatched",
+                Quantity = request.Quantity,
+                Notes = "Auto-recorded from hatched egg movement",
+                CreatedAtUtc = DateTime.UtcNow
+            });
+        }
 
         return (true, null);
     }

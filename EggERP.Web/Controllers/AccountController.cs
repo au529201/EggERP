@@ -205,7 +205,7 @@ public class AccountController : ControllerBase
     <div class='auth-page'>
         <div class='auth-left'>
             <div class='auth-logo'>
-                <img src='/images/logoEEE.png' alt='EzEggERP' />
+                <img src='/images/logo.png' alt='EzEggERP' />
                 <span>EzEggERP</span>
             </div>
             <p class='auth-tagline'>Streamline your poultry farm operations. From hatchery to harvest.</p>
@@ -213,7 +213,7 @@ public class AccountController : ControllerBase
         <div class='auth-right'>
             <div class='auth-card'>
                 {authBody}
-            </div>
+            </div>Flock
         </div>
     </div>
 </body>

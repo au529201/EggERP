@@ -60,7 +60,7 @@ public class FlockController : ControllerBase
         await _activityLogService.LogAsync(
             currentUser.BusinessId, currentUser.Id, currentUser.FullName,
             "Created Flock", "Flock", null,
-            $"{request.BirdType} — {request.InitialCount} birds ({request.Source})");
+            $"{request.Name} ({request.Species}) — {request.InitialQuantity} birds ({request.InitialSource})");
 
         return Ok();
     }
@@ -85,13 +85,13 @@ public class FlockController : ControllerBase
         await _activityLogService.LogAsync(
             currentUser.BusinessId, currentUser.Id, currentUser.FullName,
             "Recorded Flock Movement", "FlockMovement", request.FlockId,
-            $"{request.Reason}: {request.Quantity} bird(s)");
+            $"{request.Direction}/{request.Reason}: {request.Quantity} bird(s)");
 
         return Ok();
     }
 
-    [HttpPost("egg-production")]
-    public async Task<IActionResult> RecordEggProduction(RecordEggProductionRequest request)
+    [HttpPost("egg-movements")]
+    public async Task<IActionResult> RecordEggMovement(RecordEggMovementRequest request)
     {
         var currentUser = await _userManager.GetUserAsync(User);
         if (currentUser is null)
@@ -101,7 +101,7 @@ public class FlockController : ControllerBase
 
         request.BusinessId = currentUser.BusinessId;
 
-        var (succeeded, error) = await _flockService.RecordEggProductionAsync(request);
+        var (succeeded, error) = await _flockService.RecordEggMovementAsync(request);
         if (!succeeded)
         {
             return BadRequest(error);
@@ -109,8 +109,8 @@ public class FlockController : ControllerBase
 
         await _activityLogService.LogAsync(
             currentUser.BusinessId, currentUser.Id, currentUser.FullName,
-            "Recorded Egg Production", "EggProduction", request.FlockId,
-            $"{request.QuantityProduced} egg(s) on {request.ProductionDate:d}");
+            "Recorded Egg Movement", "EggMovement", request.FlockId,
+            $"{request.Direction}/{request.Reason}: {request.Quantity} egg(s)");
 
         return Ok();
     }

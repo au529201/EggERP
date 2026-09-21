@@ -1,14 +1,15 @@
 ﻿namespace EggERP.Application.Flocks;
 
-// Controlled value lists for Flocks, per MVP decision to avoid a full
-// lookup table. If these ever need to become admin-configurable, this
-// is the single place to convert into a database-backed list.
 public static class FlockOptions
 {
-    public static readonly string[] BirdTypes = { "Chicken", "Duck", "Quail", "Other" };
+    public static readonly string[] Species = { "Chicken", "Duck", "Quail", "Goose", "Other" };
 
-    public static readonly string[] Sources = { "Bought", "Hatched", "Given", "Other" };
+    public static readonly string[] FlockInReasons = { "Bought", "Given", "Hatched" };
+    public static readonly string[] FlockOutReasons = { "Sold", "Died", "Missing", "Given", "Culled" };
 
-    public static readonly string[] MovementReasons =
-        { "Sold", "Died", "Missing", "Given Away", "Transferred", "Adjustment", "Other" };
+    public static readonly string[] EggInReasons = { "Laid", "Bought" };
+
+    // "Sold" is intentionally excluded here — it's reserved for the Sale
+    // workflow (Step 2), which will auto-create Out/Sold egg movements.
+    public static readonly string[] EggOutReasons = { "Broken", "Stolen", "Missing", "Hatched" };
 }

@@ -28,7 +28,7 @@ public class EggERPDbContext : IdentityDbContext<ApplicationUser, IdentityRole<G
     public DbSet<Flock> Flocks => Set<Flock>();
     public DbSet<FlockMovement> FlockMovements => Set<FlockMovement>();
     public DbSet<ActivityLog> ActivityLogs => Set<ActivityLog>();
-    public DbSet<EggProduction> EggProductions => Set<EggProduction>();
+    public DbSet<EggMovement> EggMovements => Set<EggMovement>();
     protected override void OnModelCreating(ModelBuilder builder)
     {
         base.OnModelCreating(builder);

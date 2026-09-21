@@ -1,10 +1,14 @@
 ﻿namespace EggERP.Domain.Entities;
 
-public class FlockMovement
+public class EggMovement
 {
     public Guid Id { get; set; }
 
-    public Guid FlockId { get; set; }
+    public Guid BusinessId { get; set; }
+
+    public Guid ProductId { get; set; }
+
+    public Guid? FlockId { get; set; }
 
     public DateTime MovementDate { get; set; }
 

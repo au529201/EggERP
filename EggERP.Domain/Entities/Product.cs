@@ -19,6 +19,7 @@ public class Product
     public decimal SellingPrice { get; set; }
 
     public string Unit { get; set; } = "pcs";
+    public string? Category { get; set; } // Egg, Bird, Feed, Other
 
     public bool IsActive { get; set; } = true;
 

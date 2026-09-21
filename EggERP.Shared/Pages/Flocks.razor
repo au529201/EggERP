@@ -10,8 +10,8 @@
         <a class="btn btn-primary mb-3" href="/flocks/add">+ Add Flock</a>
     </Authorized>
 </AuthorizeView>
-<a class="btn btn-secondary mb-3 ms-2" href="/flocks/movements/add">Record Movement</a>
-<a class="btn btn-secondary mb-3 ms-2" href="/flocks/eggs/add">Record Egg Production</a>
+<a class="btn btn-secondary mb-3 ms-2" href="/flocks/movements/add">Record Bird Movement</a>
+<a class="btn btn-secondary mb-3 ms-2" href="/flocks/eggs/add">Record Egg Movement</a>
 
 @if (flocks is null)
 {
@@ -26,13 +26,13 @@ else
     <table class="table">
         <thead>
             <tr>
-                <th>Bird Type</th>
-                <th>Source</th>
-                <th>Acquisition Date</th>
-                <th>Initial Count</th>
-                <th>Current Count</th>
+                <th>Name</th>
+                <th>Species</th>
+                <th>Breed</th>
+                <th>Placed</th>
+                <th>Population</th>
                 <th>Cost</th>
-                <th>Linked Egg Product</th>
+                <th>Linked Product</th>
                 <th>Notes</th>
             </tr>
         </thead>
@@ -40,11 +40,11 @@ else
             @foreach (var flock in flocks)
             {
                 <tr>
-                    <td>@flock.BirdType</td>
-                    <td>@flock.Source</td>
-                    <td>@flock.AcquisitionDate.ToString("d")</td>
-                    <td>@flock.InitialCount</td>
-                    <td>@flock.CurrentCount</td>
+                    <td>@flock.Name</td>
+                    <td>@flock.Species</td>
+                    <td>@flock.Breed</td>
+                    <td>@flock.PlacementDate.ToString("d")</td>
+                    <td>@flock.CurrentPopulation</td>
                     <td>@(flock.AcquisitionCost?.ToString("N2") ?? "-")</td>
                     <td>@(flock.LinkedProductName ?? "-")</td>
                     <td>@flock.Notes</td>

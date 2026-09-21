@@ -1,32 +1,19 @@
-﻿@page "/flocks/movements/add"
+﻿@page "/flocks/eggs/add"
 @using EggERP.Shared.Models
 @using EggERP.Shared.Services
 @inject IFlockApiService FlockApiService
+@inject IProductApiService ProductApiService
 @inject NavigationManager Navigation
 
-<h3>Record Bird Movement</h3>
+<h3>Record Egg Movement</h3>
 
-@if (flocks is null)
+@if (products is null || flocks is null)
 {
     <p>Loading...</p>
-}
-else if (flocks.Count == 0)
-{
-    <p>No flocks available. <a href="/flocks/add">Add a flock</a> first.</p>
 }
 else
 {
     <EditForm Model="@movement" OnValidSubmit="HandleSave">
-        <div class="mb-3">
-            <label>Flock</label>
-            <select class="form-select" @bind="movement.FlockId">
-                @foreach (var flock in flocks)
-                {
-                    <option value="@flock.Id">@flock.Name (@flock.CurrentPopulation on hand)</option>
-                }
-            </select>
-        </div>
-
         <div class="mb-3">
             <label>Direction</label>
             <select class="form-select" @bind="movement.Direction">
@@ -41,6 +28,31 @@ else
                 @foreach (var reason in CurrentReasons)
                 {
                     <option value="@reason">@reason</option>
+                }
+            </select>
+            @if (movement.Direction == "Out" && movement.Reason != "Hatched")
+            {
+                <small class="form-text text-muted">"Sold" is not available here — sales are recorded through the Sales page.</small>
+            }
+        </div>
+
+        <div class="mb-3">
+            <label>Product</label>
+            <select class="form-select" @bind="selectedProductId">
+                @foreach (var product in products)
+                {
+                    <option value="@product.Id">@product.Name</option>
+                }
+            </select>
+        </div>
+
+        <div class="mb-3">
+            <label>Flock @(movement.Reason == "Hatched" ? "(required)" : "(optional)")</label>
+            <select class="form-select" @bind="selectedFlockId">
+                <option value="">-- None --</option>
+                @foreach (var flock in flocks)
+                {
+                    <option value="@flock.Id">@flock.Name</option>
                 }
             </select>
         </div>
@@ -70,22 +82,26 @@ else
 }
 
 @code {
-    private readonly string[] inReasons = { "Bought", "Given", "Hatched" };
-    private readonly string[] outReasons = { "Sold", "Died", "Missing", "Given", "Culled" };
+    private readonly string[] inReasons = { "Laid", "Bought" };
+    private readonly string[] outReasons = { "Broken", "Stolen", "Missing", "Hatched" };
 
     private string[] CurrentReasons => movement.Direction == "In" ? inReasons : outReasons;
 
+    private List<ProductDto>? products;
     private List<FlockDto>? flocks;
-    private RecordFlockMovementRequest movement = new();
+    private RecordEggMovementRequest movement = new();
+    private string selectedProductId = "";
+    private string selectedFlockId = "";
     private string? errorMessage;
+
+    private readonly Guid businessId = Guid.Parse("11111111-1111-1111-1111-111111111111");
 
     protected override async Task OnInitializedAsync()
     {
+        products = await ProductApiService.GetProductsAsync(businessId);
         flocks = await FlockApiService.GetFlocksAsync();
-        if (flocks.Count > 0)
-        {
-            movement.FlockId = flocks[0].Id;
-        }
+
+        if (products.Count > 0) selectedProductId = products[0].Id.ToString();
         movement.Reason = CurrentReasons[0];
     }
 
@@ -93,7 +109,10 @@ else
     {
         errorMessage = null;
 
-        var error = await FlockApiService.RecordMovementAsync(movement);
+        movement.ProductId = Guid.TryParse(selectedProductId, out var pid) ? pid : Guid.Empty;
+        movement.FlockId = Guid.TryParse(selectedFlockId, out var fid) ? fid : null;
+
+        var error = await FlockApiService.RecordEggMovementAsync(movement);
         if (error is not null)
         {
             errorMessage = error;

@@ -17,8 +17,8 @@ public class FlockRepository : IFlockRepository
     public Task<List<Flock>> GetActiveByBusinessIdAsync(Guid businessId)
     {
         return _dbContext.Flocks
-            .Where(f => f.BusinessId == businessId && f.IsActive)
-            .OrderByDescending(f => f.AcquisitionDate)
+            .Where(f => f.BusinessId == businessId && f.CloseDate == null)
+            .OrderByDescending(f => f.PlacementDate)
             .ToListAsync();
     }
 
@@ -35,24 +35,43 @@ public class FlockRepository : IFlockRepository
         return flock;
     }
 
-    public async Task<bool> UpdateAsync(Flock flock)
-    {
-        _dbContext.Flocks.Update(flock);
-        var affected = await _dbContext.SaveChangesAsync();
-        return affected > 0;
-    }
-
-    public async Task<FlockMovement> AddMovementAsync(FlockMovement movement)
+    public async Task<FlockMovement> AddFlockMovementAsync(FlockMovement movement)
     {
         _dbContext.FlockMovements.Add(movement);
         await _dbContext.SaveChangesAsync();
         return movement;
     }
 
-    public async Task<EggProduction> AddEggProductionAsync(EggProduction production)
+    public async Task<int> GetFlockPopulationAsync(Guid flockId)
     {
-        _dbContext.EggProductions.Add(production);
+        var inSum = await _dbContext.FlockMovements
+            .Where(m => m.FlockId == flockId && m.Direction == "In")
+            .SumAsync(m => (int?)m.Quantity) ?? 0;
+
+        var outSum = await _dbContext.FlockMovements
+            .Where(m => m.FlockId == flockId && m.Direction == "Out")
+            .SumAsync(m => (int?)m.Quantity) ?? 0;
+
+        return inSum - outSum;
+    }
+
+    public async Task<EggMovement> AddEggMovementAsync(EggMovement movement)
+    {
+        _dbContext.EggMovements.Add(movement);
         await _dbContext.SaveChangesAsync();
-        return production;
+        return movement;
+    }
+
+    public async Task<int> GetProductEggStockAsync(Guid businessId, Guid productId)
+    {
+        var inSum = await _dbContext.EggMovements
+            .Where(m => m.BusinessId == businessId && m.ProductId == productId && m.Direction == "In")
+            .SumAsync(m => (int?)m.Quantity) ?? 0;
+
+        var outSum = await _dbContext.EggMovements
+            .Where(m => m.BusinessId == businessId && m.ProductId == productId && m.Direction == "Out")
+            .SumAsync(m => (int?)m.Quantity) ?? 0;
+
+        return inSum - outSum;
     }
 }
