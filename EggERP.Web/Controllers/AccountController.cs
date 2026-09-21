@@ -26,6 +26,28 @@ public class AccountController : ControllerBase
         _configuration = configuration;
     }
 
+    // Small inline eye / eye-off icons used by the show/hide password toggle.
+    // Kept as constants so they're not retyped on every page.
+    private const string EyeIconSvg = @"<svg class='icon-eye' xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' width='20' height='20' fill='none' stroke='currentColor' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'><path d='M1 12s4-7 11-7 11 7 11 7-4 7-11 7-11-7-11-7z'></path><circle cx='12' cy='12' r='3'></circle></svg>";
+    private const string EyeOffIconSvg = @"<svg class='icon-eye-off' style='display:none' xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' width='20' height='20' fill='none' stroke='currentColor' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'><path d='M17.94 17.94A10.94 10.94 0 0 1 12 19c-7 0-11-7-11-7a20.3 20.3 0 0 1 5.06-5.94M9.9 4.24A10.94 10.94 0 0 1 12 4c7 0 11 7 11 7a20.29 20.29 0 0 1-2.16 3.19M14.12 14.12a3 3 0 1 1-4.24-4.24'></path><line x1='1' y1='1' x2='23' y2='23'></line></svg>";
+
+    // A password field with a working show/hide eye button.
+    // inputId must be unique per page so the toggle script can find it.
+    private static string PasswordField(string labelText, string inputId, string inputName)
+    {
+        return $@"
+            <div class='mb-3'>
+                <label>{labelText}</label>
+                <div class='password-field'>
+                    <input type='password' id='{inputId}' name='{inputName}' class='form-control' required />
+                    <button type='button' class='toggle-password' onclick=""togglePassword('{inputId}', this)"" aria-label='Show password'>
+                        {EyeIconSvg}
+                        {EyeOffIconSvg}
+                    </button>
+                </div>
+            </div>";
+    }
+
     // Shared page shell: full-bleed background photo, marketing panel on the
     // left (sharp, readable over the photo), frosted-glass card on the right
     // (translucent + backdrop-blur, so the photo still reads through it).
@@ -68,23 +90,14 @@ public class AccountController : ControllerBase
         }}
 
         .auth-left .auth-logo {{
-            display: flex;
-            align-items: center;
-            gap: 14px;
-            margin-bottom: 28px;
+            margin-bottom: 24px;
         }}
 
         .auth-left .auth-logo img {{
-            height: 56px;
-            width: 56px;
+            height: 340px;
+            width: auto;
             object-fit: contain;
-        }}
-
-        .auth-left .auth-logo span {{
-            font-family: 'Fraunces', Georgia, serif;
-            font-size: 2.1rem;
-            font-weight: 700;
-            color: #FFFFFF;
+            display: block;
         }}
 
         .auth-tagline {{
@@ -150,6 +163,27 @@ public class AccountController : ControllerBase
             font-weight: 600;
         }}
 
+        .password-field {{
+            position: relative;
+        }}
+
+        .password-field .form-control {{
+            padding-right: 44px;
+        }}
+
+        .password-field .toggle-password {{
+            position: absolute;
+            top: 50%;
+            right: 10px;
+            transform: translateY(-50%);
+            background: none;
+            border: none;
+            padding: 2px;
+            cursor: pointer;
+            color: var(--egg-brown);
+            display: flex;
+        }}
+
         .auth-alert {{
             border-radius: 8px;
             padding: 10px 14px;
@@ -190,8 +224,10 @@ public class AccountController : ControllerBase
                 text-align: center;
             }}
 
-            .auth-left .auth-logo {{
-                justify-content: center;
+            .auth-left .auth-logo img {{
+                height: 100px;
+                margin-left: auto;
+                margin-right: auto;
             }}
 
             .auth-right {{
@@ -205,17 +241,34 @@ public class AccountController : ControllerBase
     <div class='auth-page'>
         <div class='auth-left'>
             <div class='auth-logo'>
-                <img src='/images/logo.png' alt='EzEggERP' />
-                <span>EzEggERP</span>
-            </div>
+<img src='/_content/EggERP.Shared/images/logoEz.png' alt='EzEggERP' />
+</div>
             <p class='auth-tagline'>Streamline your poultry farm operations. From hatchery to harvest.</p>
         </div>
         <div class='auth-right'>
             <div class='auth-card'>
                 {authBody}
-            </div>Flock
+            </div>
         </div>
     </div>
+    <script>
+        function togglePassword(inputId, btn) {{
+            var input = document.getElementById(inputId);
+            var eyeOn = btn.querySelector('.icon-eye');
+            var eyeOff = btn.querySelector('.icon-eye-off');
+            if (input.type === 'password') {{
+                input.type = 'text';
+                eyeOn.style.display = 'none';
+                eyeOff.style.display = 'block';
+                btn.setAttribute('aria-label', 'Hide password');
+            }} else {{
+                input.type = 'password';
+                eyeOn.style.display = 'block';
+                eyeOff.style.display = 'none';
+                btn.setAttribute('aria-label', 'Show password');
+            }}
+        }}
+    </script>
 </body>
 </html>";
     }
@@ -235,10 +288,7 @@ public class AccountController : ControllerBase
                     <label>Email</label>
                     <input type='email' name='email' class='form-control' required />
                 </div>
-                <div class='mb-3'>
-                    <label>Password</label>
-                    <input type='password' name='password' class='form-control' required />
-                </div>
+                {PasswordField("Password", "loginPassword", "password")}
                 <button type='submit' class='btn btn-primary'>Log In</button>
             </form>
             <div class='auth-links'>
@@ -292,15 +342,9 @@ public class AccountController : ControllerBase
             <form method='post' action='/Account/SetPassword'>
                 <input type='hidden' name='email' value='{email}' />
                 <input type='hidden' name='token' value='{token}' />
-                <div class='mb-3'>
-                    <label>New Password</label>
-                    <input type='password' name='password' class='form-control' required />
-                    <small class='form-text' style='color: rgba(255,255,255,0.7);'>At least 8 characters, including an uppercase letter, a lowercase letter, and a number.</small>
-                </div>
-                <div class='mb-3'>
-                    <label>Confirm Password</label>
-                    <input type='password' name='confirmPassword' class='form-control' required />
-                </div>
+                {PasswordField("New Password", "newPassword", "password")}
+                <small class='form-text' style='color: rgba(255,255,255,0.7); display:block; margin-top:-12px; margin-bottom:16px;'>At least 8 characters, including an uppercase letter, a lowercase letter, and a number.</small>
+                {PasswordField("Confirm Password", "confirmPasswordField", "confirmPassword")}
                 <button type='submit' class='btn btn-primary'>Set Password</button>
             </form>";
         return Content(RenderAuthPage("Set Password", body), "text/html");
