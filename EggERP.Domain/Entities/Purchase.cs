@@ -24,7 +24,9 @@ public class Purchase
 
     public string? ReferenceNumber { get; set; }
 
-    public string Status { get; set; } = "Completed";
+    public string? BankName { get; set; }
+
+    public string Status { get; set; } = "Paid"; // "Paid" or "Pending"
 
     public DateTime CreatedAtUtc { get; set; }
 

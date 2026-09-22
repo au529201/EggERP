@@ -1,41 +1,37 @@
 ﻿@page "/products/add"
-@attribute [Authorize(Roles = "Admin,Manager")]
 @using EggERP.Shared.Models
 @using EggERP.Shared.Services
 @inject IProductApiService ProductApiService
 @inject NavigationManager Navigation
 
-<h3>Products</h3>
-
-<a class="btn btn-primary mb-3" href="/products/add">+ Add Product</a>
+<h3>Add Product</h3>
 
 <EditForm Model="@newProduct" OnValidSubmit="HandleSave">
     <div class="mb-3">
-        <label>Category ID</label>
-        <InputText class="form-control" @bind-Value="newProduct.CategoryId" />
+        <label>Group</label>
+        <select class="form-select" @bind="newProduct.Group">
+            <option value="Flock">Flock</option>
+            <option value="Egg">Egg</option>
+        </select>
     </div>
     <div class="mb-3">
-        <label>Name</label>
-        <InputText class="form-control" @bind-Value="newProduct.Name" />
-    </div>
-    <div class="mb-3">
-        <label>SKU</label>
-        <InputText class="form-control" @bind-Value="newProduct.Sku" />
+        <label>Type</label>
+        <InputText class="form-control" @bind-Value="newProduct.Type" placeholder="e.g. Chicken, Duck, Quail" />
     </div>
     <div class="mb-3">
         <label>Description</label>
-        <InputText class="form-control" @bind-Value="newProduct.Description" />
+        <InputText class="form-control" @bind-Value="newProduct.Description" placeholder="e.g. Breeder, Layer, Small, Large" />
     </div>
     <div class="mb-3">
         <label>Unit</label>
-        <InputText class="form-control" @bind-Value="newProduct.Unit" />
+        <InputText class="form-control" @bind-Value="newProduct.Unit" placeholder="pcs" />
     </div>
     <div class="mb-3">
         <label>Cost Price</label>
         <InputNumber class="form-control" @bind-Value="newProduct.CostPrice" />
     </div>
     <div class="mb-3">
-        <label>Selling Price</label>
+        <label>Sell Price</label>
         <InputNumber class="form-control" @bind-Value="newProduct.SellingPrice" />
     </div>
 
@@ -48,54 +44,24 @@
 </EditForm>
 
 @code {
-    private ProductFormModel newProduct = new();
-    private string? errorMessage;
-
-    // Hard-coded test business ID for now, until auth/business context exists
     private readonly Guid businessId = Guid.Parse("11111111-1111-1111-1111-111111111111");
+
+    private CreateProductRequest newProduct = new();
+    private string? errorMessage;
 
     private async Task HandleSave()
     {
         errorMessage = null;
-
-        if (!Guid.TryParse(newProduct.CategoryId, out var categoryId))
-        {
-            errorMessage = "Category ID must be a valid GUID.";
-            return;
-        }
-
-        var request = new CreateProductRequest
-        {
-            BusinessId = businessId,
-            CategoryId = categoryId,
-            Name = newProduct.Name,
-            Sku = newProduct.Sku,
-            Description = newProduct.Description,
-            Unit = newProduct.Unit,
-            CostPrice = newProduct.CostPrice,
-            SellingPrice = newProduct.SellingPrice,
-            IsActive = true
-        };
+        newProduct.BusinessId = businessId;
 
         try
         {
-            await ProductApiService.CreateProductAsync(request);
+            await ProductApiService.CreateProductAsync(newProduct);
             Navigation.NavigateTo("/products");
         }
         catch (Exception ex)
         {
             errorMessage = $"Failed to save product: {ex.Message}";
         }
-    }
-
-    private class ProductFormModel
-    {
-        public string CategoryId { get; set; } = string.Empty;
-        public string Name { get; set; } = string.Empty;
-        public string Sku { get; set; } = string.Empty;
-        public string Description { get; set; } = string.Empty;
-        public string Unit { get; set; } = string.Empty;
-        public decimal CostPrice { get; set; }
-        public decimal SellingPrice { get; set; }
     }
 }

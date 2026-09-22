@@ -21,11 +21,11 @@ else
         <thead>
             <tr>
                 <th>Product</th>
-                <th>SKU</th>
                 <th>Qty on Hand</th>
                 <th>Reorder Level</th>
                 <th>Status</th>
-                <th>Adjust</th>
+
+
             </tr>
         </thead>
         <tbody>
@@ -33,7 +33,6 @@ else
             {
                 <tr>
                     <td>@row.ProductName</td>
-                    <td>@row.Sku</td>
                     <td>@row.QuantityOnHand</td>
                     <td>@row.ReorderLevel</td>
                     <td>
@@ -46,11 +45,7 @@ else
                             <span class="badge bg-success">OK</span>
                         }
                     </td>
-                    <td>
-                        <input type="number" step="1" class="form-control form-control-sm d-inline-block" style="width:80px" @bind="row.AdjustAmount" />
-                        <button class="btn btn-sm btn-primary" @onclick="() => Adjust(row)">Add</button>
-                        <button class="btn btn-sm btn-secondary" @onclick="() => Remove(row)">Remove</button>
-                    </td>
+
                 </tr>
             }
         </tbody>
@@ -62,10 +57,8 @@ else
     {
         public Guid ProductId { get; set; }
         public string ProductName { get; set; } = string.Empty;
-        public string Sku { get; set; } = string.Empty;
         public decimal QuantityOnHand { get; set; }
         public decimal ReorderLevel { get; set; }
-        public decimal AdjustAmount { get; set; } = 1;
     }
 
     private List<InventoryRow> rows = new();
@@ -90,7 +83,6 @@ else
             {
                 ProductId = p.Id,
                 ProductName = p.Name,
-                Sku = p.Sku,
                 QuantityOnHand = invRecord?.QuantityOnHand ?? 0,
                 ReorderLevel = invRecord?.ReorderLevel ?? 0
             };
@@ -99,15 +91,5 @@ else
         isLoading = false;
     }
 
-    private async Task Adjust(InventoryRow row)
-    {
-        await InventoryApiService.AdjustQuantityAsync(businessId, row.ProductId, row.AdjustAmount);
-        await LoadData();
-    }
-
-    private async Task Remove(InventoryRow row)
-    {
-        await InventoryApiService.AdjustQuantityAsync(businessId, row.ProductId, -row.AdjustAmount);
-        await LoadData();
-    }
+   
 }

@@ -1,5 +1,4 @@
 ﻿@page "/products/edit/{Id:guid}"
-@attribute [Authorize(Roles = "Admin,Manager")]
 @using EggERP.Shared.Models
 @using EggERP.Shared.Services
 @inject IProductApiService ProductApiService
@@ -19,16 +18,15 @@ else
 {
     <EditForm Model="@editModel" OnValidSubmit="HandleSave">
         <div class="mb-3">
-            <label>Category ID</label>
-            <InputText class="form-control" @bind-Value="editModel.CategoryId" />
+            <label>Group</label>
+            <select class="form-select" @bind="editModel.Group">
+                <option value="Flock">Flock</option>
+                <option value="Egg">Egg</option>
+            </select>
         </div>
         <div class="mb-3">
-            <label>Name</label>
-            <InputText class="form-control" @bind-Value="editModel.Name" />
-        </div>
-        <div class="mb-3">
-            <label>SKU</label>
-            <InputText class="form-control" @bind-Value="editModel.Sku" />
+            <label>Type</label>
+            <InputText class="form-control" @bind-Value="editModel.Type" />
         </div>
         <div class="mb-3">
             <label>Description</label>
@@ -43,7 +41,7 @@ else
             <InputNumber class="form-control" @bind-Value="editModel.CostPrice" />
         </div>
         <div class="mb-3">
-            <label>Selling Price</label>
+            <label>Sell Price</label>
             <InputNumber class="form-control" @bind-Value="editModel.SellingPrice" />
         </div>
 
@@ -60,13 +58,12 @@ else
     [Parameter]
     public Guid Id { get; set; }
 
-    private ProductFormModel editModel = new();
+    private readonly Guid businessId = Guid.Parse("11111111-1111-1111-1111-111111111111");
+
+    private UpdateProductRequest editModel = new();
     private bool isLoading = true;
     private bool notFound = false;
     private string? errorMessage;
-
-    // Hard-coded test business ID for now, until auth/business context exists
-    private readonly Guid businessId = Guid.Parse("11111111-1111-1111-1111-111111111111");
 
     protected override async Task OnInitializedAsync()
     {
@@ -79,15 +76,18 @@ else
             return;
         }
 
-        editModel = new ProductFormModel
+        editModel = new UpdateProductRequest
         {
-            CategoryId = product.CategoryId.ToString(),
-            Name = product.Name,
-            Sku = product.Sku,
-            Description = product.Description ?? string.Empty,
-            Unit = product.Unit,
+            Id = product.Id,
+            BusinessId = businessId,
+            CategoryId = product.CategoryId,
+            Group = product.Group,
+            Type = product.Type,
+            Description = product.Description,
             CostPrice = product.CostPrice,
-            SellingPrice = product.SellingPrice
+            SellingPrice = product.SellingPrice,
+            Unit = product.Unit,
+            IsActive = true
         };
 
         isLoading = false;
@@ -97,45 +97,14 @@ else
     {
         errorMessage = null;
 
-        if (!Guid.TryParse(editModel.CategoryId, out var categoryId))
-        {
-            errorMessage = "Category ID must be a valid GUID.";
-            return;
-        }
-
-        var request = new UpdateProductRequest
-        {
-            Id = Id,
-            BusinessId = businessId,
-            CategoryId = categoryId,
-            Name = editModel.Name,
-            Sku = editModel.Sku,
-            Description = editModel.Description,
-            Unit = editModel.Unit,
-            CostPrice = editModel.CostPrice,
-            SellingPrice = editModel.SellingPrice,
-            IsActive = true
-        };
-
         try
         {
-            await ProductApiService.UpdateProductAsync(request);
+            await ProductApiService.UpdateProductAsync(editModel);
             Navigation.NavigateTo("/products");
         }
         catch (Exception ex)
         {
             errorMessage = $"Failed to save product: {ex.Message}";
         }
-    }
-
-    private class ProductFormModel
-    {
-        public string CategoryId { get; set; } = string.Empty;
-        public string Name { get; set; } = string.Empty;
-        public string Sku { get; set; } = string.Empty;
-        public string Description { get; set; } = string.Empty;
-        public string Unit { get; set; } = string.Empty;
-        public decimal CostPrice { get; set; }
-        public decimal SellingPrice { get; set; }
     }
 }

@@ -6,11 +6,13 @@ public class Product
 
     public Guid BusinessId { get; set; }
 
-    public Guid CategoryId { get; set; }
+    public Guid? CategoryId { get; set; }
 
-    public string Name { get; set; } = string.Empty;
+    public string Group { get; set; } = "Flock"; // "Flock" or "Egg"
 
-    public string? SKU { get; set; }
+    public string Type { get; set; } = string.Empty; // Chicken, Duck, Quail, Geese, Turkey, Other
+
+    public string Name { get; set; } = string.Empty; // auto-set: "{Type} - {Description}"
 
     public string? Description { get; set; }
 
@@ -19,7 +21,6 @@ public class Product
     public decimal SellingPrice { get; set; }
 
     public string Unit { get; set; } = "pcs";
-    public string? Category { get; set; } // Egg, Bird, Feed, Other
 
     public bool IsActive { get; set; } = true;
 

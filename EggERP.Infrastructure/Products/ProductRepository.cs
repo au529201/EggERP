@@ -18,7 +18,8 @@ public class ProductRepository : IProductRepository
     {
         return _dbContext.Products
             .Where(p => p.BusinessId == businessId && p.IsActive)
-            .OrderBy(p => p.Name)
+            .OrderBy(p => p.Type)
+            .ThenBy(p => p.Description)
             .ToListAsync();
     }
 
@@ -44,8 +45,9 @@ public class ProductRepository : IProductRepository
             return false;
         }
         existing.CategoryId = product.CategoryId;
+        existing.Group = product.Group;
+        existing.Type = product.Type;
         existing.Name = product.Name;
-        existing.SKU = product.SKU;
         existing.Description = product.Description;
         existing.CostPrice = product.CostPrice;
         existing.SellingPrice = product.SellingPrice;
