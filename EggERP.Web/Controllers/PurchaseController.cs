@@ -53,6 +53,8 @@ public class PurchaseController : ControllerBase
         public string PaymentMethod { get; set; } = "Cash";
         public string? PaymentSource { get; set; }
         public string? ReferenceNumber { get; set; }
+        public string? BankName { get; set; }
+        public string Status { get; set; } = "Paid";
     }
 
     [HttpPost]
@@ -65,7 +67,10 @@ public class PurchaseController : ControllerBase
 
         try
         {
-            var purchase = await _purchaseService.CreatePurchaseAsync(request.BusinessId, request.SupplierId, request.Items, request.PaymentMethod, request.PaymentSource, request.ReferenceNumber);
+            var purchase = await _purchaseService.CreatePurchaseAsync(
+                request.BusinessId, request.SupplierId, request.Items,
+                request.PaymentMethod, request.PaymentSource, request.ReferenceNumber,
+                request.BankName, request.Status);
 
             var currentUser = await _userManager.GetUserAsync(User);
             if (currentUser is not null)
@@ -73,7 +78,7 @@ public class PurchaseController : ControllerBase
                 await _activityLogService.LogAsync(
                     request.BusinessId, currentUser.Id, currentUser.FullName,
                     "Created Purchase", "Purchase", purchase.Id,
-                    $"{request.Items.Count} item(s) — Total: {purchase.TotalAmount:N2} ({request.PaymentMethod})");
+                    $"{request.Items.Count} item(s) — Total: {purchase.TotalAmount:N2} ({request.PaymentMethod}, {request.Status})");
             }
 
             return CreatedAtAction(nameof(GetPurchases), new { businessId = purchase.BusinessId }, purchase);

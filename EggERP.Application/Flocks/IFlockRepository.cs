@@ -6,6 +6,7 @@ public interface IFlockRepository
 {
     Task<List<Flock>> GetActiveByBusinessIdAsync(Guid businessId);
     Task<Flock?> GetByIdAsync(Guid businessId, Guid id);
+    Task<Flock?> GetByLinkedProductIdAsync(Guid businessId, Guid productId);
     Task<Flock> AddAsync(Flock flock);
 
     Task<FlockMovement> AddFlockMovementAsync(FlockMovement movement);

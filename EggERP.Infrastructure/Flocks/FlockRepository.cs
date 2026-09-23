@@ -27,7 +27,11 @@ public class FlockRepository : IFlockRepository
         return _dbContext.Flocks
             .FirstOrDefaultAsync(f => f.BusinessId == businessId && f.Id == id);
     }
-
+    public Task<Flock?> GetByLinkedProductIdAsync(Guid businessId, Guid productId)
+    {
+        return _dbContext.Flocks
+            .FirstOrDefaultAsync(f => f.BusinessId == businessId && f.LinkedProductId == productId);
+    }
     public async Task<Flock> AddAsync(Flock flock)
     {
         _dbContext.Flocks.Add(flock);

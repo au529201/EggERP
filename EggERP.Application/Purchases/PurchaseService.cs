@@ -1,30 +1,65 @@
-﻿using EggERP.Application.Inventory;
+﻿using EggERP.Application.Flocks;
+using EggERP.Application.Inventory;
+using EggERP.Application.Products;
 using EggERP.Domain.Entities;
+
 namespace EggERP.Application.Purchases;
+
 public class PurchaseService : IPurchaseService
 {
     private readonly IPurchaseRepository _purchaseRepository;
     private readonly IInventoryService _inventoryService;
-    public PurchaseService(IPurchaseRepository purchaseRepository, IInventoryService inventoryService)
+    private readonly IProductRepository _productRepository;
+    private readonly IFlockRepository _flockRepository;
+
+    public PurchaseService(
+        IPurchaseRepository purchaseRepository,
+        IInventoryService inventoryService,
+        IProductRepository productRepository,
+        IFlockRepository flockRepository)
     {
         _purchaseRepository = purchaseRepository;
         _inventoryService = inventoryService;
+        _productRepository = productRepository;
+        _flockRepository = flockRepository;
     }
+
     public Task<List<Purchase>> GetPurchasesAsync(Guid businessId)
     {
         return _purchaseRepository.GetByBusinessIdAsync(businessId);
     }
+
     public Task<Purchase?> GetPurchaseByIdAsync(Guid businessId, Guid id)
     {
         return _purchaseRepository.GetByIdAsync(businessId, id);
     }
+
     public Task<List<PurchaseItem>> GetPurchaseItemsAsync(Guid purchaseId)
     {
         return _purchaseRepository.GetItemsByPurchaseIdAsync(purchaseId);
     }
-    public async Task<Purchase> CreatePurchaseAsync(Guid businessId, Guid? supplierId, List<CreatePurchaseItemRequest> items, string paymentMethod, string? paymentSource, string? referenceNumber)
+
+    public async Task<Purchase> CreatePurchaseAsync(
+        Guid businessId,
+        Guid? supplierId,
+        List<CreatePurchaseItemRequest> items,
+        string paymentMethod,
+        string? paymentSource,
+        string? referenceNumber,
+        string? bankName,
+        string status)
     {
         PaymentValidation.EnsureValid(paymentMethod, referenceNumber, paymentSource);
+
+        if (items is null || items.Count == 0)
+        {
+            throw new InvalidOperationException("A purchase must have at least one item.");
+        }
+
+        if (status != "Paid" && status != "Pending")
+        {
+            throw new InvalidOperationException("Status must be 'Paid' or 'Pending'.");
+        }
 
         var purchaseItems = items.Select(i => new PurchaseItem
         {
@@ -52,7 +87,8 @@ public class PurchaseService : IPurchaseService
             PaymentMethod = paymentMethod,
             PaymentSource = paymentSource,
             ReferenceNumber = referenceNumber,
-            Status = "Completed",
+            BankName = bankName,
+            Status = status,
             CreatedAtUtc = DateTime.UtcNow
         };
 
@@ -66,6 +102,49 @@ public class PurchaseService : IPurchaseService
         foreach (var item in purchaseItems)
         {
             await _inventoryService.AdjustQuantityAsync(businessId, item.ProductId, item.Quantity);
+
+            var product = await _productRepository.GetByIdAsync(businessId, item.ProductId);
+            if (product is null)
+            {
+                continue;
+            }
+
+            var qty = (int)item.Quantity;
+
+            if (product.Group == "Flock")
+            {
+                var flock = await _flockRepository.GetByLinkedProductIdAsync(businessId, item.ProductId);
+                if (flock is not null)
+                {
+                    await _flockRepository.AddFlockMovementAsync(new FlockMovement
+                    {
+                        Id = Guid.NewGuid(),
+                        FlockId = flock.Id,
+                        MovementDate = purchase.PurchaseDateUtc,
+                        Direction = "In",
+                        Reason = "Bought",
+                        Quantity = qty,
+                        Notes = $"From Purchase #{purchase.Id}",
+                        CreatedAtUtc = DateTime.UtcNow
+                    });
+                }
+            }
+            else if (product.Group == "Egg")
+            {
+                await _flockRepository.AddEggMovementAsync(new EggMovement
+                {
+                    Id = Guid.NewGuid(),
+                    BusinessId = businessId,
+                    ProductId = item.ProductId,
+                    FlockId = null,
+                    MovementDate = purchase.PurchaseDateUtc,
+                    Direction = "In",
+                    Reason = "Bought",
+                    Quantity = qty,
+                    Notes = $"From Purchase #{purchase.Id}",
+                    CreatedAtUtc = DateTime.UtcNow
+                });
+            }
         }
 
         return createdPurchase;

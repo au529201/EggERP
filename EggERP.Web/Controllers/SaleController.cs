@@ -53,6 +53,7 @@ public class SaleController : ControllerBase
         public string PaymentMethod { get; set; } = "Cash";
         public string? PaymentSource { get; set; }
         public string? ReferenceNumber { get; set; }
+        public string Status { get; set; } = "Paid";
     }
 
     [HttpPost]
@@ -65,18 +66,20 @@ public class SaleController : ControllerBase
 
         try
         {
-            var sale = await _saleService.CreateSaleAsync(request.BusinessId, request.CustomerId, request.Items, request.PaymentMethod, request.PaymentSource, request.ReferenceNumber);
+            var result = await _saleService.CreateSaleAsync(
+                request.BusinessId, request.CustomerId, request.Items,
+                request.PaymentMethod, request.PaymentSource, request.ReferenceNumber, request.Status);
 
             var currentUser = await _userManager.GetUserAsync(User);
             if (currentUser is not null)
             {
                 await _activityLogService.LogAsync(
                     request.BusinessId, currentUser.Id, currentUser.FullName,
-                    "Created Sale", "Sale", sale.Id,
-                    $"{request.Items.Count} item(s) — Total: {sale.TotalAmount:N2} ({request.PaymentMethod})");
+                    "Created Sale", "Sale", result.Sale.Id,
+                    $"{request.Items.Count} item(s) — Total: {result.Sale.TotalAmount:N2} ({request.PaymentMethod}, {request.Status})");
             }
 
-            return CreatedAtAction(nameof(GetSales), new { businessId = sale.BusinessId }, sale);
+            return CreatedAtAction(nameof(GetSales), new { businessId = result.Sale.BusinessId }, result);
         }
         catch (InvalidOperationException ex)
         {

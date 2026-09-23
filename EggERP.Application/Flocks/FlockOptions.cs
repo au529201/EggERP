@@ -4,8 +4,8 @@ public static class FlockOptions
 {
     public static readonly string[] Species = { "Chicken", "Duck", "Quail", "Goose", "Other" };
 
-    public static readonly string[] FlockInReasons = { "Bought", "Given", "Hatched" };
-    public static readonly string[] FlockOutReasons = { "Sold", "Died", "Missing", "Given", "Culled" };
+    public static readonly string[] FlockInReasons = { "Bought", "Moved", "Hatched" };
+    public static readonly string[] FlockOutReasons = { "Sold", "Died", "Missing", "Moved", "Culled" };
 
     public static readonly string[] EggInReasons = { "Laid", "Bought" };
 
