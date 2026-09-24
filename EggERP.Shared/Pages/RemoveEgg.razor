@@ -1,20 +1,20 @@
-﻿@page "/flocks/add"
+﻿@page "/eggs/remove"
 @attribute [Authorize(Roles = "Admin,Manager")]
 @using EggERP.Shared.Models
 @using EggERP.Shared.Services
-@inject IFlockApiService FlockApiService
+@inject IEggApiService EggApiService
 @inject IProductApiService ProductApiService
 @inject NavigationManager Navigation
 
-<h3>Add Flock</h3>
+<h3>Remove Egg</h3>
 
 @if (products is null)
 {
     <p>Loading...</p>
 }
-else if (flockProducts.Count == 0)
+else if (eggProducts.Count == 0)
 {
-    <p>No Flock-type products exist yet. <a href="/products/add">Add one</a> first (set Group = Flock).</p>
+    <p>No Egg-type products exist yet.</p>
 }
 else
 {
@@ -23,7 +23,7 @@ else
             <label>Product</label>
             <select class="form-select" @bind="selectedProductId">
                 <option value="">Select product</option>
-                @foreach (var product in flockProducts)
+                @foreach (var product in eggProducts)
                 {
                     <option value="@product.Id">@product.Type - @product.Description</option>
                 }
@@ -33,13 +33,16 @@ else
         <div class="mb-3">
             <label>Source</label>
             <select class="form-select" @bind="request.Reason">
-                <option value="Bought">Bought</option>
+                <option value="Sold">Sold</option>
                 <option value="Moved">Moved</option>
+                <option value="Broken">Broken</option>
+                <option value="Stolen">Stolen</option>
+                <option value="Missing">Missing</option>
                 <option value="Hatched">Hatched</option>
             </select>
-            @if (request.Reason == "Bought")
+            @if (request.Reason == "Sold")
             {
-                <small class="form-text text-muted">You'll be sent to New Purchase to finish this — cost comes from the product's cost price.</small>
+                <small class="form-text text-muted">You'll be sent to New Sale to finish this — price comes from the product's sell price.</small>
             }
         </div>
 
@@ -68,9 +71,9 @@ else
 }
 
 @code {
-    private AddStockRequest request = new() { Reason = "Bought", Quantity = 1 };
+    private RemoveStockRequest request = new() { Reason = "Sold", Quantity = 1 };
     private List<ProductDto>? products;
-    private List<ProductDto> flockProducts = new();
+    private List<ProductDto> eggProducts = new();
     private string selectedProductId = "";
     private string? errorMessage;
 
@@ -79,7 +82,7 @@ else
     protected override async Task OnInitializedAsync()
     {
         products = await ProductApiService.GetProductsAsync(businessId);
-        flockProducts = products.Where(p => p.Group == "Flock").ToList();
+        eggProducts = products.Where(p => p.Group == "Egg").ToList();
     }
 
     private async Task HandleSave()
@@ -92,21 +95,21 @@ else
             return;
         }
 
-        if (request.Reason == "Bought")
+        if (request.Reason == "Sold")
         {
-            Navigation.NavigateTo($"/purchases/new?productId={productId}&qty={request.Quantity}");
+            Navigation.NavigateTo($"/sales/new?productId={productId}&qty={request.Quantity}");
             return;
         }
 
         request.ProductId = productId;
 
-        var error = await FlockApiService.AddStockAsync(request);
+        var error = await EggApiService.RemoveStockAsync(request);
         if (error is not null)
         {
             errorMessage = error;
             return;
         }
 
-        Navigation.NavigateTo("/flocks");
+        Navigation.NavigateTo("/eggs");
     }
 }

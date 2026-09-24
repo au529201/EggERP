@@ -65,4 +65,18 @@ public class InventoryController : ControllerBase
 
         return Ok(updated);
     }
+
+    [HttpGet("board")]
+    public async Task<IActionResult> GetBoard([FromQuery] DateTime asOfDate)
+    {
+        var currentUser = await _userManager.GetUserAsync(User);
+        if (currentUser is null)
+        {
+            return Unauthorized();
+        }
+
+        var effectiveDate = asOfDate == default ? DateTime.Today : asOfDate;
+        var board = await _inventoryService.GetBoardAsOfDateAsync(currentUser.BusinessId, effectiveDate);
+        return Ok(board);
+    }
 }

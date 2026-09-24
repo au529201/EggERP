@@ -156,3 +156,78 @@ body {
     background-color: rgba(74, 46, 31, 0.1);
     color: var(--egg-brown);
 }
+
+.dash-card {
+    background: var(--egg-card);
+    border: 1px solid #E5D9BE;
+    border-radius: 10px;
+    padding: 1rem;
+}
+
+.dash-card-label {
+    font-size: 0.8rem;
+    color: var(--egg-clay);
+    margin-bottom: 0.25rem;
+}
+
+.dash-card-value {
+    font-family: 'Fraunces', Georgia, serif;
+    font-size: 1.5rem;
+    font-weight: 600;
+    color: var(--egg-brown);
+}
+
+.dash-panel {
+    background: var(--egg-card);
+    border: 1px solid #E5D9BE;
+    border-radius: 10px;
+    padding: 1.25rem;
+}
+
+.bar-track {
+    background: #e9ecef;
+    border-radius: 4px;
+    height: 8px;
+}
+
+.bar-fill {
+    border-radius: 4px;
+    height: 8px;
+}
+
+.donut {
+    width: 160px;
+    height: 160px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.donut-hole {
+    width: 100px;
+    height: 100px;
+    background: var(--egg-card);
+    border-radius: 50%;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    text-align: center;
+}
+
+.legend-dot {
+    display: inline-block;
+    width: 10px;
+    height: 10px;
+    border-radius: 50%;
+    margin-right: 6px;
+}
+.chart-labels {
+    display: flex;
+    justify-content: space-between;
+    padding: 0 10px;
+    margin-top: 4px;
+    font-size: 11px;
+    color: #4A2E1F;
+}

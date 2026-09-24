@@ -8,17 +8,17 @@ using EggERP.Application.Flocks;
 namespace EggERP.Web.Controllers;
 
 [ApiController]
-[Route("api/flocks")]
+[Route("api/eggs")]
 [Authorize]
-public class FlockController : ControllerBase
+public class EggController : ControllerBase
 {
-    private const string Group = "Flock";
+    private const string Group = "Egg";
 
     private readonly IFlockService _flockService;
     private readonly UserManager<ApplicationUser> _userManager;
     private readonly IActivityLogService _activityLogService;
 
-    public FlockController(
+    public EggController(
         IFlockService flockService,
         UserManager<ApplicationUser> userManager,
         IActivityLogService activityLogService)
@@ -60,7 +60,7 @@ public class FlockController : ControllerBase
 
         await _activityLogService.LogAsync(
             currentUser.BusinessId, currentUser.Id, currentUser.FullName,
-            "Added Flock Stock", "Flock", request.ProductId,
+            "Added Egg Stock", "Egg", request.ProductId,
             $"{request.Reason}: +{request.Quantity}");
 
         return Ok();
@@ -85,7 +85,7 @@ public class FlockController : ControllerBase
 
         await _activityLogService.LogAsync(
             currentUser.BusinessId, currentUser.Id, currentUser.FullName,
-            "Removed Flock Stock", "Flock", request.ProductId,
+            "Removed Egg Stock", "Egg", request.ProductId,
             $"{request.Reason}: -{request.Quantity}");
 
         return Ok();

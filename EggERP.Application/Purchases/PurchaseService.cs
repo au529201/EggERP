@@ -5,6 +5,7 @@ public class PurchaseService : IPurchaseService
 {
     private readonly IPurchaseRepository _purchaseRepository;
     private readonly IInventoryService _inventoryService;
+
     public PurchaseService(IPurchaseRepository purchaseRepository, IInventoryService inventoryService)
     {
         _purchaseRepository = purchaseRepository;
@@ -22,9 +23,27 @@ public class PurchaseService : IPurchaseService
     {
         return _purchaseRepository.GetItemsByPurchaseIdAsync(purchaseId);
     }
-    public async Task<Purchase> CreatePurchaseAsync(Guid businessId, Guid? supplierId, List<CreatePurchaseItemRequest> items, string paymentMethod, string? paymentSource, string? referenceNumber)
+    public async Task<Purchase> CreatePurchaseAsync(
+        Guid businessId,
+        Guid? supplierId,
+        List<CreatePurchaseItemRequest> items,
+        string paymentMethod,
+        string? paymentSource,
+        string? referenceNumber,
+        string? bankName,
+        string status)
     {
         PaymentValidation.EnsureValid(paymentMethod, referenceNumber, paymentSource);
+
+        if (items is null || items.Count == 0)
+        {
+            throw new InvalidOperationException("A purchase must have at least one item.");
+        }
+
+        if (status != "Paid" && status != "Pending")
+        {
+            throw new InvalidOperationException("Status must be 'Paid' or 'Pending'.");
+        }
 
         var purchaseItems = items.Select(i => new PurchaseItem
         {
@@ -52,7 +71,8 @@ public class PurchaseService : IPurchaseService
             PaymentMethod = paymentMethod,
             PaymentSource = paymentSource,
             ReferenceNumber = referenceNumber,
-            Status = "Completed",
+            BankName = bankName,
+            Status = status,
             CreatedAtUtc = DateTime.UtcNow
         };
 
@@ -63,6 +83,9 @@ public class PurchaseService : IPurchaseService
 
         var createdPurchase = await _purchaseRepository.CreateAsync(purchase, purchaseItems);
 
+        // This alone is the Flock/Egg "In, Bought" record now — Inventory.QuantityOnHand
+        // for the purchased Product is the single source of truth, and the Flock/Egg
+        // board's "Bought" column is computed live from PurchaseItems, not a separate ledger.
         foreach (var item in purchaseItems)
         {
             await _inventoryService.AdjustQuantityAsync(businessId, item.ProductId, item.Quantity);

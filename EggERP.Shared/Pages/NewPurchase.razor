@@ -1,5 +1,4 @@
 ﻿@page "/purchases/new"
-@attribute [Authorize(Roles = "Admin,Manager")]
 @using EggERP.Shared.Models
 @using EggERP.Shared.Services
 @inject IPurchaseApiService PurchaseApiService
@@ -8,6 +7,13 @@
 @inject NavigationManager Navigation
 
 <h3>New Purchase</h3>
+
+@if (fromFlockRedirect)
+{
+    <div class="alert alert-info">
+        Completing this purchase will record the initial bird count for the flock you just created.
+    </div>
+}
 
 @if (isLoading)
 {
@@ -26,35 +32,14 @@ else
         </select>
     </div>
 
-    <div class="mb-3" style="max-width:400px;">
-        <label>Payment Method</label>
-        <select class="form-select" @bind="paymentMethod">
-            <option value="Cash">Cash</option>
-            <option value="Bank Transfer">Bank Transfer</option>
-            <option value="GCash">GCash</option>
-            <option value="Check">Check</option>
-        </select>
-    </div>
-
-    @if (paymentMethod != "Cash")
-    {
-        <div class="mb-3" style="max-width:400px;">
-            <label>Payment Source</label>
-            <input class="form-control" @bind="paymentSource" placeholder="e.g. GCash, Maya, BDO, BPI" />
-        </div>
-        <div class="mb-3" style="max-width:400px;">
-            <label>Reference Number</label>
-            <input class="form-control" @bind="referenceNumber" placeholder="Required for non-cash payments" />
-        </div>
-    }
-
     <table class="table">
         <thead>
             <tr>
-                <th>Product</th>
+                <th>Type</th>
+                <th>Description</th>
                 <th>Quantity</th>
-                <th>Unit Cost</th>
-                <th>Line Total</th>
+                <th>Cost</th>
+                <th>Pay</th>
                 <th></th>
             </tr>
         </thead>
@@ -67,10 +52,11 @@ else
                             <option value="">Select product</option>
                             @foreach (var product in products)
                             {
-                                <option value="@product.Id">@product.Name</option>
+                                <option value="@product.Id">@product.Type - @product.Description</option>
                             }
                         </select>
                     </td>
+                    <td>@GetDescription(line.ProductId)</td>
                     <td>
                         <input type="number" step="1" min="1" class="form-control" @bind="line.Quantity" />
                     </td>
@@ -90,6 +76,40 @@ else
 
     <h5>Total: @(lines.Sum(l => l.Quantity * l.UnitCost).ToString("N2"))</h5>
 
+    <div class="row mb-3" style="max-width:700px;">
+        <div class="col-md-4">
+            <label>Status</label>
+            <select class="form-select" @bind="status">
+                <option value="Paid">Paid</option>
+                <option value="Pending">Pending</option>
+            </select>
+        </div>
+        <div class="col-md-4">
+            <label>Payment Method</label>
+            <select class="form-select" @bind="paymentMethod">
+                <option value="Cash">Cash</option>
+                <option value="GCash">GCash</option>
+                <option value="Maya">Maya</option>
+                <option value="Bank Transfer">Bank Transfer</option>
+                <option value="Other">Other</option>
+            </select>
+        </div>
+    </div>
+
+    @if (paymentMethod != "Cash")
+    {
+        <div class="row mb-3" style="max-width:700px;">
+            <div class="col-md-4">
+                <label>Bank Name</label>
+                <input class="form-control" @bind="bankName" placeholder="e.g. BDO, GCash, MariBank" />
+            </div>
+            <div class="col-md-4">
+                <label>Reference ID</label>
+                <input class="form-control" @bind="referenceNumber" placeholder="Required for non-cash" />
+            </div>
+        </div>
+    }
+
     @if (!string.IsNullOrEmpty(errorMessage))
     {
         <p style="color:red">@errorMessage</p>
@@ -99,6 +119,12 @@ else
 }
 
 @code {
+    [SupplyParameterFromQuery(Name = "productId")]
+    private string? QueryProductId { get; set; }
+
+    [SupplyParameterFromQuery(Name = "qty")]
+    private decimal? QueryQty { get; set; }
+
     private class PurchaseLine
     {
         public string ProductId { get; set; } = string.Empty;
@@ -111,9 +137,11 @@ else
     private List<PurchaseLine> lines = new();
     private string selectedSupplierId = string.Empty;
     private string paymentMethod = "Cash";
-    private string paymentSource = string.Empty;
-    private string referenceNumber = string.Empty;
+    private string status = "Paid";
+    private string? bankName;
+    private string? referenceNumber;
     private bool isLoading = true;
+    private bool fromFlockRedirect = false;
     private string? errorMessage;
 
     private readonly Guid businessId = Guid.Parse("11111111-1111-1111-1111-111111111111");
@@ -122,8 +150,34 @@ else
     {
         products = await ProductApiService.GetProductsAsync(businessId);
         suppliers = await SupplierApiService.GetSuppliersAsync(businessId);
-        lines.Add(new PurchaseLine());
+
+        if (!string.IsNullOrEmpty(QueryProductId) && Guid.TryParse(QueryProductId, out var pid)
+            && products.Any(p => p.Id == pid))
+        {
+            var prefillLine = new PurchaseLine
+            {
+                ProductId = QueryProductId,
+                Quantity = QueryQty is > 0 ? QueryQty.Value : 1
+            };
+            OnProductChanged(prefillLine);
+            lines.Add(prefillLine);
+            fromFlockRedirect = true;
+        }
+        else
+        {
+            lines.Add(new PurchaseLine());
+        }
+
         isLoading = false;
+    }
+
+    private string GetDescription(string productId)
+    {
+        if (Guid.TryParse(productId, out var id))
+        {
+            return products.FirstOrDefault(p => p.Id == id)?.Description ?? string.Empty;
+        }
+        return string.Empty;
     }
 
     private void OnProductChanged(PurchaseLine line)
@@ -160,21 +214,29 @@ else
             return;
         }
 
+        if (paymentMethod != "Cash" && (string.IsNullOrWhiteSpace(bankName) || string.IsNullOrWhiteSpace(referenceNumber)))
+        {
+            errorMessage = "Bank Name and Reference ID are required for non-cash payments.";
+            return;
+        }
+
         Guid? supplierId = Guid.TryParse(selectedSupplierId, out var sid) ? sid : null;
 
         var request = new CreatePurchaseRequest
         {
             BusinessId = businessId,
             SupplierId = supplierId,
-            PaymentMethod = paymentMethod,
-            PaymentSource = string.IsNullOrWhiteSpace(paymentSource) ? null : paymentSource,
-            ReferenceNumber = string.IsNullOrWhiteSpace(referenceNumber) ? null : referenceNumber,
             Items = validLines.Select(l => new CreatePurchaseItemInput
             {
                 ProductId = Guid.Parse(l.ProductId),
                 Quantity = l.Quantity,
                 UnitCost = l.UnitCost
-            }).ToList()
+            }).ToList(),
+            PaymentMethod = paymentMethod,
+            PaymentSource = paymentMethod == "Cash" ? null : paymentMethod,
+            ReferenceNumber = paymentMethod == "Cash" ? null : referenceNumber,
+            BankName = paymentMethod == "Cash" ? null : bankName,
+            Status = status
         };
 
         try

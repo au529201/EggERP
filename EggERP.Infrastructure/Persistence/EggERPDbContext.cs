@@ -25,14 +25,10 @@ public class EggERPDbContext : IdentityDbContext<ApplicationUser, IdentityRole<G
     public DbSet<PurchaseItem> PurchaseItems => Set<PurchaseItem>();
     public DbSet<Expense> Expenses => Set<Expense>();
     public DbSet<TaxRate> TaxRates => Set<TaxRate>();
-    public DbSet<Flock> Flocks => Set<Flock>();
-    public DbSet<FlockMovement> FlockMovements => Set<FlockMovement>();
     public DbSet<ActivityLog> ActivityLogs => Set<ActivityLog>();
-    public DbSet<EggMovement> EggMovements => Set<EggMovement>();
+
     protected override void OnModelCreating(ModelBuilder builder)
     {
         base.OnModelCreating(builder);
-        // Base call configures all Identity table mappings (AspNetUsers, AspNetRoles, etc.).
-        // No overrides needed for existing ERP entities; their configuration is unchanged.
     }
 }

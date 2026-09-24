@@ -1,12 +1,12 @@
-﻿@page "/flocks"
+﻿@page "/eggs"
 @using EggERP.Shared.Models
 @using EggERP.Shared.Services
-@inject IFlockApiService FlockApiService
+@inject IEggApiService EggApiService
 
-<h3>Flocks</h3>
+<h3>Eggs</h3>
 
-<a class="btn btn-primary mb-3" href="/flocks/add">+ Add Flock</a>
-<a class="btn btn-secondary mb-3 ms-2" href="/flocks/remove">- Remove Flock</a>
+<a class="btn btn-primary mb-3" href="/eggs/add">+ Add Egg</a>
+<a class="btn btn-secondary mb-3 ms-2" href="/eggs/remove">- Remove Egg</a>
 
 @if (rows is null)
 {
@@ -14,7 +14,7 @@
 }
 else if (rows.Count == 0)
 {
-    <p>No Flock-type products found. <a href="/products/add">Add one</a> first (set Group = Flock).</p>
+    <p>No Egg-type products found. <a href="/products/add">Add one</a> first (set Group = Egg).</p>
 }
 else
 {
@@ -52,6 +52,6 @@ else
 
     protected override async Task OnInitializedAsync()
     {
-        rows = await FlockApiService.GetBoardAsync();
+        rows = await EggApiService.GetBoardAsync();
     }
 }

@@ -5,6 +5,7 @@ public class SaleService : ISaleService
 {
     private readonly ISaleRepository _saleRepository;
     private readonly IInventoryService _inventoryService;
+
     public SaleService(ISaleRepository saleRepository, IInventoryService inventoryService)
     {
         _saleRepository = saleRepository;
@@ -22,7 +23,14 @@ public class SaleService : ISaleService
     {
         return _saleRepository.GetItemsBySaleIdAsync(saleId);
     }
-    public async Task<Sale> CreateSaleAsync(Guid businessId, Guid? customerId, List<CreateSaleItemRequest> items, string paymentMethod, string? paymentSource, string? referenceNumber)
+    public async Task<Sale> CreateSaleAsync(
+        Guid businessId,
+        Guid? customerId,
+        List<CreateSaleItemRequest> items,
+        string paymentMethod,
+        string? paymentSource,
+        string? referenceNumber,
+        string status)
     {
         PaymentValidation.EnsureValid(paymentMethod, referenceNumber, paymentSource);
 
@@ -31,8 +39,11 @@ public class SaleService : ISaleService
             throw new InvalidOperationException("A sale must have at least one item.");
         }
 
-        // Validate every line against current stock BEFORE creating anything.
-        // If any single line fails, the entire sale is rejected and nothing is written.
+        if (status != "Paid" && status != "Pending")
+        {
+            throw new InvalidOperationException("Status must be 'Paid' or 'Pending'.");
+        }
+
         var stockErrors = new List<string>();
 
         foreach (var i in items)
@@ -78,7 +89,7 @@ public class SaleService : ISaleService
             PaymentMethod = paymentMethod,
             PaymentSource = paymentSource,
             ReferenceNumber = referenceNumber,
-            Status = "Completed",
+            Status = status,
             CreatedAtUtc = DateTime.UtcNow
         };
 
@@ -89,6 +100,8 @@ public class SaleService : ISaleService
 
         var createdSale = await _saleRepository.CreateAsync(sale, saleItems);
 
+        // This alone is the Flock/Egg "Out, Sold" record now — see PurchaseService for
+        // the matching note on the Bought side.
         foreach (var item in saleItems)
         {
             await _inventoryService.AdjustQuantityAsync(businessId, item.ProductId, -item.Quantity);

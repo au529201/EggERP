@@ -53,6 +53,7 @@ public class SaleController : ControllerBase
         public string PaymentMethod { get; set; } = "Cash";
         public string? PaymentSource { get; set; }
         public string? ReferenceNumber { get; set; }
+        public string Status { get; set; } = "Paid";
     }
 
     [HttpPost]
@@ -65,8 +66,7 @@ public class SaleController : ControllerBase
 
         try
         {
-            var sale = await _saleService.CreateSaleAsync(request.BusinessId, request.CustomerId, request.Items, request.PaymentMethod, request.PaymentSource, request.ReferenceNumber);
-
+            var sale = await _saleService.CreateSaleAsync(request.BusinessId, request.CustomerId, request.Items, request.PaymentMethod, request.PaymentSource, request.ReferenceNumber, request.Status);
             var currentUser = await _userManager.GetUserAsync(User);
             if (currentUser is not null)
             {

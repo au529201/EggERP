@@ -12,5 +12,12 @@ public interface ISaleService
     Task<List<Sale>> GetSalesAsync(Guid businessId);
     Task<Sale?> GetSaleByIdAsync(Guid businessId, Guid id);
     Task<List<SaleItem>> GetSaleItemsAsync(Guid saleId);
-    Task<Sale> CreateSaleAsync(Guid businessId, Guid? customerId, List<CreateSaleItemRequest> items, string paymentMethod, string? paymentSource, string? referenceNumber);
+    Task<Sale> CreateSaleAsync(
+        Guid businessId,
+        Guid? customerId,
+        List<CreateSaleItemRequest> items,
+        string paymentMethod,
+        string? paymentSource,
+        string? referenceNumber,
+        string status);
 }

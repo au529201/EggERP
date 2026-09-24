@@ -6,6 +6,7 @@ namespace EggERP.Shared.Services
     {
         Task<List<InventoryDto>> GetInventoryAsync(Guid businessId);
         Task<InventoryDto> AdjustQuantityAsync(Guid businessId, Guid productId, decimal delta);
+        Task<List<InventoryBoardRowDto>> GetBoardAsOfDateAsync(DateTime asOfDate);
     }
     public class InventoryApiService : IInventoryApiService
     {
@@ -27,6 +28,13 @@ namespace EggERP.Shared.Services
                 new { delta });
             response.EnsureSuccessStatusCode();
             return (await response.Content.ReadFromJsonAsync<InventoryDto>())!;
+        }
+        public async Task<List<InventoryBoardRowDto>> GetBoardAsOfDateAsync(DateTime asOfDate)
+        {
+            var dateParam = asOfDate.ToString("yyyy-MM-dd");
+            var result = await _http.GetFromJsonAsync<List<InventoryBoardRowDto>>(
+                $"api/inventory/board?asOfDate={dateParam}");
+            return result ?? new List<InventoryBoardRowDto>();
         }
     }
 }

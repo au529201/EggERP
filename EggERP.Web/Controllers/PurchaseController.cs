@@ -53,6 +53,8 @@ public class PurchaseController : ControllerBase
         public string PaymentMethod { get; set; } = "Cash";
         public string? PaymentSource { get; set; }
         public string? ReferenceNumber { get; set; }
+        public string? BankName { get; set; }
+        public string Status { get; set; } = "Paid";
     }
 
     [HttpPost]
@@ -65,7 +67,7 @@ public class PurchaseController : ControllerBase
 
         try
         {
-            var purchase = await _purchaseService.CreatePurchaseAsync(request.BusinessId, request.SupplierId, request.Items, request.PaymentMethod, request.PaymentSource, request.ReferenceNumber);
+            var purchase = await _purchaseService.CreatePurchaseAsync(request.BusinessId, request.SupplierId, request.Items, request.PaymentMethod, request.PaymentSource, request.ReferenceNumber, request.BankName, request.Status);
 
             var currentUser = await _userManager.GetUserAsync(User);
             if (currentUser is not null)

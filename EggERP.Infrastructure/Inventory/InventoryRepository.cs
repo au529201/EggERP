@@ -47,4 +47,32 @@ public class InventoryRepository : IInventoryRepository
         await _dbContext.SaveChangesAsync();
         return existing;
     }
+
+    public async Task<Dictionary<Guid, decimal>> GetBoughtQuantitiesAsOfDateAsync(Guid businessId, DateTime asOfDate)
+    {
+        var endOfDay = asOfDate.Date.AddDays(1);
+
+        var query =
+            from pi in _dbContext.PurchaseItems
+            join p in _dbContext.Purchases on pi.PurchaseId equals p.Id
+            where p.BusinessId == businessId && p.PurchaseDateUtc < endOfDay
+            group pi by pi.ProductId into g
+            select new { ProductId = g.Key, Total = g.Sum(x => x.Quantity) };
+
+        return await query.ToDictionaryAsync(x => x.ProductId, x => x.Total);
+    }
+
+    public async Task<Dictionary<Guid, decimal>> GetSoldQuantitiesAsOfDateAsync(Guid businessId, DateTime asOfDate)
+    {
+        var endOfDay = asOfDate.Date.AddDays(1);
+
+        var query =
+            from si in _dbContext.SaleItems
+            join s in _dbContext.Sales on si.SaleId equals s.Id
+            where s.BusinessId == businessId && s.SaleDateUtc < endOfDay
+            group si by si.ProductId into g
+            select new { ProductId = g.Key, Total = g.Sum(x => x.Quantity) };
+
+        return await query.ToDictionaryAsync(x => x.ProductId, x => x.Total);
+    }
 }

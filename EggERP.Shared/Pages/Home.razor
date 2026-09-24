@@ -2,12 +2,16 @@
 @attribute [Authorize]
 @using EggERP.Shared.Models
 @using EggERP.Shared.Services
-@inject IProductApiService ProductApiService
-@inject ICategoryApiService CategoryApiService
+@inject ISaleApiService SaleApiService
+@inject IPurchaseApiService PurchaseApiService
+@inject IExpenseApiService ExpenseApiService
+@inject IFlockApiService FlockApiService
+@inject IEggApiService EggApiService
+@inject IInventoryApiService InventoryApiService
+@inject ICustomerApiService CustomerApiService
+@inject ISupplierApiService SupplierApiService
 
 <PageTitle>EggERP Dashboard</PageTitle>
-
-<h3>Dashboard</h3>
 
 @if (isLoading)
 {
@@ -15,49 +19,357 @@
 }
 else
 {
-    <div class="row mb-4">
-        <div class="col-md-4">
-            <div class="card text-white bg-primary mb-3">
-                <div class="card-body">
-                    <h5 class="card-title">Total Products</h5>
-                    <p class="card-text" style="font-size:2rem;">@totalProducts</p>
-                </div>
+    <h3 class="mb-3">Dashboard</h3>
+
+    <div class="row g-3 mb-4">
+        <div class="col-6 col-md-4 col-lg-2">
+            <div class="dash-card">
+                <div class="dash-card-label">Total Sales</div>
+                <div class="dash-card-value">@totalSales.ToString("N0")</div>
             </div>
         </div>
-        <div class="col-md-4">
-            <div class="card text-white bg-success mb-3">
-                <div class="card-body">
-                    <h5 class="card-title">Total Categories</h5>
-                    <p class="card-text" style="font-size:2rem;">@totalCategories</p>
+        <div class="col-6 col-md-4 col-lg-2">
+            <div class="dash-card">
+                <div class="dash-card-label">Total Purchases</div>
+                <div class="dash-card-value">@totalPurchases.ToString("N0")</div>
+            </div>
+        </div>
+        <div class="col-6 col-md-4 col-lg-2">
+            <div class="dash-card">
+                <div class="dash-card-label">Net Revenue</div>
+                <div class="dash-card-value">@netRevenue.ToString("N0")</div>
+            </div>
+        </div>
+        <div class="col-6 col-md-4 col-lg-2">
+            <div class="dash-card">
+                <div class="dash-card-label">Eggs in Inventory</div>
+                <div class="dash-card-value">@totalEggs pcs</div>
+            </div>
+        </div>
+        <div class="col-6 col-md-4 col-lg-2">
+            <div class="dash-card">
+                <div class="dash-card-label">Active Flocks</div>
+                <div class="dash-card-value">@totalFlocks birds</div>
+            </div>
+        </div>
+        <div class="col-6 col-md-4 col-lg-2">
+            <div class="dash-card">
+                <div class="dash-card-label">Low Stock</div>
+                <div class="dash-card-value @(lowStockCount > 0 ? "text-danger" : "")">@lowStockCount items</div>
+            </div>
+        </div>
+    </div>
+
+<div class="row g-3 mb-4">
+    <div class="col-lg-7">
+        <div class="dash-panel h-100">
+            <h6 class="mb-3">Sales — Last 7 Days</h6>
+
+            @if (dailySales.Sum(d => d.Amount) == 0)
+            {
+                <p class="text-muted mb-0">
+                    No sales recorded in the last 7 days.
+                </p>
+            }
+            else
+            {
+                <svg viewBox="0 0 700 180"
+                     preserveAspectRatio="none"
+                     style="width:100%; height:180px;">
+
+                    <polyline fill="none"
+                              stroke="#C8862B"
+                              stroke-width="3"
+                              points="@linePoints" />
+
+                    @for (int i = 0; i < dailySales.Count; i++)
+                    {
+                        var x = 20 + i * (660.0 / Math.Max(1, dailySales.Count - 1));
+                        var y = 180 - (maxDaily > 0
+                            ? (double)(dailySales[i].Amount / maxDaily) * 160
+                            : 0);
+
+                        <circle cx="@x"
+                                cy="@y"
+                                r="4"
+                                fill="#C8862B" />
+                    }
+                </svg>
+
+                <div class="chart-labels">
+                    @foreach (var day in dailySales)
+                    {
+                        <span>@day.Label</span>
+                    }
+                </div>
+            }
+        </div>
+    </div>
+        <div class="col-lg-5">
+            <div class="dash-panel h-100 d-flex flex-column align-items-center">
+                <h6 class="align-self-start mb-3">Sales by Category</h6>
+                @if (totalSales == 0)
+                {
+                    <p class="text-muted">No sales yet.</p>
+                }
+                else
+                {
+                    <div class="donut" style="background: conic-gradient(#C8862B 0% @(flockSalesPct)%, #2F5233 @(flockSalesPct)% 100%);">
+                        <div class="donut-hole">
+                            <div class="fw-bold">@totalSales.ToString("N0")</div>
+                            <div class="small text-muted">Total Sales</div>
+                        </div>
+                    </div>
+                    <div class="mt-3 w-100">
+                        <div class="d-flex justify-content-between">
+                            <span><span class="legend-dot" style="background:#C8862B;"></span> Flock Sales</span>
+                            <span>@flockSalesTotal.ToString("N0") (@flockSalesPct.ToString("N0")%)</span>
+                        </div>
+                        <div class="d-flex justify-content-between">
+                            <span><span class="legend-dot" style="background:#2F5233;"></span> Egg Sales</span>
+                            <span>@eggSalesTotal.ToString("N0") (@((100 - flockSalesPct).ToString("N0"))%)</span>
+                        </div>
+                    </div>
+                }
+            </div>
+        </div>
+    </div>
+
+    <div class="row g-3 mb-4">
+        <div class="col-lg-4">
+            <div class="dash-panel h-100">
+                <h6 class="mb-3">Flock Stock</h6>
+                @if (flockRows.Count == 0)
+                {
+                    <p class="text-muted mb-0">No flock-type products yet.</p>
+                }
+                else
+                {
+                    @foreach (var row in flockRows)
+                    {
+                        <div class="mb-2">
+                            <div class="d-flex justify-content-between small">
+                                <span>@row.Type - @row.Description</span>
+                                <span>@row.Available</span>
+                            </div>
+                            <div class="bar-track"><div class="bar-fill" style="background:#C8862B; width:@(BarWidth(row.Available, maxFlock))%;"></div></div>
+                        </div>
+                    }
+                }
+            </div>
+        </div>
+        <div class="col-lg-4">
+            <div class="dash-panel h-100">
+                <h6 class="mb-3">Egg Stock</h6>
+                @if (eggRows.Count == 0)
+                {
+                    <p class="text-muted mb-0">No egg-type products yet.</p>
+                }
+                else
+                {
+                    @foreach (var row in eggRows)
+                    {
+                        <div class="mb-2">
+                            <div class="d-flex justify-content-between small">
+                                <span>@row.Type - @row.Description</span>
+                                <span>@row.Available</span>
+                            </div>
+                            <div class="bar-track"><div class="bar-fill" style="background:#2F5233; width:@(BarWidth(row.Available, maxEgg))%;"></div></div>
+                        </div>
+                    }
+                }
+            </div>
+        </div>
+        <div class="col-lg-4">
+            <div class="dash-panel h-100">
+                <h6 class="mb-3">Quick Links</h6>
+                <div class="d-grid gap-2">
+                    <a class="btn btn-primary btn-sm" href="/sales/new">+ New Sale</a>
+                    <a class="btn btn-outline-primary btn-sm" href="/purchases/new">+ New Purchase</a>
+                    <a class="btn btn-success btn-sm" href="/flocks/add">+ Add Flock</a>
+                    <a class="btn btn-outline-success btn-sm" href="/eggs/add">+ Add Egg</a>
+                    <a class="btn btn-outline-secondary btn-sm" href="/products/add">+ Add Product</a>
                 </div>
             </div>
         </div>
     </div>
 
-    <h5>Quick Links</h5>
-    <div class="mb-2">
-        <a class="btn btn-primary me-2" href="/products">View Products</a>
-        <a class="btn btn-outline-primary me-2" href="/products/add">+ Add Product</a>
-        <a class="btn btn-success me-2" href="/categories">View Categories</a>
-        <a class="btn btn-outline-success" href="/categories/add">+ Add Category</a>
+    <div class="dash-panel">
+        <h6 class="mb-3">Recent Transactions</h6>
+        @if (recentTransactions.Count == 0)
+        {
+            <p class="text-muted mb-0">No transactions yet.</p>
+        }
+        else
+        {
+            <div class="table-responsive">
+                <table class="table table-sm mb-0">
+                    <thead>
+                        <tr>
+                            <th>Date</th>
+                            <th>Type</th>
+                            <th>Party</th>
+                            <th>Amount</th>
+                            <th>Status</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach (var tx in recentTransactions)
+                        {
+                            <tr>
+                                <td>@tx.Date.ToLocalTime().ToString("g")</td>
+                                <td>@tx.Type</td>
+                                <td>@tx.Party</td>
+                                <td>@tx.Amount.ToString("N2")</td>
+                                <td>
+                                    @if (tx.Status == "Paid")
+                                    {
+                                        <span class="badge bg-success">Paid</span>
+                                    }
+                                    else
+                                    {
+                                        <span class="badge bg-warning text-dark">@tx.Status</span>
+                                    }
+                                </td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            </div>
+        }
     </div>
 }
 
 @code {
-    private int totalProducts;
-    private int totalCategories;
+    private class DailyPoint
+    {
+        public string Label { get; set; } = string.Empty;
+        public decimal Amount { get; set; }
+    }
+
+    private class TransactionRow
+    {
+        public DateTime Date { get; set; }
+        public string Type { get; set; } = string.Empty;
+        public string Party { get; set; } = string.Empty;
+        public decimal Amount { get; set; }
+        public string Status { get; set; } = string.Empty;
+    }
+
     private bool isLoading = true;
+
+    private decimal totalSales;
+    private decimal totalPurchases;
+    private decimal totalExpenses;
+    private decimal netRevenue;
+    private int totalFlocks;
+    private int totalEggs;
+    private int lowStockCount;
+
+    private List<StockBoardRowDto> flockRows = new();
+    private List<StockBoardRowDto> eggRows = new();
+    private int maxFlock;
+    private int maxEgg;
+
+    private decimal flockSalesTotal;
+    private decimal eggSalesTotal;
+    private decimal flockSalesPct;
+
+    private List<DailyPoint> dailySales = new();
+    private decimal maxDaily;
+    private string linePoints = "";
+
+    private List<TransactionRow> recentTransactions = new();
 
     private readonly Guid businessId = Guid.Parse("11111111-1111-1111-1111-111111111111");
 
     protected override async Task OnInitializedAsync()
     {
-        var products = await ProductApiService.GetProductsAsync(businessId);
-        var categories = await CategoryApiService.GetCategoriesAsync(businessId);
+        var sales = await SaleApiService.GetSalesAsync(businessId);
+        var purchases = await PurchaseApiService.GetPurchasesAsync(businessId);
+        var expenses = await ExpenseApiService.GetExpensesAsync(businessId);
+        flockRows = await FlockApiService.GetBoardAsync();
+        eggRows = await EggApiService.GetBoardAsync();
+        var inventoryBoard = await InventoryApiService.GetBoardAsOfDateAsync(DateTime.Today);
+        var customers = await CustomerApiService.GetCustomersAsync(businessId);
+        var suppliers = await SupplierApiService.GetSuppliersAsync(businessId);
 
-        totalProducts = products.Count;
-        totalCategories = categories.Count;
+        totalSales = sales.Sum(s => s.TotalAmount);
+        totalPurchases = purchases.Sum(p => p.TotalAmount);
+        totalExpenses = expenses.Sum(e => e.Amount);
+        netRevenue = totalSales - totalPurchases - totalExpenses;
+
+        totalFlocks = flockRows.Sum(r => r.Available);
+        totalEggs = eggRows.Sum(r => r.Available);
+        lowStockCount = inventoryBoard.Count(r => r.Available <= r.ReorderLevel);
+
+        maxFlock = flockRows.Count > 0 ? Math.Max(1, flockRows.Max(r => r.Available)) : 1;
+        maxEgg = eggRows.Count > 0 ? Math.Max(1, eggRows.Max(r => r.Available)) : 1;
+
+        flockSalesTotal = flockRows.Sum(r => r.TotalSales);
+        eggSalesTotal = eggRows.Sum(r => r.TotalSales);
+        var salesSplitTotal = flockSalesTotal + eggSalesTotal;
+        flockSalesPct = salesSplitTotal > 0 ? Math.Round(flockSalesTotal / salesSplitTotal * 100, 0) : 0;
+
+        for (int i = 6; i >= 0; i--)
+        {
+            var day = DateTime.Today.AddDays(-i);
+            var amount = sales.Where(s => s.SaleDateUtc.ToLocalTime().Date == day).Sum(s => s.TotalAmount);
+            dailySales.Add(new DailyPoint { Label = day.ToString("MMM d"), Amount = amount });
+        }
+        maxDaily = dailySales.Count > 0 ? Math.Max(1, dailySales.Max(d => d.Amount)) : 1;
+
+        var points = new List<string>();
+        for (int i = 0; i < dailySales.Count; i++)
+        {
+            var x = 20 + i * (660.0 / Math.Max(1, dailySales.Count - 1));
+            var y = 180 - (maxDaily > 0 ? (double)(dailySales[i].Amount / maxDaily) * 160 : 0);
+            points.Add($"{x.ToString(System.Globalization.CultureInfo.InvariantCulture)},{y.ToString(System.Globalization.CultureInfo.InvariantCulture)}");
+        }
+        linePoints = string.Join(" ", points);
+
+        foreach (var s in sales)
+        {
+            recentTransactions.Add(new TransactionRow
+            {
+                Date = s.SaleDateUtc,
+                Type = "Sale",
+                Party = s.CustomerId is null ? "Walk-in" : customers.FirstOrDefault(c => c.Id == s.CustomerId)?.Name ?? "Unknown",
+                Amount = s.TotalAmount,
+                Status = s.Status
+            });
+        }
+        foreach (var p in purchases)
+        {
+            recentTransactions.Add(new TransactionRow
+            {
+                Date = p.PurchaseDateUtc,
+                Type = "Purchase",
+                Party = p.SupplierId is null ? "Unspecified" : suppliers.FirstOrDefault(s => s.Id == p.SupplierId)?.Name ?? "Unknown",
+                Amount = p.TotalAmount,
+                Status = p.Status
+            });
+        }
+        foreach (var e in expenses)
+        {
+            recentTransactions.Add(new TransactionRow
+            {
+                Date = e.ExpenseDateUtc,
+                Type = "Expense",
+                Party = e.Category,
+                Amount = e.Amount,
+                Status = e.Status
+            });
+        }
+        recentTransactions = recentTransactions.OrderByDescending(t => t.Date).Take(8).ToList();
 
         isLoading = false;
+    }
+
+    private int BarWidth(int value, int max)
+    {
+        if (max <= 0) return 0;
+        var pct = (int)Math.Round((double)value / max * 100);
+        return Math.Clamp(pct, 2, 100);
     }
 }
