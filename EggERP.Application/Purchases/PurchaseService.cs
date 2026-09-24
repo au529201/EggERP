@@ -1,10 +1,6 @@
-﻿using EggERP.Application.Flocks;
-using EggERP.Application.Inventory;
-using EggERP.Application.Products;
+﻿using EggERP.Application.Inventory;
 using EggERP.Domain.Entities;
-
 namespace EggERP.Application.Purchases;
-
 public class PurchaseService : IPurchaseService
 {
     private readonly IPurchaseRepository _purchaseRepository;
@@ -14,20 +10,15 @@ public class PurchaseService : IPurchaseService
     {
         _purchaseRepository = purchaseRepository;
         _inventoryService = inventoryService;
-        _productRepository = productRepository;
-        _flockRepository = flockRepository;
     }
-
     public Task<List<Purchase>> GetPurchasesAsync(Guid businessId)
     {
         return _purchaseRepository.GetByBusinessIdAsync(businessId);
     }
-
     public Task<Purchase?> GetPurchaseByIdAsync(Guid businessId, Guid id)
     {
         return _purchaseRepository.GetByIdAsync(businessId, id);
     }
-
     public Task<List<PurchaseItem>> GetPurchaseItemsAsync(Guid purchaseId)
     {
         return _purchaseRepository.GetItemsByPurchaseIdAsync(purchaseId);
@@ -98,49 +89,6 @@ public class PurchaseService : IPurchaseService
         foreach (var item in purchaseItems)
         {
             await _inventoryService.AdjustQuantityAsync(businessId, item.ProductId, item.Quantity);
-
-            var product = await _productRepository.GetByIdAsync(businessId, item.ProductId);
-            if (product is null)
-            {
-                continue;
-            }
-
-            var qty = (int)item.Quantity;
-
-            if (product.Group == "Flock")
-            {
-                var flock = await _flockRepository.GetByLinkedProductIdAsync(businessId, item.ProductId);
-                if (flock is not null)
-                {
-                    await _flockRepository.AddFlockMovementAsync(new FlockMovement
-                    {
-                        Id = Guid.NewGuid(),
-                        FlockId = flock.Id,
-                        MovementDate = purchase.PurchaseDateUtc,
-                        Direction = "In",
-                        Reason = "Bought",
-                        Quantity = qty,
-                        Notes = $"From Purchase #{purchase.Id}",
-                        CreatedAtUtc = DateTime.UtcNow
-                    });
-                }
-            }
-            else if (product.Group == "Egg")
-            {
-                await _flockRepository.AddEggMovementAsync(new EggMovement
-                {
-                    Id = Guid.NewGuid(),
-                    BusinessId = businessId,
-                    ProductId = item.ProductId,
-                    FlockId = null,
-                    MovementDate = purchase.PurchaseDateUtc,
-                    Direction = "In",
-                    Reason = "Bought",
-                    Quantity = qty,
-                    Notes = $"From Purchase #{purchase.Id}",
-                    CreatedAtUtc = DateTime.UtcNow
-                });
-            }
         }
 
         return createdPurchase;

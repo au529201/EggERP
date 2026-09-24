@@ -1,0 +1,17 @@
+﻿.app-footer {
+    background: var(--egg-brown);
+    color: #f0e6d6;
+    padding: 0.75rem 1.5rem;
+    font-size: 0.85rem;
+    border-top: 1px solid rgba(255,255,255,0.1);
+}
+
+.footer-link {
+    color: #C8862B;
+    text-decoration: none;
+    font-weight: 600;
+}
+
+    .footer-link:hover {
+        text-decoration: underline;
+    }

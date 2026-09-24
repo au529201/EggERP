@@ -3,40 +3,66 @@
 @using EggERP.Shared.Models
 @using EggERP.Shared.Services
 @inject IInventoryApiService InventoryApiService
-@inject IProductApiService ProductApiService
 
 <h3>Inventory</h3>
+
+<div class="row mb-2 g-2">
+    <div class="col-md-4">
+        <input class="form-control" placeholder="Search inventory..." @bind="searchText" @bind:event="oninput" />
+    </div>
+    <div class="col-md-3">
+        <select class="form-select" @bind="selectedGroup">
+            <option value="">All (Flock/Egg)</option>
+            <option value="Flock">Flock</option>
+            <option value="Egg">Egg</option>
+        </select>
+    </div>
+    <div class="col-md-3">
+        <input type="date" class="form-control" @bind="selectedDate" @bind:after="LoadData" />
+    </div>
+</div>
+<small class="form-text text-muted d-block mb-3">
+    Available always reflects current stock. Bought/Sold reflect purchases and sales up to the selected date only.
+</small>
 
 @if (isLoading)
 {
     <p>Loading...</p>
 }
-else if (rows.Count == 0)
+else if (!FilteredRows.Any())
 {
-    <p>No inventory records found.</p>
+    <p>No matching products found.</p>
 }
 else
 {
     <table class="table">
         <thead>
             <tr>
-                <th>Product</th>
-                <th>Qty on Hand</th>
-                <th>Reorder Level</th>
+                <th>Group</th>
+                <th>Type</th>
+                <th>Description</th>
+                <th>Available</th>
+                <th>Unit</th>
+                <th>Price</th>
+                <th>Bought</th>
+                <th>Sold</th>
                 <th>Status</th>
-
-
             </tr>
         </thead>
         <tbody>
-            @foreach (var row in rows)
+            @foreach (var row in FilteredRows)
             {
                 <tr>
-                    <td>@row.ProductName</td>
-                    <td>@row.QuantityOnHand</td>
-                    <td>@row.ReorderLevel</td>
+                    <td>@row.Group</td>
+                    <td>@row.Type</td>
+                    <td>@row.Description</td>
+                    <td>@row.Available</td>
+                    <td>@row.Unit</td>
+                    <td>@row.SellingPrice.ToString("N2")</td>
+                    <td>@row.BoughtAsOfDate</td>
+                    <td>@row.SoldAsOfDate</td>
                     <td>
-                        @if (row.QuantityOnHand <= row.ReorderLevel)
+                        @if (row.Available <= row.ReorderLevel)
                         {
                             <span class="badge bg-danger">Low Stock</span>
                         }
@@ -45,7 +71,6 @@ else
                             <span class="badge bg-success">OK</span>
                         }
                     </td>
-
                 </tr>
             }
         </tbody>
@@ -53,18 +78,19 @@ else
 }
 
 @code {
-    private class InventoryRow
-    {
-        public Guid ProductId { get; set; }
-        public string ProductName { get; set; } = string.Empty;
-        public decimal QuantityOnHand { get; set; }
-        public decimal ReorderLevel { get; set; }
-    }
-
-    private List<InventoryRow> rows = new();
+    private List<InventoryBoardRowDto> rows = new();
     private bool isLoading = true;
+    private DateTime selectedDate = DateTime.Today;
+    private string searchText = string.Empty;
+    private string selectedGroup = string.Empty;
 
-    private readonly Guid businessId = Guid.Parse("11111111-1111-1111-1111-111111111111");
+    private IEnumerable<InventoryBoardRowDto> FilteredRows =>
+        rows.Where(r =>
+            (string.IsNullOrWhiteSpace(searchText) ||
+             r.Type.Contains(searchText, StringComparison.OrdinalIgnoreCase) ||
+             r.Description.Contains(searchText, StringComparison.OrdinalIgnoreCase))
+            &&
+            (string.IsNullOrWhiteSpace(selectedGroup) || r.Group == selectedGroup));
 
     protected override async Task OnInitializedAsync()
     {
@@ -73,23 +99,8 @@ else
 
     private async Task LoadData()
     {
-        var products = await ProductApiService.GetProductsAsync(businessId);
-        var inventory = await InventoryApiService.GetInventoryAsync(businessId);
-
-        rows = products.Select(p =>
-        {
-            var invRecord = inventory.FirstOrDefault(i => i.ProductId == p.Id);
-            return new InventoryRow
-            {
-                ProductId = p.Id,
-                ProductName = p.Name,
-                QuantityOnHand = invRecord?.QuantityOnHand ?? 0,
-                ReorderLevel = invRecord?.ReorderLevel ?? 0
-            };
-        }).ToList();
-
+        isLoading = true;
+        rows = await InventoryApiService.GetBoardAsOfDateAsync(selectedDate);
         isLoading = false;
     }
-
-   
 }
