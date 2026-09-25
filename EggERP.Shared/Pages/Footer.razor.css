@@ -1,15 +1,21 @@
 ﻿.app-footer {
-    background: var(--egg-brown);
+    background-color: var(--egg-brown, #4A2E1F);
     color: #f0e6d6;
-    padding: 0.75rem 1.5rem;
+    padding: 0.9rem 1.5rem;
     font-size: 0.85rem;
-    border-top: 1px solid rgba(255,255,255,0.1);
+    border-top: 3px solid var(--egg-gold, #C8862B);
+    margin-top: auto;
+    flex-shrink: 0;
+    width: 100%;
+    position: relative;
+    z-index: 10;
+    opacity: 1;
 }
 
 .footer-link {
-    color: #C8862B;
+    color: var(--egg-gold, #C8862B);
     text-decoration: none;
-    font-weight: 600;
+    font-weight: 700;
 }
 
     .footer-link:hover {

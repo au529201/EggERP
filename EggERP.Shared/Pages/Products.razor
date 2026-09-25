@@ -7,10 +7,10 @@
 <a class="btn btn-primary mb-3" href="/products/add">+ Add Product</a>
 <div class="row mb-3">
     <div class="col-md-6">
-        <input class="form-control" placeholder="Search products..." @bind="searchText" @bind:event="oninput" />
+        <input class="form-control" placeholder="Search products..." @bind="searchText" @bind:event="oninput" @bind:after="ResetPage" />
     </div>
     <div class="col-md-6">
-        <select class="form-select" @bind="selectedGroup">
+        <select class="form-select" @bind="selectedGroup" @bind:after="ResetPage">
             <option value="">All (Flock/Egg)</option>
             <option value="Flock">Flock</option>
             <option value="Egg">Egg</option>
@@ -21,7 +21,7 @@
 {
     <p>Loading...</p>
 }
-else if (products.Count == 0)
+else if (!FilteredProducts.Any())
 {
     <p>No products found.</p>
 }
@@ -40,7 +40,7 @@ else
             </tr>
         </thead>
         <tbody>
-            @foreach (var product in FilteredProducts)
+            @foreach (var product in PagedProducts)
             {
                 <tr>
                     <td>@product.Group</td>
@@ -57,12 +57,18 @@ else
             }
         </tbody>
     </table>
+
+    <Pager Total="FilteredProducts.Count()" Page="page" PageSize="pageSize" PageChanged="OnPageChanged" />
 }
 @code {
     private List<ProductDto>? products;
     private string searchText = string.Empty;
     private string selectedGroup = string.Empty;
     private readonly Guid businessId = Guid.Parse("11111111-1111-1111-1111-111111111111");
+
+    private int page = 1;
+    private const int pageSize = 7;
+
     private IEnumerable<ProductDto> FilteredProducts =>
         products is null
             ? Enumerable.Empty<ProductDto>()
@@ -72,6 +78,13 @@ else
                  (p.Description ?? string.Empty).Contains(searchText, StringComparison.OrdinalIgnoreCase))
                 &&
                 (string.IsNullOrWhiteSpace(selectedGroup) || p.Group == selectedGroup));
+
+    private IEnumerable<ProductDto> PagedProducts =>
+        FilteredProducts.Skip((page - 1) * pageSize).Take(pageSize);
+
+    private void ResetPage() => page = 1;
+    private void OnPageChanged(int newPage) => page = newPage;
+
     protected override async Task OnInitializedAsync()
     {
         products = await ProductApiService.GetProductsAsync(businessId);

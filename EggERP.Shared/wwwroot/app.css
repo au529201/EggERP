@@ -292,16 +292,3 @@ body {
 }
 
 /* Footer */
-main {
-    display: flex;
-    flex-direction: column;
-    min-height: 100vh;
-}
-
-.content {
-    flex: 1 0 auto;
-}
-
-.app-footer {
-    flex-shrink: 0;
-}

@@ -8,10 +8,10 @@
 
 <div class="row mb-2 g-2">
     <div class="col-md-4">
-        <input class="form-control" placeholder="Search inventory..." @bind="searchText" @bind:event="oninput" />
+        <input class="form-control" placeholder="Search inventory..." @bind="searchText" @bind:event="oninput" @bind:after="ResetPage" />
     </div>
     <div class="col-md-3">
-        <select class="form-select" @bind="selectedGroup">
+        <select class="form-select" @bind="selectedGroup" @bind:after="ResetPage">
             <option value="">All (Flock/Egg)</option>
             <option value="Flock">Flock</option>
             <option value="Egg">Egg</option>
@@ -50,7 +50,7 @@ else
             </tr>
         </thead>
         <tbody>
-            @foreach (var row in FilteredRows)
+            @foreach (var row in PagedRows)
             {
                 <tr>
                     <td>@row.Group</td>
@@ -75,6 +75,8 @@ else
             }
         </tbody>
     </table>
+
+    <Pager Total="FilteredRows.Count()" Page="page" PageSize="pageSize" PageChanged="OnPageChanged" />
 }
 
 @code {
@@ -84,6 +86,9 @@ else
     private string searchText = string.Empty;
     private string selectedGroup = string.Empty;
 
+    private int page = 1;
+    private const int pageSize = 7;
+
     private IEnumerable<InventoryBoardRowDto> FilteredRows =>
         rows.Where(r =>
             (string.IsNullOrWhiteSpace(searchText) ||
@@ -91,6 +96,12 @@ else
              r.Description.Contains(searchText, StringComparison.OrdinalIgnoreCase))
             &&
             (string.IsNullOrWhiteSpace(selectedGroup) || r.Group == selectedGroup));
+
+    private IEnumerable<InventoryBoardRowDto> PagedRows =>
+        FilteredRows.Skip((page - 1) * pageSize).Take(pageSize);
+
+    private void ResetPage() => page = 1;
+    private void OnPageChanged(int newPage) => page = newPage;
 
     protected override async Task OnInitializedAsync()
     {
@@ -100,6 +111,7 @@ else
     private async Task LoadData()
     {
         isLoading = true;
+        page = 1;
         rows = await InventoryApiService.GetBoardAsOfDateAsync(selectedDate);
         isLoading = false;
     }

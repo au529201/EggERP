@@ -31,7 +31,7 @@ else
             </tr>
         </thead>
         <tbody>
-            @foreach (var row in rows)
+            @foreach (var row in PagedRows)
             {
                 <tr>
                     <td>@row.Type</td>
@@ -45,10 +45,19 @@ else
             }
         </tbody>
     </table>
+
+    <Pager Total="rows.Count" Page="page" PageSize="pageSize" PageChanged="OnPageChanged" />
 }
 
 @code {
     private List<StockBoardRowDto>? rows;
+    private int page = 1;
+    private const int pageSize = 7;
+
+    private IEnumerable<StockBoardRowDto> PagedRows =>
+        (rows ?? new List<StockBoardRowDto>()).Skip((page - 1) * pageSize).Take(pageSize);
+
+    private void OnPageChanged(int newPage) => page = newPage;
 
     protected override async Task OnInitializedAsync()
     {

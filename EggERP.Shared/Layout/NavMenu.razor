@@ -73,20 +73,43 @@
                 </div>
             </Authorized>
         </AuthorizeView>
-        <AuthorizeView Roles="Admin">
+
+        <AuthorizeView>
             <Authorized>
                 <div class="nav-item px-3">
-                    <NavLink class="nav-link" href="settings/business">
-                        <i class="bi bi-gear-fill me-2" aria-hidden="true"></i> <span class="nav-text">Settings</span>
-                    </NavLink>
-                </div>
-                <div class="nav-item px-3">
-                    <NavLink class="nav-link" href="settings/users">
-                        <i class="bi bi-person-badge-fill me-2" aria-hidden="true"></i> <span class="nav-text">Users</span>
-                    </NavLink>
+                    <button type="button" class="nav-link settings-toggle" @onclick="() => settingsOpen = !settingsOpen">
+                        <i class="bi bi-gear-fill me-2" aria-hidden="true"></i>
+                        <span class="nav-text">Settings</span>
+                        <i class="bi @(settingsOpen ? "bi-chevron-up" : "bi-chevron-down") settings-caret"></i>
+                    </button>
+                    @if (settingsOpen)
+                    {
+                        <div class="nav-submenu">
+                            <AuthorizeView Roles="Admin" Context="adminSettingsAuth">
+                                <Authorized>
+                                    <div class="nav-item px-3 nav-item-sub">
+                                        <NavLink class="nav-link" href="settings/business">
+                                            <span class="nav-text">Business Settings</span>
+                                        </NavLink>
+                                    </div>
+                                    <div class="nav-item px-3 nav-item-sub">
+                                        <NavLink class="nav-link" href="settings/users">
+                                            <span class="nav-text">Users</span>
+                                        </NavLink>
+                                    </div>
+                                </Authorized>
+                            </AuthorizeView>
+                            <div class="nav-item px-3 nav-item-sub">
+                                <NavLink class="nav-link" href="about">
+                                    <span class="nav-text">About EzEggERP</span>
+                                </NavLink>
+                            </div>
+                        </div>
+                    }
                 </div>
             </Authorized>
         </AuthorizeView>
+
         <AuthorizeView>
             <Authorized>
                 <div class="nav-item px-3">
@@ -126,3 +149,7 @@
         <span>More</span>
     </a>
 </nav>
+
+@code {
+    private bool settingsOpen = false;
+}

@@ -1,0 +1,46 @@
+﻿<div class="d-flex flex-wrap justify-content-between align-items-center mt-3 gap-2 pager-wrap">
+    <small class="pager-count">
+        @if (Total == 0)
+        {
+            <text>No results</text>
+        }
+        else if (Total <= PageSize)
+        {
+            <text>Showing @Total of @Total</text>
+        }
+        else
+        {
+            <text>Showing @StartIndex-@EndIndex of @Total</text>
+        }
+    </small>
+
+    @if (Total > PageSize)
+    {
+        <div class="pager-buttons">
+            <button class="pager-btn" disabled="@(Page <= 1)" @onclick="() => GoTo(Page - 1)">Prev</button>
+            @for (int p = 1; p <= TotalPages; p++)
+            {
+                var pageNum = p;
+                <button class="pager-btn @(pageNum == Page ? "active" : "")" @onclick="() => GoTo(pageNum)">@pageNum</button>
+            }
+            <button class="pager-btn" disabled="@(Page >= TotalPages)" @onclick="() => GoTo(Page + 1)">Next</button>
+        </div>
+    }
+</div>
+
+@code {
+    [Parameter] public int Total { get; set; }
+    [Parameter] public int Page { get; set; } = 1;
+    [Parameter] public int PageSize { get; set; } = 7;
+    [Parameter] public EventCallback<int> PageChanged { get; set; }
+
+    private int TotalPages => Math.Max(1, (int)Math.Ceiling(Total / (double)PageSize));
+    private int StartIndex => Total == 0 ? 0 : (Page - 1) * PageSize + 1;
+    private int EndIndex => Math.Min(Page * PageSize, Total);
+
+    private async Task GoTo(int newPage)
+    {
+        if (newPage < 1 || newPage > TotalPages || newPage == Page) return;
+        await PageChanged.InvokeAsync(newPage);
+    }
+}

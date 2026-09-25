@@ -97,3 +97,61 @@
         overflow-y: auto;
     }
 }
+.settings-toggle {
+    display: flex;
+    align-items: center;
+    width: 100%;
+    background: none;
+    border: none;
+    cursor: pointer;
+    text-align: left;
+}
+
+.settings-caret {
+    margin-left: auto;
+    font-size: 0.75rem;
+}
+
+.nav-submenu {
+    display: flex;
+    flex-direction: column;
+}
+
+.nav-item-sub {
+    margin-left: 0.5rem;
+}
+
+    .nav-item-sub ::deep .nav-link {
+        height: 2.4rem;
+        line-height: 2.4rem;
+        font-size: 0.85rem;
+    }
+.settings-toggle {
+    display: flex;
+    align-items: center;
+    width: 100%;
+    background: none;
+    border: none;
+    cursor: pointer;
+    text-align: left;
+}
+
+.settings-caret {
+    margin-left: auto;
+    font-size: 0.75rem;
+}
+
+.nav-submenu {
+    display: flex;
+    flex-direction: column;
+}
+
+.nav-item-sub {
+    margin-left: 0.5rem;
+}
+
+    .nav-item-sub ::deep .nav-link {
+        height: 2.4rem;
+        line-height: 2.4rem;
+        font-size: 0.85rem;
+    }

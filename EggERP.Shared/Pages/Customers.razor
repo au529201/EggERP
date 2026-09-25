@@ -29,7 +29,7 @@ else
             </tr>
         </thead>
         <tbody>
-            @foreach (var customer in customers)
+            @foreach (var customer in PagedCustomers)
             {
                 <tr>
                     <td>@customer.Name</td>
@@ -48,11 +48,21 @@ else
             }
         </tbody>
     </table>
+
+    <Pager Total="customers.Count" Page="page" PageSize="pageSize" PageChanged="OnPageChanged" />
 }
 
 @code {
     private List<CustomerDto>? customers;
     private readonly Guid businessId = Guid.Parse("11111111-1111-1111-1111-111111111111");
+
+    private int page = 1;
+    private const int pageSize = 7;
+
+    private IEnumerable<CustomerDto> PagedCustomers =>
+        (customers ?? new List<CustomerDto>()).Skip((page - 1) * pageSize).Take(pageSize);
+
+    private void OnPageChanged(int newPage) => page = newPage;
 
     protected override async Task OnInitializedAsync()
     {

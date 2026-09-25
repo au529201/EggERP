@@ -1,0 +1,45 @@
+﻿.pager-wrap {
+    padding-top: 0.5rem;
+}
+
+.pager-count {
+    color: var(--egg-clay, #8B5E3C);
+    font-weight: 500;
+}
+
+.pager-buttons {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.25rem;
+}
+
+.pager-btn {
+    min-width: 2.25rem;
+    height: 2.25rem;
+    padding: 0 0.6rem;
+    background-color: var(--egg-card, #FDF8ED);
+    border: 1px solid var(--egg-brown, #4A2E1F);
+    color: var(--egg-brown, #4A2E1F);
+    border-radius: 6px;
+    font-weight: 600;
+    font-size: 0.85rem;
+    cursor: pointer;
+    transition: background-color 0.15s ease, color 0.15s ease;
+}
+
+    .pager-btn:hover:not(:disabled) {
+        background-color: var(--egg-gold, #C8862B);
+        border-color: var(--egg-gold, #C8862B);
+        color: #fff;
+    }
+
+    .pager-btn.active {
+        background-color: var(--egg-brown, #4A2E1F);
+        border-color: var(--egg-brown, #4A2E1F);
+        color: #fff;
+    }
+
+    .pager-btn:disabled {
+        opacity: 0.4;
+        cursor: not-allowed;
+    }

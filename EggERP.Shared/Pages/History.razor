@@ -6,17 +6,16 @@
 
 <h3>History</h3>
 
-<div class="row mb-3">
+<div class="row mb-3 g-2">
     <div class="col-md-4">
         <label>Search</label>
-        <input class="form-control" @bind="searchText" @bind:event="oninput" placeholder="User, action, details..." />
+        <input class="form-control" @bind="searchText" @bind:event="oninput" @bind:after="ResetPage" placeholder="User, action, details..." />
     </div>
     <div class="col-md-3">
         <label>Entity Type</label>
-        <select class="form-select" @bind="entityType">
+        <select class="form-select" @bind="entityType" @bind:after="ResetPage">
             <option value="">All</option>
             <option value="Product">Product</option>
-            <option value="Category">Category</option>
             <option value="Customer">Customer</option>
             <option value="Supplier">Supplier</option>
             <option value="Inventory">Inventory</option>
@@ -26,27 +25,27 @@
             <option value="User">User</option>
             <option value="Business">Business</option>
             <option value="Flock">Flock</option>
-            <option value="FlockMovement">Flock Movement</option>
+            <option value="Egg">Egg</option>
         </select>
     </div>
     <div class="col-md-2">
         <label>From</label>
-        <input type="date" class="form-control" @bind="startDate" />
+        <input type="date" class="form-control" @bind="startDate" @bind:after="ResetPage" />
     </div>
     <div class="col-md-2">
         <label>To</label>
-        <input type="date" class="form-control" @bind="endDate" />
+        <input type="date" class="form-control" @bind="endDate" @bind:after="ResetPage" />
     </div>
     <div class="col-md-1 d-flex align-items-end">
-        <button class="btn btn-primary w-100" @onclick="LoadLogs">Filter</button>
+        <button class="btn btn-outline-secondary w-100" @onclick="ClearFilters">Clear</button>
     </div>
 </div>
 
-@if (logs is null)
+@if (allLogs is null)
 {
     <p>Loading...</p>
 }
-else if (logs.Count == 0)
+else if (!FilteredLogs.Any())
 {
     <p>No activity found.</p>
 }
@@ -63,7 +62,7 @@ else
             </tr>
         </thead>
         <tbody>
-            @foreach (var log in logs)
+            @foreach (var log in PagedLogs)
             {
                 <tr>
                     <td>@log.TimestampUtc.ToLocalTime().ToString("g")</td>
@@ -75,22 +74,53 @@ else
             }
         </tbody>
     </table>
+
+    <Pager Total="FilteredLogs.Count()" Page="page" PageSize="pageSize" PageChanged="OnPageChanged" />
 }
 
 @code {
-    private List<ActivityLogDto>? logs;
-    private string? searchText;
-    private string? entityType;
+    private List<ActivityLogDto>? allLogs;
+    private string searchText = string.Empty;
+    private string entityType = string.Empty;
     private DateTime? startDate;
     private DateTime? endDate;
 
+    private int page = 1;
+    private const int pageSize = 7;
+
     protected override async Task OnInitializedAsync()
     {
-        await LoadLogs();
+        // Loaded once (server already caps this at 500); every filter below runs
+        // client-side, same pattern as Inventory, so search feels instant.
+        allLogs = await ActivityLogApiService.SearchAsync(null, null, null, null);
     }
 
-    private async Task LoadLogs()
+    private IEnumerable<ActivityLogDto> FilteredLogs =>
+        (allLogs ?? new List<ActivityLogDto>()).Where(l =>
+            (string.IsNullOrWhiteSpace(searchText) ||
+             l.UserName.Contains(searchText, StringComparison.OrdinalIgnoreCase) ||
+             l.Action.Contains(searchText, StringComparison.OrdinalIgnoreCase) ||
+             l.EntityType.Contains(searchText, StringComparison.OrdinalIgnoreCase) ||
+             (l.Details ?? string.Empty).Contains(searchText, StringComparison.OrdinalIgnoreCase))
+            &&
+            (string.IsNullOrWhiteSpace(entityType) || l.EntityType == entityType)
+            &&
+            (!startDate.HasValue || l.TimestampUtc.ToLocalTime().Date >= startDate.Value.Date)
+            &&
+            (!endDate.HasValue || l.TimestampUtc.ToLocalTime().Date <= endDate.Value.Date));
+
+    private IEnumerable<ActivityLogDto> PagedLogs =>
+        FilteredLogs.Skip((page - 1) * pageSize).Take(pageSize);
+
+    private void ResetPage() => page = 1;
+    private void OnPageChanged(int newPage) => page = newPage;
+
+    private void ClearFilters()
     {
-        logs = await ActivityLogApiService.SearchAsync(searchText, entityType, startDate, endDate);
+        searchText = string.Empty;
+        entityType = string.Empty;
+        startDate = null;
+        endDate = null;
+        page = 1;
     }
 }
