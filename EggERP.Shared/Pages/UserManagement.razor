@@ -29,7 +29,7 @@ else
             </tr>
         </thead>
         <tbody>
-            @foreach (var user in users)
+            @foreach (var user in PagedUsers)
             {
                 <tr>
                     <td>@user.FullName</td>
@@ -48,20 +48,16 @@ else
                     <td>
                         @if (user.IsActive)
                         {
-                            <a class="btn btn-sm btn-secondary me-1"
-                               href="@($"/settings/users/edit/{user.Id}")">
+                            <a class="btn btn-sm btn-secondary me-1" href="@($"/settings/users/edit/{user.Id}")">
                                 <i class="bi bi-pencil-fill me-1"></i> Edit
                             </a>
-
-                            <button class="btn btn-sm btn-danger"
-                                    @onclick="() => DeactivateUser(user.Id, user.FullName)">
+                            <button class="btn btn-sm btn-danger" @onclick="() => DeactivateUser(user.Id, user.FullName)">
                                 <i class="bi bi-slash-circle me-1"></i> Deactivate
                             </button>
                         }
                         else
                         {
-                            <button class="btn btn-sm btn-success"
-                                    @onclick="() => ActivateUser(user.Id, user.FullName)">
+                            <button class="btn btn-sm btn-success" @onclick="() => ActivateUser(user.Id, user.FullName)">
                                 <i class="bi bi-arrow-clockwise me-1"></i> Activate
                             </button>
                         }
@@ -70,10 +66,19 @@ else
             }
         </tbody>
     </table>
+
+    <Pager Total="users.Count" Page="page" PageSize="pageSize" PageChanged="OnPageChanged" />
 }
 
 @code {
     private List<UserDto>? users;
+    private int page = 1;
+    private const int pageSize = 7;
+
+    private IEnumerable<UserDto> PagedUsers =>
+        (users ?? new List<UserDto>()).Skip((page - 1) * pageSize).Take(pageSize);
+
+    private void OnPageChanged(int newPage) => page = newPage;
 
     protected override async Task OnInitializedAsync()
     {
@@ -82,33 +87,17 @@ else
 
     private async Task DeactivateUser(Guid id, string name)
     {
-        var confirmed = await JsRuntime.InvokeAsync<bool>(
-            "confirm",
-            $"Deactivate '{name}'? They will no longer be able to log in.");
-
-        if (!confirmed)
-        {
-            return;
-        }
-
+        var confirmed = await JsRuntime.InvokeAsync<bool>("confirm", $"Deactivate '{name}'? They will no longer be able to log in.");
+        if (!confirmed) return;
         await UserManagementApiService.DeactivateUserAsync(id);
-
         users = await UserManagementApiService.GetUsersAsync();
     }
 
     private async Task ActivateUser(Guid id, string name)
     {
-        var confirmed = await JsRuntime.InvokeAsync<bool>(
-            "confirm",
-            $"Activate '{name}'? They will be able to log in again.");
-
-        if (!confirmed)
-        {
-            return;
-        }
-
+        var confirmed = await JsRuntime.InvokeAsync<bool>("confirm", $"Activate '{name}'? They will be able to log in again.");
+        if (!confirmed) return;
         await UserManagementApiService.ActivateUserAsync(id);
-
         users = await UserManagementApiService.GetUsersAsync();
     }
 }

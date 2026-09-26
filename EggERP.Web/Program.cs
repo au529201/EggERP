@@ -159,7 +159,11 @@ builder.Services.AddHttpClient<IEggApiService, EggApiService>(client =>
 {
     client.BaseAddress = apiBaseUrl;
 }).AddHttpMessageHandler<CookieForwardingHandler>();
-
+// Stock (unified Add/Remove Flock+Egg) API client
+builder.Services.AddHttpClient<IStockApiService, StockApiService>(client =>
+{
+    client.BaseAddress = apiBaseUrl;
+}).AddHttpMessageHandler<CookieForwardingHandler>();
 // Product API client (calls this same app's own API endpoints)
 builder.Services.AddHttpClient<IProductApiService, ProductApiService>(client =>
 {
