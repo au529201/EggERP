@@ -5,6 +5,7 @@
 @inject IProductApiService ProductApiService
 @inject ICustomerApiService CustomerApiService
 @inject NavigationManager Navigation
+@inject IJSRuntime JsRuntime
 
 <h3>New Sale</h3>
 
@@ -98,8 +99,12 @@ else
 
     @if (paymentMethod != "Cash")
     {
-        <div class="row mb-3" style="max-width:400px;">
-            <div class="col-md-6">
+        <div class="row mb-3" style="max-width:700px;">
+            <div class="col-md-4">
+                <label>Bank Name</label>
+                <input class="form-control" @bind="bankName" placeholder="e.g. BDO, MariBank, GCash" />
+            </div>
+            <div class="col-md-4">
                 <label>Reference ID</label>
                 <input class="form-control" @bind="referenceNumber" placeholder="Required for non-cash" />
             </div>
@@ -111,7 +116,11 @@ else
         <p style="color:red">@errorMessage</p>
     }
 
-<button class="btn btn-primary" @onclick="HandleSave">Complete Transaction</button>}
+    <div class="txn-actions">
+        <button class="btn btn-outline-secondary" @onclick="Cancel">Cancel</button>
+        <button class="btn btn-primary" @onclick="HandleSave">Complete Transaction</button>
+    </div>
+}
 
 @code {
     [SupplyParameterFromQuery(Name = "productId")]
@@ -133,6 +142,7 @@ else
     private string selectedCustomerId = string.Empty;
     private string paymentMethod = "Cash";
     private string status = "Paid";
+    private string? bankName;
     private string? referenceNumber;
     private bool isLoading = true;
     private bool fromFlockOrEggRedirect = false;
@@ -196,6 +206,15 @@ else
         lines.Remove(line);
     }
 
+    private async Task Cancel()
+    {
+        var confirmed = await JsRuntime.InvokeAsync<bool>("confirm", "Discard this sale and go back? Unsaved changes will be lost.");
+        if (confirmed)
+        {
+            Navigation.NavigateTo("/sales");
+        }
+    }
+
     private async Task HandleSave()
     {
         errorMessage = null;
@@ -208,9 +227,9 @@ else
             return;
         }
 
-        if (paymentMethod != "Cash" && string.IsNullOrWhiteSpace(referenceNumber))
+        if (paymentMethod != "Cash" && (string.IsNullOrWhiteSpace(bankName) || string.IsNullOrWhiteSpace(referenceNumber)))
         {
-            errorMessage = "Reference ID is required for non-cash payments.";
+            errorMessage = "Bank Name and Reference ID are required for non-cash payments.";
             return;
         }
 

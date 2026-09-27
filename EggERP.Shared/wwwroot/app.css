@@ -292,3 +292,26 @@ body {
 }
 
 /* Footer */
+.txn-row {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 1rem;
+    margin: 1rem 0;
+}
+
+    .txn-row > div {
+        flex: 1 1 0;
+        min-width: 160px;
+    }
+
+.txn-actions {
+    display: flex;
+    justify-content: flex-end;
+    gap: 0.75rem;
+    margin-top: 1rem;
+}
+
+.stock-hint {
+    font-size: 0.8rem;
+    color: var(--egg-clay, #8B5E3C);
+}

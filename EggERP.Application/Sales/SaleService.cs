@@ -53,7 +53,7 @@ public class SaleService : ISaleService
 
             if (i.Quantity > available)
             {
-                stockErrors.Add($"only {available} in stock, but {i.Quantity} requested");
+                stockErrors.Add($"only {(int)available} in stock, but {(int)i.Quantity} requested");
             }
         }
 
