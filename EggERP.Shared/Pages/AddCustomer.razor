@@ -29,40 +29,63 @@
     {
         <p style="color:red">@errorMessage</p>
     }
-
-    <button type="submit" class="btn btn-primary">Save</button>
+<button type="submit"
+        class="btn btn-primary"
+        disabled="@isSaving">
+    @(isSaving ? "Saving..." : "Save")
+</button>
 </EditForm>
 
 @code {
-    private CustomerFormModel newCustomer = new();
-    private string? errorMessage;
+private CustomerFormModel newCustomer = new();
+private string? errorMessage;
+private bool isSaving = false;
     private readonly Guid businessId = Guid.Parse("11111111-1111-1111-1111-111111111111");
 
-    private async Task HandleSave()
+private async Task HandleSave()
+{
+    if (isSaving)
     {
-        errorMessage = null;
-
-        var request = new CreateCustomerRequest
-        {
-            BusinessId = businessId,
-            Name = newCustomer.Name,
-            Email = newCustomer.Email,
-            Phone = newCustomer.Phone,
-            Address = newCustomer.Address,
-            IsActive = true
-        };
-
-        try
-        {
-            await CustomerApiService.CreateCustomerAsync(request);
-            Navigation.NavigateTo("/customers");
-        }
-        catch (Exception ex)
-        {
-            errorMessage = $"Failed to save customer: {ex.Message}";
-        }
+        return;
     }
 
+    errorMessage = null;
+
+    if (string.IsNullOrWhiteSpace(newCustomer.Name))
+    {
+        errorMessage = "Customer name is required.";
+        return;
+    }
+
+    isSaving = true;
+
+    var request = new CreateCustomerRequest
+    {
+        BusinessId = businessId,
+        Name = newCustomer.Name.Trim(),
+        Email = string.IsNullOrWhiteSpace(newCustomer.Email)
+            ? null
+            : newCustomer.Email.Trim(),
+        Phone = string.IsNullOrWhiteSpace(newCustomer.Phone)
+            ? null
+            : newCustomer.Phone.Trim(),
+        Address = string.IsNullOrWhiteSpace(newCustomer.Address)
+            ? null
+            : newCustomer.Address.Trim(),
+        IsActive = true
+    };
+
+    try
+    {
+        await CustomerApiService.CreateCustomerAsync(request);
+        Navigation.NavigateTo("/customers");
+    }
+    catch (Exception ex)
+    {
+        errorMessage = $"Failed to save customer: {ex.Message}";
+        isSaving = false;
+    }
+}
     private class CustomerFormModel
     {
         public string Name { get; set; } = string.Empty;

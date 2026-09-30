@@ -60,9 +60,11 @@ else
             <p style="color:red">@errorMessage</p>
         }
 
-        <button type="submit" class="btn btn-primary">
-            Save
-        </button>
+<button type="submit"
+        class="btn btn-primary"
+        disabled="@isSaving">
+    @(isSaving ? "Saving..." : "Save")
+</button>
     </EditForm>
 }
 
@@ -75,10 +77,11 @@ else
 
     private UpdateProductRequest editModel = new();
 
-    private bool isLoading = true;
-    private bool notFound = false;
+private bool isLoading = true;
+private bool notFound = false;
+private bool isSaving = false;
 
-    private string? errorMessage;
+private string? errorMessage;
 
     protected override async Task OnInitializedAsync()
     {
@@ -108,18 +111,50 @@ await ProductApiService.GetProductByIdAsync(Id);
         isLoading = false;
     }
 
-    private async Task HandleSave()
+private async Task HandleSave()
+{
+    if (isSaving)
     {
-        errorMessage = null;
-
-        try
-        {
-            await ProductApiService.UpdateProductAsync(editModel);
-            Navigation.NavigateTo("/products");
-        }
-        catch (Exception ex)
-        {
-            errorMessage = $"Failed to save product: {ex.Message}";
-        }
+        return;
     }
+
+    errorMessage = null;
+
+    if (string.IsNullOrWhiteSpace(editModel.Type))
+    {
+        errorMessage = "Type is required.";
+        return;
+    }
+
+    if (string.IsNullOrWhiteSpace(editModel.Unit))
+    {
+        errorMessage = "Unit is required.";
+        return;
+    }
+
+    if (editModel.CostPrice < 0)
+    {
+        errorMessage = "Cost Price cannot be negative.";
+        return;
+    }
+
+    if (editModel.SellingPrice < 0)
+    {
+        errorMessage = "Sell Price cannot be negative.";
+        return;
+    }
+
+    isSaving = true;
+
+    try
+    {
+        await ProductApiService.UpdateProductAsync(editModel);
+        Navigation.NavigateTo("/products");
+    }
+    catch (Exception ex)
+    {
+        errorMessage = $"Failed to save product: {ex.Message}";
+        isSaving = false;
+    }
+}
 }

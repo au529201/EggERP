@@ -74,10 +74,35 @@
             return;
         }
 
-        isSaving = true;
-        errorMessage = null;
+errorMessage = null;
 
-        try
+if (string.IsNullOrWhiteSpace(newProduct.Type))
+{
+    errorMessage = "Type is required.";
+    return;
+}
+
+if (string.IsNullOrWhiteSpace(newProduct.Unit))
+{
+    errorMessage = "Unit is required.";
+    return;
+}
+
+if (newProduct.CostPrice < 0)
+{
+    errorMessage = "Cost Price cannot be negative.";
+    return;
+}
+
+if (newProduct.SellingPrice < 0)
+{
+    errorMessage = "Sell Price cannot be negative.";
+    return;
+}
+
+isSaving = true;
+
+try
         {
             await ProductApiService.CreateProductAsync(newProduct);
 
