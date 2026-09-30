@@ -1,112 +1,176 @@
-﻿using EggERP.Application;
-using EggERP.Application.Flocks;
-using EggERP.Application.Inventory;
-using EggERP.Application.Products;
-using EggERP.Application.Purchases;
-using EggERP.Application.Sales;
-using EggERP.Infrastructure.Persistence;
-using Microsoft.EntityFrameworkCore;
+﻿    using EggERP.Application;
+    using EggERP.Application.Flocks;
+    using EggERP.Application.Inventory;
+    using EggERP.Application.Products;
+    using EggERP.Application.Purchases;
+    using EggERP.Application.Sales;
+    using EggERP.Infrastructure.Persistence;
+    using Microsoft.EntityFrameworkCore;
 
-namespace EggERP.Infrastructure.Flocks;
+    namespace EggERP.Infrastructure.Flocks;
 
-public class FlockService : IFlockService
-{
-    private readonly IProductRepository _productRepository;
-    private readonly IInventoryService _inventoryService;
-    private readonly IPurchaseService _purchaseService;
-    private readonly ISaleService _saleService;
-    private readonly EggERPDbContext _dbContext;
-
-    public FlockService(
-        IProductRepository productRepository,
-        IInventoryService inventoryService,
-        IPurchaseService purchaseService,
-        ISaleService saleService,
-        EggERPDbContext dbContext)
+    public class FlockService : IFlockService
     {
-        _productRepository = productRepository;
-        _inventoryService = inventoryService;
-        _purchaseService = purchaseService;
-        _saleService = saleService;
-        _dbContext = dbContext;
-    }
+        private readonly IProductRepository _productRepository;
+        private readonly IInventoryService _inventoryService;
+        private readonly IPurchaseService _purchaseService;
+        private readonly ISaleService _saleService;
+        private readonly EggERPDbContext _dbContext;
 
-    public async Task<List<StockBoardRowDto>> GetBoardAsync(Guid businessId, string group)
-    {
-        var products = await _productRepository.GetActiveByBusinessIdAsync(businessId);
-        var groupProducts = products.Where(p => p.Group == group).ToList();
-
-        var rows = new List<StockBoardRowDto>();
-
-        foreach (var product in groupProducts)
+        public FlockService(
+            IProductRepository productRepository,
+            IInventoryService inventoryService,
+            IPurchaseService purchaseService,
+            ISaleService saleService,
+            EggERPDbContext dbContext)
         {
-            var inventory = await _inventoryService.GetByProductIdAsync(businessId, product.Id);
-            var available = inventory?.QuantityOnHand ?? 0;
-
-            var bought = await _dbContext.PurchaseItems
-                .Where(pi => pi.ProductId == product.Id)
-                .SumAsync(pi => (decimal?)pi.Quantity) ?? 0;
-
-            var sold = await _dbContext.SaleItems
-                .Where(si => si.ProductId == product.Id)
-                .SumAsync(si => (decimal?)si.Quantity) ?? 0;
-
-            var totalSales = await _dbContext.SaleItems
-                .Where(si => si.ProductId == product.Id)
-                .SumAsync(si => (decimal?)si.TotalAmount) ?? 0;
-
-            rows.Add(new StockBoardRowDto
-            {
-                ProductId = product.Id,
-                Type = product.Type,
-                Description = product.Description ?? string.Empty,
-                Unit = product.Unit,
-                Available = (int)Math.Round(available),
-                Bought = (int)Math.Round(bought),
-                Sold = (int)Math.Round(sold),
-                TotalSales = totalSales
-            });
+            _productRepository = productRepository;
+            _inventoryService = inventoryService;
+            _purchaseService = purchaseService;
+            _saleService = saleService;
+            _dbContext = dbContext;
         }
 
-        return rows;
+    public async Task<List<StockBoardRowDto>> GetBoardAsync(
+        Guid businessId,
+        string group)
+    {
+        // Load active products for this business once.
+        var products = await _productRepository
+            .GetActiveByBusinessIdAsync(businessId);
+
+        var groupProducts = products
+            .Where(p => p.Group == group)
+            .ToList();
+
+        if (groupProducts.Count == 0)
+        {
+            return new List<StockBoardRowDto>();
+        }
+
+        var productIds = groupProducts
+            .Select(p => p.Id)
+            .ToList();
+
+        // Load inventory for all products in this business in one query.
+        var inventory = await _inventoryService
+            .GetInventoryAsync(businessId);
+
+        var inventoryByProduct = inventory
+            .Where(i => productIds.Contains(i.ProductId))
+            .ToDictionary(
+                i => i.ProductId,
+                i => i.QuantityOnHand);
+
+        // Load Bought totals for every displayed product in one query.
+        // Purchase.BusinessId ensures the totals belong to this business.
+        var boughtByProduct = await (
+            from pi in _dbContext.PurchaseItems
+            join purchase in _dbContext.Purchases
+                on pi.PurchaseId equals purchase.Id
+            where purchase.BusinessId == businessId
+                  && productIds.Contains(pi.ProductId)
+            group pi by pi.ProductId
+            into g
+            select new
+            {
+                ProductId = g.Key,
+                Quantity = g.Sum(x => x.Quantity)
+            })
+            .ToDictionaryAsync(
+                x => x.ProductId,
+                x => x.Quantity);
+
+        // Load Sold quantity + sales amount together in one query.
+        var soldByProduct = await (
+            from si in _dbContext.SaleItems
+            join sale in _dbContext.Sales
+                on si.SaleId equals sale.Id
+            where sale.BusinessId == businessId
+                  && productIds.Contains(si.ProductId)
+            group si by si.ProductId
+            into g
+            select new
+            {
+                ProductId = g.Key,
+                Quantity = g.Sum(x => x.Quantity),
+                TotalSales = g.Sum(x => x.TotalAmount)
+            })
+            .ToDictionaryAsync(
+                x => x.ProductId,
+                x => x);
+
+        // Everything below this point is in-memory.
+        return groupProducts
+            .Select(product =>
+            {
+                inventoryByProduct.TryGetValue(
+                    product.Id,
+                    out var available);
+
+                boughtByProduct.TryGetValue(
+                    product.Id,
+                    out var bought);
+
+                soldByProduct.TryGetValue(
+                    product.Id,
+                    out var soldData);
+
+                return new StockBoardRowDto
+                {
+                    ProductId = product.Id,
+                    Type = product.Type,
+                    Description = product.Description ?? string.Empty,
+                    Unit = product.Unit,
+
+                    Available = (int)Math.Round(available),
+                    Bought = (int)Math.Round(bought),
+                    Sold = soldData is null
+                        ? 0
+                        : (int)Math.Round(soldData.Quantity),
+
+                    TotalSales = soldData?.TotalSales ?? 0
+                };
+            })
+            .ToList();
     }
 
     public async Task<(bool Succeeded, string? Error)> AddStockAsync(AddStockRequest request)
-    {
-        var product = await _productRepository.GetByIdAsync(request.BusinessId, request.ProductId);
-        if (product is null) return (false, "Product not found in this business.");
-        if (product.Group != "Flock" && product.Group != "Egg") return (false, "Selected product is not a Flock or Egg product.");
-        if (request.Reason == "Bought") return (false, "Bought stock is recorded automatically through the New Purchase page.");
+        {
+            var product = await _productRepository.GetByIdAsync(request.BusinessId, request.ProductId);
+            if (product is null) return (false, "Product not found in this business.");
+            if (product.Group != "Flock" && product.Group != "Egg") return (false, "Selected product is not a Flock or Egg product.");
+            if (request.Reason == "Bought") return (false, "Bought stock is recorded automatically through the New Purchase page.");
 
-        var validReasons = product.Group == "Flock" ? FlockOptions.FlockInReasons : FlockOptions.EggInReasons;
-        if (!validReasons.Contains(request.Reason)) return (false, $"'{request.Reason}' is not a valid reason for adding {product.Group} stock.");
-        if (request.Quantity <= 0) return (false, "Quantity must be greater than zero.");
+            var validReasons = product.Group == "Flock" ? FlockOptions.FlockInReasons : FlockOptions.EggInReasons;
+            if (!validReasons.Contains(request.Reason)) return (false, $"'{request.Reason}' is not a valid reason for adding {product.Group} stock.");
+            if (request.Quantity <= 0) return (false, "Quantity must be greater than zero.");
 
-        await _inventoryService.AdjustQuantityAsync(request.BusinessId, request.ProductId, request.Quantity);
-        return (true, null);
-    }
+            await _inventoryService.AdjustQuantityAsync(request.BusinessId, request.ProductId, request.Quantity);
+            return (true, null);
+        }
 
-    public async Task<(bool Succeeded, string? Error)> RemoveStockAsync(RemoveStockRequest request)
-    {
-        var product = await _productRepository.GetByIdAsync(request.BusinessId, request.ProductId);
-        if (product is null) return (false, "Product not found in this business.");
-        if (product.Group != "Flock" && product.Group != "Egg") return (false, "Selected product is not a Flock or Egg product.");
-        if (request.Reason == "Sold") return (false, "Sold stock is recorded automatically through the New Sale page.");
+        public async Task<(bool Succeeded, string? Error)> RemoveStockAsync(RemoveStockRequest request)
+        {
+            var product = await _productRepository.GetByIdAsync(request.BusinessId, request.ProductId);
+            if (product is null) return (false, "Product not found in this business.");
+            if (product.Group != "Flock" && product.Group != "Egg") return (false, "Selected product is not a Flock or Egg product.");
+            if (request.Reason == "Sold") return (false, "Sold stock is recorded automatically through the New Sale page.");
 
-        var validReasons = product.Group == "Flock" ? FlockOptions.FlockOutReasons : FlockOptions.EggOutReasons;
-        if (!validReasons.Contains(request.Reason)) return (false, $"'{request.Reason}' is not a valid reason for removing {product.Group} stock.");
-        if (request.Quantity <= 0) return (false, "Quantity must be greater than zero.");
+            var validReasons = product.Group == "Flock" ? FlockOptions.FlockOutReasons : FlockOptions.EggOutReasons;
+            if (!validReasons.Contains(request.Reason)) return (false, $"'{request.Reason}' is not a valid reason for removing {product.Group} stock.");
+            if (request.Quantity <= 0) return (false, "Quantity must be greater than zero.");
 
-        var inventory = await _inventoryService.GetByProductIdAsync(request.BusinessId, request.ProductId);
-        var available = inventory?.QuantityOnHand ?? 0;
-        if (request.Quantity > available) return (false, $"Quantity exceeds current available stock ({(int)available}).");
+            var inventory = await _inventoryService.GetByProductIdAsync(request.BusinessId, request.ProductId);
+            var available = inventory?.QuantityOnHand ?? 0;
+            if (request.Quantity > available) return (false, $"Quantity exceeds current available stock ({(int)available}).");
 
-        await _inventoryService.AdjustQuantityAsync(request.BusinessId, request.ProductId, -request.Quantity);
-        return (true, null);
-    }
+            await _inventoryService.AdjustQuantityAsync(request.BusinessId, request.ProductId, -request.Quantity);
+            return (true, null);
+        }
 
     public async Task<(bool Succeeded, string? Error)> ProcessTransactionAsync(
-     ProcessStockTransactionRequest request)
+        ProcessStockTransactionRequest request)
     {
         if (request.Lines is null || request.Lines.Count == 0)
             return (false, "At least one line is required.");
@@ -133,84 +197,100 @@ public class FlockService : IFlockService
                     request.PaymentSource);
             }
 
-            // ------------------------------------------------------------
+            // ============================================================
             // 1. VALIDATE EVERY LINE
-            // ------------------------------------------------------------
+            // ============================================================
             foreach (var line in request.Lines)
             {
                 if (line.Group != "Flock" && line.Group != "Egg")
-                    return (false, "Each line must specify Group 'Flock' or 'Egg'.");
+                {
+                    return (false,
+                        "Each line must specify Group 'Flock' or 'Egg'.");
+                }
 
                 if (line.ProductId == Guid.Empty)
-                    return (false, "A product must be selected on every line.");
+                {
+                    return (false,
+                        "A product must be selected on every line.");
+                }
 
                 if (line.Quantity <= 0)
-                    return (false, "Quantity must be greater than zero on every line.");
+                {
+                    return (false,
+                        "Quantity must be greater than zero on every line.");
+                }
 
                 var product = await _productRepository.GetByIdAsync(
                     request.BusinessId,
                     line.ProductId);
 
                 if (product is null)
-                    return (false, "A selected product was not found in this business.");
+                {
+                    return (false,
+                        "A selected product was not found in this business.");
+                }
 
                 if (product.Group != line.Group)
+                {
                     return (false,
                         $"The selected product does not belong to the {line.Group} group.");
+                }
 
-                var validReasons = request.Direction == "In"
-                    ? (line.Group == "Flock"
-                        ? FlockOptions.FlockInReasons
-                        : FlockOptions.EggInReasons)
-                    : (line.Group == "Flock"
-                        ? FlockOptions.FlockOutReasons
-                        : FlockOptions.EggOutReasons);
+                // Bought and Sold are special transaction reasons.
+                // They are valid for BOTH Flock and Egg.
+                var isBought =
+                    request.Direction == "In" &&
+                    line.Reason == "Bought";
 
-                if (!validReasons.Contains(line.Reason))
-                    return (false,
-                        $"'{line.Reason}' is not a valid reason for a {line.Group} line.");
+                var isSold =
+                    request.Direction == "Out" &&
+                    line.Reason == "Sold";
 
-                // Bought-specific validation
-                if (request.Direction == "In" && line.Reason == "Bought")
+                // Only ordinary stock reasons need to exist in FlockOptions.
+                if (!isBought && !isSold)
                 {
-                    if (!line.SupplierId.HasValue ||
-                        line.SupplierId.Value == Guid.Empty)
+                    var validReasons = request.Direction == "In"
+                        ? (line.Group == "Flock"
+                            ? FlockOptions.FlockInReasons
+                            : FlockOptions.EggInReasons)
+                        : (line.Group == "Flock"
+                            ? FlockOptions.FlockOutReasons
+                            : FlockOptions.EggOutReasons);
+
+                    if (!validReasons.Contains(line.Reason))
                     {
                         return (false,
-                            "A supplier is required for every Bought line.");
+                            $"'{line.Reason}' is not a valid reason for a {line.Group} line.");
                     }
+                }
 
+                // Bought validation
+                // SupplierId may be null for an Unspecified / casual supplier.
+                if (isBought)
+                {
                     if (line.UnitCost < 0)
-                        return (false, "Unit cost cannot be negative.");
-                }
-
-                // Sold-specific validation
-                if (request.Direction == "Out" && line.Reason == "Sold")
-                {
-                    if (!line.CustomerId.HasValue ||
-                        line.CustomerId.Value == Guid.Empty)
                     {
                         return (false,
-                            "A customer is required for every Sold line.");
+                            "Unit cost cannot be negative.");
                     }
-
-                    if (line.UnitPrice < 0)
-                        return (false, "Unit price cannot be negative.");
                 }
+
+                // Sold validation
+                // CustomerId may be null for a Walk-in customer.
+                if (isSold)
+                {
+                    if (line.UnitPrice < 0)
+                    {
+                        return (false,
+                            "Unit price cannot be negative.");
+                    }
+                }
+
             }
 
-            // ------------------------------------------------------------
-            // 2. VALIDATE TOTAL OUTGOING STOCK PER PRODUCT
-            // ------------------------------------------------------------
-            // Important:
-            // Sold + other Out reasons must be checked together.
-            //
-            // Example:
-            // Available = 100
-            // Sold = 60
-            // Died = 50
-            // Total requested = 110 -> reject entire transaction.
-            // ------------------------------------------------------------
+            // ============================================================
+            // 2. VALIDATE TOTAL OUTGOING STOCK
+            // ============================================================
             if (request.Direction == "Out")
             {
                 var outgoingByProduct = request.Lines
@@ -224,11 +304,13 @@ public class FlockService : IFlockService
 
                 foreach (var outgoing in outgoingByProduct)
                 {
-                    var inventory = await _inventoryService.GetByProductIdAsync(
-                        request.BusinessId,
-                        outgoing.ProductId);
+                    var inventory =
+                        await _inventoryService.GetByProductIdAsync(
+                            request.BusinessId,
+                            outgoing.ProductId);
 
-                    var available = inventory?.QuantityOnHand ?? 0;
+                    var available =
+                        inventory?.QuantityOnHand ?? 0;
 
                     if (outgoing.Quantity > available)
                     {
@@ -239,25 +321,26 @@ public class FlockService : IFlockService
                 }
             }
 
-            // ------------------------------------------------------------
-            // 3. BEGIN ONE DATABASE TRANSACTION
-            // ------------------------------------------------------------
+            // ============================================================
+            // 3. BEGIN DATABASE TRANSACTION
+            // ============================================================
             await using var transaction =
                 await _dbContext.Database.BeginTransactionAsync();
 
             try
             {
-                // --------------------------------------------------------
+                // ========================================================
                 // 4. DIRECT STOCK MOVEMENTS
-                // --------------------------------------------------------
-                // Bought and Sold are excluded because PurchaseService /
-                // SaleService already update Inventory.
-                // --------------------------------------------------------
+                //
+                // Bought and Sold are NOT adjusted here because
+                // PurchaseService / SaleService already update Inventory.
+                // ========================================================
                 foreach (var line in request.Lines.Where(l => !IsPaymentLine(l)))
                 {
-                    var delta = request.Direction == "In"
-                        ? (decimal)line.Quantity
-                        : -(decimal)line.Quantity;
+                    var delta =
+                        request.Direction == "In"
+                            ? (decimal)line.Quantity
+                            : -(decimal)line.Quantity;
 
                     await _inventoryService.AdjustQuantityAsync(
                         request.BusinessId,
@@ -265,9 +348,9 @@ public class FlockService : IFlockService
                         delta);
                 }
 
-                // --------------------------------------------------------
-                // 5. BOUGHT LINES -> REAL PURCHASE RECORDS
-                // --------------------------------------------------------
+                // ========================================================
+                // 5. BOUGHT -> PURCHASE
+                // ========================================================
                 if (request.Direction == "In")
                 {
                     var boughtGroups = request.Lines
@@ -297,9 +380,9 @@ public class FlockService : IFlockService
                     }
                 }
 
-                // --------------------------------------------------------
-                // 6. SOLD LINES -> REAL SALE RECORDS
-                // --------------------------------------------------------
+                // ========================================================
+                // 6. SOLD -> SALE
+                // ========================================================
                 if (request.Direction == "Out")
                 {
                     var soldGroups = request.Lines
@@ -328,9 +411,9 @@ public class FlockService : IFlockService
                     }
                 }
 
-                // --------------------------------------------------------
-                // 7. EVERYTHING SUCCEEDED
-                // --------------------------------------------------------
+                // ========================================================
+                // 7. COMMIT
+                // ========================================================
                 await transaction.CommitAsync();
 
                 return (true, null);
@@ -338,6 +421,7 @@ public class FlockService : IFlockService
             catch (Exception ex)
             {
                 await transaction.RollbackAsync();
+
                 return (false, ex.Message);
             }
         }

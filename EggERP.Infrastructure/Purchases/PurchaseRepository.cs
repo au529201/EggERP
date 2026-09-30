@@ -2,14 +2,18 @@
 using EggERP.Domain.Entities;
 using EggERP.Infrastructure.Persistence;
 using Microsoft.EntityFrameworkCore;
+
 namespace EggERP.Infrastructure.Purchases;
+
 public class PurchaseRepository : IPurchaseRepository
 {
     private readonly EggERPDbContext _dbContext;
+
     public PurchaseRepository(EggERPDbContext dbContext)
     {
         _dbContext = dbContext;
     }
+
     public Task<List<Purchase>> GetByBusinessIdAsync(Guid businessId)
     {
         return _dbContext.Purchases
@@ -17,22 +21,38 @@ public class PurchaseRepository : IPurchaseRepository
             .OrderByDescending(p => p.PurchaseDateUtc)
             .ToListAsync();
     }
+
     public Task<Purchase?> GetByIdAsync(Guid businessId, Guid id)
     {
         return _dbContext.Purchases
-            .FirstOrDefaultAsync(p => p.BusinessId == businessId && p.Id == id);
+            .FirstOrDefaultAsync(
+                p => p.BusinessId == businessId &&
+                     p.Id == id);
     }
-    public Task<List<PurchaseItem>> GetItemsByPurchaseIdAsync(Guid purchaseId)
+
+    public Task<List<PurchaseItem>> GetItemsByPurchaseIdAsync(
+        Guid purchaseId)
     {
         return _dbContext.PurchaseItems
             .Where(pi => pi.PurchaseId == purchaseId)
             .ToListAsync();
     }
-    public async Task<Purchase> CreateAsync(Purchase purchase, List<PurchaseItem> items)
+
+    public async Task<Purchase> CreateAsync(
+        Purchase purchase,
+        List<PurchaseItem> items)
     {
         _dbContext.Purchases.Add(purchase);
         _dbContext.PurchaseItems.AddRange(items);
+
         await _dbContext.SaveChangesAsync();
+
         return purchase;
+    }
+
+    public async Task UpdateAsync(Purchase purchase)
+    {
+        _dbContext.Purchases.Update(purchase);
+        await _dbContext.SaveChangesAsync();
     }
 }

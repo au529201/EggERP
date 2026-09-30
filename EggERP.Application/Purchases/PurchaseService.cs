@@ -93,4 +93,55 @@ public class PurchaseService : IPurchaseService
 
         return createdPurchase;
     }
+
+    public async Task<(bool Succeeded, string? Error)> MarkAsPaidAsync(
+        Guid businessId,
+        Guid purchaseId,
+        string paymentMethod,
+        string? paymentSource,
+        string? referenceNumber,
+        string? bankName)
+    {
+        var purchase = await _purchaseRepository.GetByIdAsync(
+            businessId,
+            purchaseId);
+
+        if (purchase is null)
+        {
+            return (false, "Purchase not found.");
+        }
+
+        if (purchase.Status == "Paid")
+        {
+            return (false, "This purchase is already paid.");
+        }
+
+        if (purchase.Status != "Pending")
+        {
+            return (false, "Only pending purchases can be marked as paid.");
+        }
+
+        try
+        {
+            PaymentValidation.EnsureValid(
+                paymentMethod,
+                referenceNumber,
+                paymentSource);
+        }
+        catch (InvalidOperationException ex)
+        {
+            return (false, ex.Message);
+        }
+
+        purchase.Status = "Paid";
+        purchase.PaymentMethod = paymentMethod;
+        purchase.PaymentSource = paymentSource;
+        purchase.ReferenceNumber = referenceNumber;
+        purchase.BankName = bankName;
+        purchase.UpdatedAtUtc = DateTime.UtcNow;
+
+        await _purchaseRepository.UpdateAsync(purchase);
+
+        return (true, null);
+    }
 }

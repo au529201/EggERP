@@ -85,4 +85,56 @@ public class PurchaseController : ControllerBase
             return BadRequest(ex.Message);
         }
     }
+
+    public class MarkPurchasePaidRequest
+    {
+        public string PaymentMethod { get; set; } = "Cash";
+        public string? PaymentSource { get; set; }
+        public string? ReferenceNumber { get; set; }
+        public string? BankName { get; set; }
+    }
+
+    [HttpPut("{businessId:guid}/{id:guid}/mark-paid")]
+    public async Task<IActionResult> MarkAsPaid(
+        Guid businessId,
+        Guid id,
+        MarkPurchasePaidRequest request)
+    {
+        var currentUser = await _userManager.GetUserAsync(User);
+
+        if (currentUser is null)
+        {
+            return Unauthorized();
+        }
+
+        if (currentUser.BusinessId != businessId)
+        {
+            return Forbid();
+        }
+
+        var (succeeded, error) =
+            await _purchaseService.MarkAsPaidAsync(
+                businessId,
+                id,
+                request.PaymentMethod,
+                request.PaymentSource,
+                request.ReferenceNumber,
+                request.BankName);
+
+        if (!succeeded)
+        {
+            return BadRequest(error);
+        }
+
+        await _activityLogService.LogAsync(
+            currentUser.BusinessId,
+            currentUser.Id,
+            currentUser.FullName,
+            "Purchase Payment Completed",
+            "Purchase",
+            id,
+            $"Marked as Paid ({request.PaymentMethod})");
+
+        return NoContent();
+    }
 }

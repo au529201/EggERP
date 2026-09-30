@@ -4,9 +4,20 @@
 @using EggERP.Shared.Services
 @inject IPurchaseApiService PurchaseApiService
 @inject ISupplierApiService SupplierApiService
+@inject IJSRuntime JsRuntime
 
 <h3>Purchases</h3>
-<a class="btn btn-primary mb-3" href="/purchases/new">+ New Purchase</a>
+
+<a class="btn btn-primary mb-3" href="/purchases/new">
+    + New Purchase
+</a>
+
+@if (!string.IsNullOrWhiteSpace(errorMessage))
+{
+    <div class="alert alert-danger">
+        @errorMessage
+    </div>
+}
 
 @if (purchases is null)
 {
@@ -25,41 +36,96 @@ else
                 <th>Supplier</th>
                 <th>Total</th>
                 <th>Status</th>
+                <th>Action</th>
             </tr>
         </thead>
+
         <tbody>
             @foreach (var purchase in PagedPurchases)
             {
                 <tr>
-                    <td>@purchase.PurchaseDateUtc.ToLocalTime().ToString("g")</td>
-                    <td>@GetSupplierName(purchase.SupplierId)</td>
-                    <td>@purchase.TotalAmount.ToString("N2")</td>
-                    <td>@purchase.Status</td>
+                    <td>
+                        @purchase.PurchaseDateUtc.ToLocalTime().ToString("g")
+                    </td>
+
+                    <td>
+                        @GetSupplierName(purchase.SupplierId)
+                    </td>
+
+                    <td>
+                        @purchase.TotalAmount.ToString("N2")
+                    </td>
+
+                    <td>
+                        @if (purchase.Status == "Paid")
+                        {
+                            <span class="badge bg-success">
+                                Paid
+                            </span>
+                        }
+                        else
+                        {
+                            <span class="badge bg-warning text-dark">
+                                @purchase.Status
+                            </span>
+                        }
+                    </td>
+
+                    <td>
+                        @if (purchase.Status == "Pending")
+                        {
+                            <button class="btn btn-sm btn-success"
+                                    disabled="@isUpdating"
+                                    @onclick="() => MarkAsPaid(purchase)">
+                                @(isUpdating ? "Processing..." : "Mark Paid")
+                            </button>
+                        }
+                        else
+                        {
+                            <span class="text-muted">—</span>
+                        }
+                    </td>
                 </tr>
             }
         </tbody>
     </table>
 
-    <Pager Total="purchases.Count" Page="page" PageSize="pageSize" PageChanged="OnPageChanged" />
+    <Pager Total="purchases.Count"
+           Page="page"
+           PageSize="pageSize"
+           PageChanged="OnPageChanged" />
 }
 
 @code {
     private List<PurchaseDto>? purchases;
     private List<SupplierDto>? suppliers;
-    private readonly Guid businessId = Guid.Parse("11111111-1111-1111-1111-111111111111");
+
+    private readonly Guid businessId =
+        Guid.Parse("11111111-1111-1111-1111-111111111111");
 
     private int page = 1;
     private const int pageSize = 7;
 
-    private IEnumerable<PurchaseDto> PagedPurchases =>
-        (purchases ?? new List<PurchaseDto>()).Skip((page - 1) * pageSize).Take(pageSize);
+    private bool isUpdating;
+    private string? errorMessage;
 
-    private void OnPageChanged(int newPage) => page = newPage;
+    private IEnumerable<PurchaseDto> PagedPurchases =>
+        (purchases ?? new List<PurchaseDto>())
+            .Skip((page - 1) * pageSize)
+            .Take(pageSize);
+
+    private void OnPageChanged(int newPage)
+    {
+        page = newPage;
+    }
 
     protected override async Task OnInitializedAsync()
     {
-        purchases = await PurchaseApiService.GetPurchasesAsync(businessId);
-        suppliers = await SupplierApiService.GetSuppliersAsync(businessId);
+        purchases =
+            await PurchaseApiService.GetPurchasesAsync(businessId);
+
+        suppliers =
+            await SupplierApiService.GetSuppliersAsync(businessId);
     }
 
     private string GetSupplierName(Guid? supplierId)
@@ -68,6 +134,53 @@ else
         {
             return "Unspecified";
         }
-        return suppliers?.FirstOrDefault(s => s.Id == supplierId)?.Name ?? "Unknown";
+
+        return suppliers?
+            .FirstOrDefault(s => s.Id == supplierId)?
+            .Name ?? "Unknown";
+    }
+
+    private async Task MarkAsPaid(PurchaseDto purchase)
+    {
+        if (isUpdating)
+        {
+            return;
+        }
+
+        errorMessage = null;
+
+        var confirmed = await JsRuntime.InvokeAsync<bool>(
+            "confirm",
+            $"Mark this purchase of {purchase.TotalAmount:N2} as fully paid in Cash?");
+
+        if (!confirmed)
+        {
+            return;
+        }
+
+        isUpdating = true;
+
+        try
+        {
+            await PurchaseApiService.MarkAsPaidAsync(
+                businessId,
+                purchase.Id,
+                "Cash",
+                null,
+                null,
+                null);
+
+            purchases =
+                await PurchaseApiService.GetPurchasesAsync(businessId);
+        }
+        catch (Exception ex)
+        {
+            errorMessage =
+                $"Failed to update payment: {ex.Message}";
+        }
+        finally
+        {
+            isUpdating = false;
+        }
     }
 }

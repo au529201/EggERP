@@ -107,11 +107,10 @@ else
         <div class="txn-row">
             <div>
                 <label>Status</label>
-                <select class="form-select" @bind="status">
-                    <option value="Paid">Paid</option>
-                    <option value="Pending">Pending</option>
-                    <option value="Partial">Partial</option>
-                </select>
+<select class="form-select" @bind="status">
+    <option value="Paid">Paid</option>
+    <option value="Pending">Pending</option>
+</select>
             </div>
             <div>
                 <label>Payment Method</label>
@@ -147,10 +146,19 @@ else
         <p style="color:red">@errorMessage</p>
     }
 
-    <div class="txn-actions">
-        <button class="btn btn-outline-secondary" @onclick="Cancel">Cancel</button>
-        <button class="btn btn-primary" @onclick="HandleSave">Complete Transaction</button>
-    </div>
+<div class="txn-actions">
+    <button class="btn btn-outline-secondary"
+            @onclick="Cancel"
+            disabled="@isSaving">
+        Cancel
+    </button>
+
+    <button class="btn btn-primary"
+            @onclick="HandleSave"
+            disabled="@isSaving">
+        @(isSaving ? "Processing..." : "Complete Transaction")
+    </button>
+</div>
 }
 
 @code {
@@ -179,6 +187,7 @@ else
     private DateTime movementDate = DateTime.Today;
     private string? notes;
     private string? errorMessage;
+    private bool isSaving;
 
     private readonly Guid businessId = Guid.Parse("11111111-1111-1111-1111-111111111111");
 
@@ -238,24 +247,37 @@ customers = await CustomerApiService.GetCustomersAsync(businessId);
         }
     }
 
-    private async Task HandleSave()
+private async Task HandleSave()
+{
+    if (isSaving)
+        return;
+
+    errorMessage = null;
+
+    var validLines = lines
+        .Where(l => !string.IsNullOrEmpty(l.ProductId) && l.Quantity > 0)
+        .ToList();
+
+    if (validLines.Count == 0)
     {
-        errorMessage = null;
+        errorMessage = "Add at least one valid line item.";
+        return;
+    }
 
-        var validLines = lines.Where(l => !string.IsNullOrEmpty(l.ProductId) && l.Quantity > 0).ToList();
-        if (validLines.Count == 0)
-        {
-            errorMessage = "Add at least one valid line item.";
-            return;
-        }
+    if (HasPaymentLine &&
+        paymentMethod != "Cash" &&
+        (string.IsNullOrWhiteSpace(bankName) ||
+         string.IsNullOrWhiteSpace(referenceNumber)))
+    {
+        errorMessage =
+            "Bank Name and Reference ID are required for non-cash payments.";
+        return;
+    }
 
-        if (HasPaymentLine && paymentMethod != "Cash" &&
-            (string.IsNullOrWhiteSpace(bankName) || string.IsNullOrWhiteSpace(referenceNumber)))
-        {
-            errorMessage = "Bank Name and Reference ID are required for non-cash payments.";
-            return;
-        }
+    isSaving = true;
 
+    try
+    {
         var request = new ProcessStockTransactionRequest
         {
             BusinessId = businessId,
@@ -264,21 +286,33 @@ customers = await CustomerApiService.GetCustomersAsync(businessId);
             Notes = notes,
             Status = status,
             PaymentMethod = paymentMethod,
-            PaymentSource = paymentMethod == "Cash" ? null : paymentMethod,
-            ReferenceNumber = paymentMethod == "Cash" ? null : referenceNumber,
-            BankName = paymentMethod == "Cash" ? null : bankName,
-            Lines = validLines.Select(l => new StockTransactionLineRequest
-            {
-                Group = l.Group,
-                ProductId = Guid.Parse(l.ProductId),
-                Reason = l.Reason,
-                Quantity = l.Quantity,
-                UnitPrice = l.UnitPrice,
-                CustomerId = Guid.TryParse(l.CustomerId, out var cid) ? cid : null
-            }).ToList()
+            PaymentSource = paymentMethod == "Cash"
+                ? null
+                : paymentMethod,
+            ReferenceNumber = paymentMethod == "Cash"
+                ? null
+                : referenceNumber,
+            BankName = paymentMethod == "Cash"
+                ? null
+                : bankName,
+
+            Lines = validLines.Select(l =>
+                new StockTransactionLineRequest
+                {
+                    Group = l.Group,
+                    ProductId = Guid.Parse(l.ProductId),
+                    Reason = l.Reason,
+                    Quantity = l.Quantity,
+                    UnitPrice = l.UnitPrice,
+                    CustomerId =
+                        Guid.TryParse(l.CustomerId, out var cid)
+                            ? cid
+                            : null
+                }).ToList()
         };
 
         var error = await StockApiService.ProcessAsync(request);
+
         if (error is not null)
         {
             errorMessage = error;
@@ -287,4 +321,14 @@ customers = await CustomerApiService.GetCustomersAsync(businessId);
 
         Navigation.NavigateTo("/eggs");
     }
+    catch (Exception ex)
+    {
+        errorMessage =
+            $"Failed to complete transaction: {ex.Message}";
+    }
+    finally
+    {
+        isSaving = false;
+    }
+}
 }

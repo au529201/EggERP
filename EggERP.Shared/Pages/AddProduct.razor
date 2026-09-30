@@ -7,6 +7,7 @@
 <h3>Add Product</h3>
 
 <EditForm Model="@newProduct" OnValidSubmit="HandleSave">
+
     <div class="mb-3">
         <label>Group</label>
         <select class="form-select" @bind="newProduct.Group">
@@ -53,17 +54,27 @@
         <p style="color:red">@errorMessage</p>
     }
 
-    <button type="submit" class="btn btn-primary">
-        Save
+    <button type="submit"
+            class="btn btn-primary"
+            disabled="@isSaving">
+        @(isSaving ? "Saving..." : "Save")
     </button>
+
 </EditForm>
 
 @code {
     private CreateProductRequest newProduct = new();
     private string? errorMessage;
+    private bool isSaving = false;
 
     private async Task HandleSave()
     {
+        if (isSaving)
+        {
+            return;
+        }
+
+        isSaving = true;
         errorMessage = null;
 
         try
@@ -75,6 +86,7 @@
         catch (Exception ex)
         {
             errorMessage = $"Failed to save product: {ex.Message}";
+            isSaving = false;
         }
     }
 }

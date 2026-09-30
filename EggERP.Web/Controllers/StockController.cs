@@ -33,14 +33,48 @@ public class StockController : ControllerBase
 
         request.BusinessId = currentUser.BusinessId;
 
-        var (succeeded, error) = await _flockService.ProcessTransactionAsync(request);
-        if (!succeeded) return BadRequest(error);
+        var (succeeded, error) =
+            await _flockService.ProcessTransactionAsync(request);
 
-        var actionLabel = request.Direction == "In" ? "Added Stock" : "Removed Stock";
-        await _activityLogService.LogAsync(
-            currentUser.BusinessId, currentUser.Id, currentUser.FullName,
-            actionLabel, "Stock", null,
-            $"{request.Lines.Count} line(s) processed ({request.Direction})");
+        if (!succeeded)
+            return BadRequest(error);
+
+        foreach (var line in request.Lines)
+        {
+            var actionLabel = line.Reason switch
+            {
+                "Bought" => "Bought Stock",
+                "Sold" => "Sold Stock",
+                _ when request.Direction == "In" => "Added Stock",
+                _ => "Removed Stock"
+            };
+
+            var movement =
+                request.Direction == "In" ? "+" : "-";
+
+            var paymentInfo = line.Reason switch
+            {
+                "Bought" => $" | Unit Cost: {line.UnitCost:N2}",
+                "Sold" => $" | Unit Price: {line.UnitPrice:N2}",
+                _ => string.Empty
+            };
+
+            var notesInfo =
+                string.IsNullOrWhiteSpace(request.Notes)
+                    ? string.Empty
+                    : $" | Notes: {request.Notes}";
+
+            await _activityLogService.LogAsync(
+                currentUser.BusinessId,
+                currentUser.Id,
+                currentUser.FullName,
+                actionLabel,
+                line.Group,
+                line.ProductId,
+                $"{line.Reason}: {movement}{line.Quantity}" +
+                paymentInfo +
+                notesInfo);
+        }
 
         return Ok();
     }

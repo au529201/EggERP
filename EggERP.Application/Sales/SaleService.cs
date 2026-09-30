@@ -109,4 +109,53 @@ public class SaleService : ISaleService
 
         return createdSale;
     }
+
+    public async Task<(bool Succeeded, string? Error)> MarkAsPaidAsync(
+        Guid businessId,
+        Guid saleId,
+        string paymentMethod,
+        string? paymentSource,
+        string? referenceNumber)
+    {
+        var sale = await _saleRepository.GetByIdAsync(
+            businessId,
+            saleId);
+
+        if (sale is null)
+        {
+            return (false, "Sale not found.");
+        }
+
+        if (sale.Status == "Paid")
+        {
+            return (false, "This sale is already paid.");
+        }
+
+        if (sale.Status != "Pending")
+        {
+            return (false, "Only pending sales can be marked as paid.");
+        }
+
+        try
+        {
+            PaymentValidation.EnsureValid(
+                paymentMethod,
+                referenceNumber,
+                paymentSource);
+        }
+        catch (InvalidOperationException ex)
+        {
+            return (false, ex.Message);
+        }
+
+        sale.Status = "Paid";
+        sale.PaymentMethod = paymentMethod;
+        sale.PaymentSource = paymentSource;
+        sale.ReferenceNumber = referenceNumber;
+        sale.UpdatedAtUtc = DateTime.UtcNow;
+
+        await _saleRepository.UpdateAsync(sale);
+
+        return (true, null);
+    }
 }

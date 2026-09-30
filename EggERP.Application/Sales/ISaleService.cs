@@ -1,5 +1,7 @@
 ﻿using EggERP.Domain.Entities;
+
 namespace EggERP.Application.Sales;
+
 public class CreateSaleItemRequest
 {
     public Guid ProductId { get; set; }
@@ -10,8 +12,11 @@ public class CreateSaleItemRequest
 public interface ISaleService
 {
     Task<List<Sale>> GetSalesAsync(Guid businessId);
+
     Task<Sale?> GetSaleByIdAsync(Guid businessId, Guid id);
+
     Task<List<SaleItem>> GetSaleItemsAsync(Guid saleId);
+
     Task<Sale> CreateSaleAsync(
         Guid businessId,
         Guid? customerId,
@@ -20,4 +25,11 @@ public interface ISaleService
         string? paymentSource,
         string? referenceNumber,
         string status);
+
+    Task<(bool Succeeded, string? Error)> MarkAsPaidAsync(
+        Guid businessId,
+        Guid saleId,
+        string paymentMethod,
+        string? paymentSource,
+        string? referenceNumber);
 }
