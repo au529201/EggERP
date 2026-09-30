@@ -4,7 +4,6 @@ using EggERP.Infrastructure.Identity;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
-
 namespace EggERP.Web.Controllers;
 
 [ApiController]

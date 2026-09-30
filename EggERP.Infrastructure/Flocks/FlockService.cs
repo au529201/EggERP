@@ -105,7 +105,8 @@ public class FlockService : IFlockService
         return (true, null);
     }
 
-    public async Task<(bool Succeeded, string? Error)> ProcessTransactionAsync(ProcessStockTransactionRequest request)
+    public async Task<(bool Succeeded, string? Error)> ProcessTransactionAsync(
+     ProcessStockTransactionRequest request)
     {
         if (request.Lines is null || request.Lines.Count == 0)
             return (false, "At least one line is required.");
@@ -113,107 +114,236 @@ public class FlockService : IFlockService
         if (request.Direction != "In" && request.Direction != "Out")
             return (false, "Direction must be 'In' or 'Out'.");
 
-        bool IsPaymentLine(StockTransactionLineRequest l) =>
-            (request.Direction == "In" && l.Reason == "Bought") ||
-            (request.Direction == "Out" && l.Reason == "Sold");
+        bool IsPaymentLine(StockTransactionLineRequest line) =>
+            (request.Direction == "In" && line.Reason == "Bought") ||
+            (request.Direction == "Out" && line.Reason == "Sold");
 
         var hasPaymentLine = request.Lines.Any(IsPaymentLine);
 
-        if (hasPaymentLine)
+        try
         {
-            if (request.Status != "Paid" && request.Status != "Pending")
-                return (false, "Status must be 'Paid' or 'Pending'.");
-
-            PaymentValidation.EnsureValid(request.PaymentMethod, request.ReferenceNumber, request.PaymentSource);
-        }
-
-        // Validate every line up front — nothing is written unless every line checks out.
-        foreach (var line in request.Lines)
-        {
-            if (line.Group != "Flock" && line.Group != "Egg")
-                return (false, "Each line must specify Group 'Flock' or 'Egg'.");
-
-            var product = await _productRepository.GetByIdAsync(request.BusinessId, line.ProductId);
-            if (product is null || product.Group != line.Group)
-                return (false, $"Product not found for a selected {line.Group} line.");
-
-            if (line.Quantity <= 0)
-                return (false, "Quantity must be greater than zero on every line.");
-
-            if (!IsPaymentLine(line))
+            if (hasPaymentLine)
             {
+                if (request.Status != "Paid" && request.Status != "Pending")
+                    return (false, "Status must be 'Paid' or 'Pending'.");
+
+                PaymentValidation.EnsureValid(
+                    request.PaymentMethod,
+                    request.ReferenceNumber,
+                    request.PaymentSource);
+            }
+
+            // ------------------------------------------------------------
+            // 1. VALIDATE EVERY LINE
+            // ------------------------------------------------------------
+            foreach (var line in request.Lines)
+            {
+                if (line.Group != "Flock" && line.Group != "Egg")
+                    return (false, "Each line must specify Group 'Flock' or 'Egg'.");
+
+                if (line.ProductId == Guid.Empty)
+                    return (false, "A product must be selected on every line.");
+
+                if (line.Quantity <= 0)
+                    return (false, "Quantity must be greater than zero on every line.");
+
+                var product = await _productRepository.GetByIdAsync(
+                    request.BusinessId,
+                    line.ProductId);
+
+                if (product is null)
+                    return (false, "A selected product was not found in this business.");
+
+                if (product.Group != line.Group)
+                    return (false,
+                        $"The selected product does not belong to the {line.Group} group.");
+
                 var validReasons = request.Direction == "In"
-                    ? (line.Group == "Flock" ? FlockOptions.FlockInReasons : FlockOptions.EggInReasons)
-                    : (line.Group == "Flock" ? FlockOptions.FlockOutReasons : FlockOptions.EggOutReasons);
+                    ? (line.Group == "Flock"
+                        ? FlockOptions.FlockInReasons
+                        : FlockOptions.EggInReasons)
+                    : (line.Group == "Flock"
+                        ? FlockOptions.FlockOutReasons
+                        : FlockOptions.EggOutReasons);
 
                 if (!validReasons.Contains(line.Reason))
-                    return (false, $"'{line.Reason}' is not a valid reason for a {line.Group} line.");
+                    return (false,
+                        $"'{line.Reason}' is not a valid reason for a {line.Group} line.");
 
+                // Bought-specific validation
+                if (request.Direction == "In" && line.Reason == "Bought")
+                {
+                    if (!line.SupplierId.HasValue ||
+                        line.SupplierId.Value == Guid.Empty)
+                    {
+                        return (false,
+                            "A supplier is required for every Bought line.");
+                    }
+
+                    if (line.UnitCost < 0)
+                        return (false, "Unit cost cannot be negative.");
+                }
+
+                // Sold-specific validation
+                if (request.Direction == "Out" && line.Reason == "Sold")
+                {
+                    if (!line.CustomerId.HasValue ||
+                        line.CustomerId.Value == Guid.Empty)
+                    {
+                        return (false,
+                            "A customer is required for every Sold line.");
+                    }
+
+                    if (line.UnitPrice < 0)
+                        return (false, "Unit price cannot be negative.");
+                }
+            }
+
+            // ------------------------------------------------------------
+            // 2. VALIDATE TOTAL OUTGOING STOCK PER PRODUCT
+            // ------------------------------------------------------------
+            // Important:
+            // Sold + other Out reasons must be checked together.
+            //
+            // Example:
+            // Available = 100
+            // Sold = 60
+            // Died = 50
+            // Total requested = 110 -> reject entire transaction.
+            // ------------------------------------------------------------
+            if (request.Direction == "Out")
+            {
+                var outgoingByProduct = request.Lines
+                    .GroupBy(line => line.ProductId)
+                    .Select(group => new
+                    {
+                        ProductId = group.Key,
+                        Quantity = group.Sum(line => (decimal)line.Quantity)
+                    })
+                    .ToList();
+
+                foreach (var outgoing in outgoingByProduct)
+                {
+                    var inventory = await _inventoryService.GetByProductIdAsync(
+                        request.BusinessId,
+                        outgoing.ProductId);
+
+                    var available = inventory?.QuantityOnHand ?? 0;
+
+                    if (outgoing.Quantity > available)
+                    {
+                        return (false,
+                            $"Cannot remove {outgoing.Quantity:N0} unit(s). " +
+                            $"Only {available:N0} unit(s) are currently available.");
+                    }
+                }
+            }
+
+            // ------------------------------------------------------------
+            // 3. BEGIN ONE DATABASE TRANSACTION
+            // ------------------------------------------------------------
+            await using var transaction =
+                await _dbContext.Database.BeginTransactionAsync();
+
+            try
+            {
+                // --------------------------------------------------------
+                // 4. DIRECT STOCK MOVEMENTS
+                // --------------------------------------------------------
+                // Bought and Sold are excluded because PurchaseService /
+                // SaleService already update Inventory.
+                // --------------------------------------------------------
+                foreach (var line in request.Lines.Where(l => !IsPaymentLine(l)))
+                {
+                    var delta = request.Direction == "In"
+                        ? (decimal)line.Quantity
+                        : -(decimal)line.Quantity;
+
+                    await _inventoryService.AdjustQuantityAsync(
+                        request.BusinessId,
+                        line.ProductId,
+                        delta);
+                }
+
+                // --------------------------------------------------------
+                // 5. BOUGHT LINES -> REAL PURCHASE RECORDS
+                // --------------------------------------------------------
+                if (request.Direction == "In")
+                {
+                    var boughtGroups = request.Lines
+                        .Where(line => line.Reason == "Bought")
+                        .GroupBy(line => line.SupplierId);
+
+                    foreach (var group in boughtGroups)
+                    {
+                        var items = group
+                            .Select(line => new CreatePurchaseItemRequest
+                            {
+                                ProductId = line.ProductId,
+                                Quantity = line.Quantity,
+                                UnitCost = line.UnitCost
+                            })
+                            .ToList();
+
+                        await _purchaseService.CreatePurchaseAsync(
+                            request.BusinessId,
+                            group.Key,
+                            items,
+                            request.PaymentMethod,
+                            request.PaymentSource,
+                            request.ReferenceNumber,
+                            request.BankName,
+                            request.Status);
+                    }
+                }
+
+                // --------------------------------------------------------
+                // 6. SOLD LINES -> REAL SALE RECORDS
+                // --------------------------------------------------------
                 if (request.Direction == "Out")
                 {
-                    var inventory = await _inventoryService.GetByProductIdAsync(request.BusinessId, line.ProductId);
-                    var available = inventory?.QuantityOnHand ?? 0;
-                    if (line.Quantity > available)
-                        return (false, $"Quantity for one line exceeds current available stock ({(int)available}).");
+                    var soldGroups = request.Lines
+                        .Where(line => line.Reason == "Sold")
+                        .GroupBy(line => line.CustomerId);
+
+                    foreach (var group in soldGroups)
+                    {
+                        var items = group
+                            .Select(line => new CreateSaleItemRequest
+                            {
+                                ProductId = line.ProductId,
+                                Quantity = line.Quantity,
+                                UnitPrice = line.UnitPrice
+                            })
+                            .ToList();
+
+                        await _saleService.CreateSaleAsync(
+                            request.BusinessId,
+                            group.Key,
+                            items,
+                            request.PaymentMethod,
+                            request.PaymentSource,
+                            request.ReferenceNumber,
+                            request.Status);
+                    }
                 }
+
+                // --------------------------------------------------------
+                // 7. EVERYTHING SUCCEEDED
+                // --------------------------------------------------------
+                await transaction.CommitAsync();
+
+                return (true, null);
             }
-        }
-
-        // 1) Direct movements — everything that isn't Bought/Sold adjusts Inventory directly.
-        foreach (var line in request.Lines.Where(l => !IsPaymentLine(l)))
-        {
-            var delta = request.Direction == "In" ? (decimal)line.Quantity : -(decimal)line.Quantity;
-            await _inventoryService.AdjustQuantityAsync(request.BusinessId, line.ProductId, delta);
-        }
-
-        // 2) Bought lines — grouped by Supplier, each group becomes one real Purchase.
-        //    PurchaseService itself adjusts Inventory, so these lines are NOT touched above.
-        if (request.Direction == "In")
-        {
-            var boughtGroups = request.Lines.Where(l => l.Reason == "Bought").GroupBy(l => l.SupplierId);
-            foreach (var group in boughtGroups)
+            catch (Exception ex)
             {
-                var items = group.Select(l => new CreatePurchaseItemRequest
-                {
-                    ProductId = l.ProductId,
-                    Quantity = l.Quantity,
-                    UnitCost = l.UnitCost
-                }).ToList();
-
-                await _purchaseService.CreatePurchaseAsync(
-                    request.BusinessId, group.Key, items,
-                    request.PaymentMethod, request.PaymentSource, request.ReferenceNumber,
-                    request.BankName, request.Status);
+                await transaction.RollbackAsync();
+                return (false, ex.Message);
             }
         }
-
-        // 3) Sold lines — grouped by Customer, each group becomes one real Sale.
-        if (request.Direction == "Out")
+        catch (InvalidOperationException ex)
         {
-            var soldGroups = request.Lines.Where(l => l.Reason == "Sold").GroupBy(l => l.CustomerId);
-            foreach (var group in soldGroups)
-            {
-                var items = group.Select(l => new CreateSaleItemRequest
-                {
-                    ProductId = l.ProductId,
-                    Quantity = l.Quantity,
-                    UnitPrice = l.UnitPrice
-                }).ToList();
-
-                try
-                {
-                    await _saleService.CreateSaleAsync(
-                        request.BusinessId, group.Key, items,
-                        request.PaymentMethod, request.PaymentSource, request.ReferenceNumber,
-                        request.Status);
-                }
-                catch (InvalidOperationException ex)
-                {
-                    return (false, ex.Message);
-                }
-            }
+            return (false, ex.Message);
         }
-
-        return (true, null);
     }
 }
