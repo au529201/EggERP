@@ -6,98 +6,212 @@
 @inject IJSRuntime JsRuntime
 
 <h3>User Management</h3>
-<a class="btn btn-primary mb-3" href="/settings/users/add">+ Add User</a>
+
+<a class="btn btn-primary mb-3" href="/settings/users/add">
+    + Add User
+</a>
+
+<div class="row mb-3 g-2">
+    <div class="col-md-5">
+        <label>Search</label>
+        <input class="form-control"
+               placeholder="Search name or email..."
+               @bind="searchText"
+               @bind:event="oninput"
+               @bind:after="ResetPage" />
+    </div>
+
+    <div class="col-md-3">
+        <label>Role</label>
+        <select class="form-select"
+                @bind="selectedRole"
+                @bind:after="ResetPage">
+            <option value="">All Roles</option>
+            <option value="Admin">Admin</option>
+            <option value="Manager">Manager</option>
+            <option value="Staff">Staff</option>
+        </select>
+    </div>
+
+    <div class="col-md-2">
+        <label>Status</label>
+        <select class="form-select"
+                @bind="selectedStatus"
+                @bind:after="ResetPage">
+            <option value="">All</option>
+            <option value="Active">Active</option>
+            <option value="Inactive">Deactivated</option>
+        </select>
+    </div>
+
+    <div class="col-md-2 d-flex align-items-end">
+        <button class="btn btn-outline-secondary w-100"
+                @onclick="ClearFilters">
+            Clear
+        </button>
+    </div>
+</div>
 
 @if (users is null)
 {
     <p>Loading...</p>
 }
-else if (users.Count == 0)
+else if (!FilteredUsers.Any())
 {
-    <p>No users found.</p>
+    <p>No matching users found.</p>
 }
 else
 {
-    <table class="table">
-        <thead>
-            <tr>
-                <th>Full Name</th>
-                <th>Email</th>
-                <th>Role</th>
-                <th>Status</th>
-                <th>Actions</th>
-            </tr>
-        </thead>
-        <tbody>
-            @foreach (var user in PagedUsers)
-            {
+    <div class="table-responsive">
+        <table class="table">
+            <thead>
                 <tr>
-                    <td>@user.FullName</td>
-                    <td>@user.Email</td>
-                    <td>@user.Role</td>
-                    <td>
-                        @if (user.IsActive)
-                        {
-                            <span class="status-pill status-active"><i class="bi bi-circle-fill"></i> Active</span>
-                        }
-                        else
-                        {
-                            <span class="status-pill status-inactive"><i class="bi bi-circle-fill"></i> Deactivated</span>
-                        }
-                    </td>
-                    <td>
-                        @if (user.IsActive)
-                        {
-                            <a class="btn btn-sm btn-secondary me-1" href="@($"/settings/users/edit/{user.Id}")">
-                                <i class="bi bi-pencil-fill me-1"></i> Edit
-                            </a>
-                            <button class="btn btn-sm btn-danger" @onclick="() => DeactivateUser(user.Id, user.FullName)">
-                                <i class="bi bi-slash-circle me-1"></i> Deactivate
-                            </button>
-                        }
-                        else
-                        {
-                            <button class="btn btn-sm btn-success" @onclick="() => ActivateUser(user.Id, user.FullName)">
-                                <i class="bi bi-arrow-clockwise me-1"></i> Activate
-                            </button>
-                        }
-                    </td>
+                    <th>Full Name</th>
+                    <th>Email</th>
+                    <th>Role</th>
+                    <th>Status</th>
+                    <th>Actions</th>
                 </tr>
-            }
-        </tbody>
-    </table>
+            </thead>
 
-    <Pager Total="users.Count" Page="page" PageSize="pageSize" PageChanged="OnPageChanged" />
+            <tbody>
+                @foreach (var user in PagedUsers)
+                {
+                    <tr>
+                        <td>@user.FullName</td>
+                        <td>@user.Email</td>
+                        <td>@user.Role</td>
+                        <td>
+                            @if (user.IsActive)
+                            {
+                                <span class="status-pill status-active">
+                                    <i class="bi bi-circle-fill"></i> Active
+                                </span>
+                            }
+                            else
+                            {
+                                <span class="status-pill status-inactive">
+                                    <i class="bi bi-circle-fill"></i> Deactivated
+                                </span>
+                            }
+                        </td>
+                        <td>
+                            @if (user.IsActive)
+                            {
+                                <a class="btn btn-sm btn-secondary me-1"
+                                   href="@($"/settings/users/edit/{user.Id}")">
+                                    <i class="bi bi-pencil-fill me-1"></i>
+                                    Edit
+                                </a>
+
+                                <button class="btn btn-sm btn-danger"
+                                        @onclick="() => DeactivateUser(user.Id, user.FullName)">
+                                    <i class="bi bi-slash-circle me-1"></i>
+                                    Deactivate
+                                </button>
+                            }
+                            else
+                            {
+                                <button class="btn btn-sm btn-success"
+                                        @onclick="() => ActivateUser(user.Id, user.FullName)">
+                                    <i class="bi bi-arrow-clockwise me-1"></i>
+                                    Activate
+                                </button>
+                            }
+                        </td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+    </div>
+
+    <Pager Total="FilteredUsers.Count()"
+           Page="page"
+           PageSize="pageSize"
+           PageChanged="OnPageChanged" />
 }
 
 @code {
     private List<UserDto>? users;
+
+    private string searchText = string.Empty;
+    private string selectedRole = string.Empty;
+    private string selectedStatus = string.Empty;
+
     private int page = 1;
     private const int pageSize = 7;
 
-    private IEnumerable<UserDto> PagedUsers =>
-        (users ?? new List<UserDto>()).Skip((page - 1) * pageSize).Take(pageSize);
+    private IEnumerable<UserDto> FilteredUsers =>
+        (users ?? new List<UserDto>())
+        .Where(u =>
+            (
+                string.IsNullOrWhiteSpace(searchText) ||
+                (u.FullName ?? string.Empty).Contains(searchText, StringComparison.OrdinalIgnoreCase) ||
+                (u.Email ?? string.Empty).Contains(searchText, StringComparison.OrdinalIgnoreCase)
+            )
+            &&
+            (
+                string.IsNullOrWhiteSpace(selectedRole) ||
+                u.Role == selectedRole
+            )
+            &&
+            (
+                string.IsNullOrWhiteSpace(selectedStatus) ||
+                (selectedStatus == "Active" && u.IsActive) ||
+                (selectedStatus == "Inactive" && !u.IsActive)
+            ));
 
-    private void OnPageChanged(int newPage) => page = newPage;
+    private IEnumerable<UserDto> PagedUsers =>
+        FilteredUsers
+            .Skip((page - 1) * pageSize)
+            .Take(pageSize);
 
     protected override async Task OnInitializedAsync()
     {
         users = await UserManagementApiService.GetUsersAsync();
     }
 
+    private void ResetPage() => page = 1;
+
+    private void OnPageChanged(int newPage) => page = newPage;
+
+    private void ClearFilters()
+    {
+        searchText = string.Empty;
+        selectedRole = string.Empty;
+        selectedStatus = string.Empty;
+        page = 1;
+    }
+
     private async Task DeactivateUser(Guid id, string name)
     {
-        var confirmed = await JsRuntime.InvokeAsync<bool>("confirm", $"Deactivate '{name}'? They will no longer be able to log in.");
-        if (!confirmed) return;
+        var confirmed = await JsRuntime.InvokeAsync<bool>(
+            "confirm",
+            $"Deactivate '{name}'? They will no longer be able to log in.");
+
+        if (!confirmed)
+        {
+            return;
+        }
+
         await UserManagementApiService.DeactivateUserAsync(id);
         users = await UserManagementApiService.GetUsersAsync();
+        page = 1;
     }
 
     private async Task ActivateUser(Guid id, string name)
     {
-        var confirmed = await JsRuntime.InvokeAsync<bool>("confirm", $"Activate '{name}'? They will be able to log in again.");
-        if (!confirmed) return;
+        var confirmed = await JsRuntime.InvokeAsync<bool>(
+            "confirm",
+            $"Activate '{name}'? They will be able to log in again.");
+
+        if (!confirmed)
+        {
+            return;
+        }
+
         await UserManagementApiService.ActivateUserAsync(id);
         users = await UserManagementApiService.GetUsersAsync();
+        page = 1;
     }
 }

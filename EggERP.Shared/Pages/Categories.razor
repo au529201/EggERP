@@ -6,61 +6,128 @@
 @inject IJSRuntime JsRuntime
 
 <h3>Categories</h3>
+
 <AuthorizeView Roles="Admin,Manager">
     <Authorized>
-        <a class="btn btn-primary mb-3" href="/categories/add">+ Add Category</a>
+        <a class="btn btn-primary mb-3" href="/categories/add">
+            + Add Category
+        </a>
     </Authorized>
 </AuthorizeView>
+
+<div class="row mb-3 g-2">
+    <div class="col-md-9">
+        <input class="form-control"
+               placeholder="Search category name or description..."
+               @bind="searchText"
+               @bind:event="oninput"
+               @bind:after="ResetPage" />
+    </div>
+
+    <div class="col-md-3">
+        <button class="btn btn-outline-secondary w-100"
+                @onclick="ClearFilters">
+            Clear
+        </button>
+    </div>
+</div>
+
 @if (categories is null)
 {
     <p>Loading...</p>
 }
-else if (categories.Count == 0)
+else if (!FilteredCategories.Any())
 {
-    <p>No categories found.</p>
+    <p>No matching categories found.</p>
 }
 else
 {
-    <table class="table">
-        <thead>
-            <tr>
-                <th>Name</th>
-                <th>Description</th>
-                <th></th>
-            </tr>
-        </thead>
-        <tbody>
-            @foreach (var category in categories)
-            {
+    <div class="table-responsive">
+        <table class="table">
+            <thead>
                 <tr>
-                    <td>@category.Name</td>
-                    <td>@category.Description</td>
-                    <td>
-                        <AuthorizeView Roles="Admin,Manager">
-                            <Authorized>
-                                <a class="btn btn-sm btn-secondary" href="@($"/categories/edit/{category.Id}")">Edit</a>
-                                <button class="btn btn-sm btn-danger" @onclick="() => DeactivateCategory(category.Id, category.Name)">Deactivate</button>
-                            </Authorized>
-                        </AuthorizeView>
-                    </td>
+                    <th>Name</th>
+                    <th>Description</th>
+                    <th></th>
                 </tr>
-            }
-        </tbody>
-    </table>
+            </thead>
+
+            <tbody>
+                @foreach (var category in PagedCategories)
+                {
+                    <tr>
+                        <td>@category.Name</td>
+                        <td>@category.Description</td>
+                        <td>
+                            <AuthorizeView Roles="Admin,Manager">
+                                <Authorized>
+                                    <a class="btn btn-sm btn-secondary"
+                                       href="@($"/categories/edit/{category.Id}")">
+                                        Edit
+                                    </a>
+
+                                    <button class="btn btn-sm btn-danger"
+                                            @onclick="() => DeactivateCategory(category.Id, category.Name)">
+                                        Deactivate
+                                    </button>
+                                </Authorized>
+                            </AuthorizeView>
+                        </td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+    </div>
+
+    <Pager Total="FilteredCategories.Count()"
+           Page="page"
+           PageSize="pageSize"
+           PageChanged="OnPageChanged" />
 }
 
 @code {
     private List<CategoryDto>? categories;
-    private readonly Guid businessId = Guid.Parse("11111111-1111-1111-1111-111111111111");
+    private string searchText = string.Empty;
+
+    private readonly Guid businessId =
+        Guid.Parse("11111111-1111-1111-1111-111111111111");
+
+    private int page = 1;
+    private const int pageSize = 7;
+
+    private IEnumerable<CategoryDto> FilteredCategories =>
+        (categories ?? new List<CategoryDto>())
+        .Where(c =>
+            string.IsNullOrWhiteSpace(searchText) ||
+            c.Name.Contains(searchText, StringComparison.OrdinalIgnoreCase) ||
+            (c.Description ?? string.Empty).Contains(searchText, StringComparison.OrdinalIgnoreCase));
+
+    private IEnumerable<CategoryDto> PagedCategories =>
+        FilteredCategories
+            .Skip((page - 1) * pageSize)
+            .Take(pageSize);
 
     protected override async Task OnInitializedAsync()
     {
         categories = await CategoryApiService.GetCategoriesAsync(businessId);
     }
 
+    private void ResetPage() => page = 1;
+
+    private void OnPageChanged(int newPage) => page = newPage;
+
+    private void ClearFilters()
+    {
+        searchText = string.Empty;
+        page = 1;
+    }
+
     private async Task DeactivateCategory(Guid id, string name)
     {
-        var confirmed = await JsRuntime.InvokeAsync<bool>("confirm", $"Deactivate '{name}'? It will be hidden from the active category list.");
+        var confirmed = await JsRuntime.InvokeAsync<bool>(
+            "confirm",
+            $"Deactivate '{name}'? It will be hidden from the active category list.");
+
         if (!confirmed)
         {
             return;
@@ -68,5 +135,6 @@ else
 
         await CategoryApiService.DeactivateCategoryAsync(businessId, id);
         categories = await CategoryApiService.GetCategoriesAsync(businessId);
+        page = 1;
     }
 }

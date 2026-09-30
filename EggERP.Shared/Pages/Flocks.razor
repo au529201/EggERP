@@ -5,62 +5,154 @@
 
 <h3>Flocks</h3>
 
-<a class="btn btn-primary mb-3" href="/stock/add">+ Add Stock</a>
-<a class="btn btn-secondary mb-3 ms-2" href="/stock/remove">- Remove Stock</a>
+<div class="d-flex flex-wrap gap-2 mb-3">
+    <a class="btn btn-primary" href="/stock/add">+ Add Stock</a>
+    <a class="btn btn-secondary" href="/stock/remove">- Remove Stock</a>
+</div>
+
+<div class="row mb-3 g-2">
+    <div class="col-md-6">
+        <label>Search</label>
+        <input class="form-control"
+               placeholder="Search type or description..."
+               @bind="searchText"
+               @bind:event="oninput"
+               @bind:after="ResetPage" />
+    </div>
+
+    <div class="col-md-3">
+        <label>Stock Status</label>
+        <select class="form-select"
+                @bind="stockFilter"
+                @bind:after="ResetPage">
+            <option value="">All</option>
+            <option value="Available">Available</option>
+            <option value="OutOfStock">Out of Stock</option>
+        </select>
+    </div>
+
+    <div class="col-md-3 d-flex align-items-end">
+        <button class="btn btn-outline-secondary w-100"
+                @onclick="ClearFilters">
+            Clear
+        </button>
+    </div>
+</div>
 
 @if (rows is null)
 {
     <p>Loading...</p>
 }
-else if (rows.Count == 0)
+else if (!FilteredRows.Any())
 {
-    <p>No Flock-type products found. <a href="/products/add">Add one</a> first (set Group = Flock).</p>
+    <div class="alert alert-light border">
+        No matching Flock products found.
+    </div>
 }
 else
 {
-    <table class="table">
-        <thead>
-            <tr>
-                <th>Type</th>
-                <th>Description</th>
-                <th>Unit</th>
-                <th>Available</th>
-                <th>Bought</th>
-                <th>Sold</th>
-                <th>Total Sales</th>
-            </tr>
-        </thead>
-        <tbody>
-            @foreach (var row in PagedRows)
-            {
+    <div class="table-responsive">
+        <table class="table">
+            <thead>
                 <tr>
-                    <td>@row.Type</td>
-                    <td>@row.Description</td>
-                    <td>@row.Unit</td>
-                    <td>@row.Available</td>
-                    <td>@row.Bought</td>
-                    <td>@row.Sold</td>
-                    <td>@row.TotalSales.ToString("N2")</td>
+                    <th>Type</th>
+                    <th>Description</th>
+                    <th>Unit</th>
+                    <th>Available</th>
+                    <th>Bought</th>
+                    <th>Sold</th>
+                    <th>Total Sales</th>
                 </tr>
-            }
-        </tbody>
-    </table>
+            </thead>
 
-    <Pager Total="rows.Count" Page="page" PageSize="pageSize" PageChanged="OnPageChanged" />
+            <tbody>
+                @foreach (var row in PagedRows)
+                {
+                    <tr>
+                        <td>@row.Type</td>
+                        <td>@row.Description</td>
+                        <td>@row.Unit</td>
+
+                        <td>
+                            @if (row.Available <= 0)
+                            {
+                                <span class="badge bg-danger">
+                                    @row.Available
+                                </span>
+                            }
+                            else
+                            {
+                                @row.Available
+                            }
+                        </td>
+
+                        <td>@row.Bought</td>
+                        <td>@row.Sold</td>
+                        <td>@row.TotalSales.ToString("N2")</td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+    </div>
+
+    <Pager Total="FilteredRows.Count()"
+           Page="page"
+           PageSize="pageSize"
+           PageChanged="OnPageChanged" />
 }
 
 @code {
     private List<StockBoardRowDto>? rows;
+
+    private string searchText = string.Empty;
+    private string stockFilter = string.Empty;
+
     private int page = 1;
     private const int pageSize = 7;
 
-    private IEnumerable<StockBoardRowDto> PagedRows =>
-        (rows ?? new List<StockBoardRowDto>()).Skip((page - 1) * pageSize).Take(pageSize);
+    private IEnumerable<StockBoardRowDto> FilteredRows =>
+        (rows ?? new List<StockBoardRowDto>())
+        .Where(row =>
+            (
+                string.IsNullOrWhiteSpace(searchText) ||
+                row.Type.Contains(
+                    searchText,
+                    StringComparison.OrdinalIgnoreCase) ||
+                row.Description.Contains(
+                    searchText,
+                    StringComparison.OrdinalIgnoreCase)
+            )
+            &&
+            (
+                string.IsNullOrWhiteSpace(stockFilter) ||
+                (stockFilter == "Available" && row.Available > 0) ||
+                (stockFilter == "OutOfStock" && row.Available <= 0)
+            ));
 
-    private void OnPageChanged(int newPage) => page = newPage;
+    private IEnumerable<StockBoardRowDto> PagedRows =>
+        FilteredRows
+            .Skip((page - 1) * pageSize)
+            .Take(pageSize);
 
     protected override async Task OnInitializedAsync()
     {
         rows = await FlockApiService.GetBoardAsync();
+    }
+
+    private void ResetPage()
+    {
+        page = 1;
+    }
+
+    private void OnPageChanged(int newPage)
+    {
+        page = newPage;
+    }
+
+    private void ClearFilters()
+    {
+        searchText = string.Empty;
+        stockFilter = string.Empty;
+        page = 1;
     }
 }
