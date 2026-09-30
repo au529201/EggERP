@@ -24,25 +24,35 @@ else
                 <option value="Egg">Egg</option>
             </select>
         </div>
+
         <div class="mb-3">
             <label>Type</label>
-            <InputText class="form-control" @bind-Value="editModel.Type" />
+            <InputText class="form-control"
+                       @bind-Value="editModel.Type" />
         </div>
+
         <div class="mb-3">
             <label>Description</label>
-            <InputText class="form-control" @bind-Value="editModel.Description" />
+            <InputText class="form-control"
+                       @bind-Value="editModel.Description" />
         </div>
+
         <div class="mb-3">
             <label>Unit</label>
-            <InputText class="form-control" @bind-Value="editModel.Unit" />
+            <InputText class="form-control"
+                       @bind-Value="editModel.Unit" />
         </div>
+
         <div class="mb-3">
             <label>Cost Price</label>
-            <InputNumber class="form-control" @bind-Value="editModel.CostPrice" />
+            <InputNumber class="form-control"
+                         @bind-Value="editModel.CostPrice" />
         </div>
+
         <div class="mb-3">
             <label>Sell Price</label>
-            <InputNumber class="form-control" @bind-Value="editModel.SellingPrice" />
+            <InputNumber class="form-control"
+                         @bind-Value="editModel.SellingPrice" />
         </div>
 
         @if (!string.IsNullOrEmpty(errorMessage))
@@ -50,7 +60,9 @@ else
             <p style="color:red">@errorMessage</p>
         }
 
-        <button type="submit" class="btn btn-primary">Save</button>
+        <button type="submit" class="btn btn-primary">
+            Save
+        </button>
     </EditForm>
 }
 
@@ -58,17 +70,20 @@ else
     [Parameter]
     public Guid Id { get; set; }
 
-    private readonly Guid businessId = Guid.Parse("11111111-1111-1111-1111-111111111111");
+    private readonly Guid businessId =
+        Guid.Parse("11111111-1111-1111-1111-111111111111");
 
     private UpdateProductRequest editModel = new();
+
     private bool isLoading = true;
     private bool notFound = false;
+
     private string? errorMessage;
 
     protected override async Task OnInitializedAsync()
     {
-        var product = await ProductApiService.GetProductByIdAsync(businessId, Id);
-
+        var product =
+await ProductApiService.GetProductByIdAsync(Id);
         if (product is null)
         {
             notFound = true;

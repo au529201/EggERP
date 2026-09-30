@@ -5,50 +5,70 @@ namespace EggERP.Shared.Services
 {
     public interface IProductApiService
     {
-        Task<List<ProductDto>> GetProductsAsync(Guid businessId);
+        Task<List<ProductDto>> GetProductsAsync();
         Task CreateProductAsync(CreateProductRequest request);
-        Task<ProductDetailDto?> GetProductByIdAsync(Guid businessId, Guid id);
+        Task<ProductDetailDto?> GetProductByIdAsync(Guid id);
         Task UpdateProductAsync(UpdateProductRequest request);
-        Task DeactivateProductAsync(Guid businessId, Guid id);
+        Task DeactivateProductAsync(Guid id);
     }
+
     public class ProductApiService : IProductApiService
     {
         private readonly HttpClient _http;
+
         public ProductApiService(HttpClient http)
         {
             _http = http;
         }
-        public async Task<List<ProductDto>> GetProductsAsync(Guid businessId)
+
+        public async Task<List<ProductDto>> GetProductsAsync()
         {
             var result = await _http.GetFromJsonAsync<List<ProductDto>>(
-                $"api/products/{businessId}");
+                "api/products");
+
             return result ?? new List<ProductDto>();
         }
+
         public async Task CreateProductAsync(CreateProductRequest request)
         {
-            var response = await _http.PostAsJsonAsync("api/products", request);
+            var response = await _http.PostAsJsonAsync(
+                "api/products",
+                request);
+
             response.EnsureSuccessStatusCode();
         }
-        public       async Task<ProductDetailDto?> GetProductByIdAsync(Guid businessId, Guid id)
-        {
-            var response = await _http.GetAsync($"api/products/{businessId}/{id}");
 
-            if (response.StatusCode == System.Net.HttpStatusCode.NotFound)
+        public async Task<ProductDetailDto?> GetProductByIdAsync(Guid id)
+        {
+            var response = await _http.GetAsync(
+                $"api/products/{id}");
+
+            if (response.StatusCode ==
+                System.Net.HttpStatusCode.NotFound)
             {
                 return null;
             }
 
             response.EnsureSuccessStatusCode();
-            return await response.Content.ReadFromJsonAsync<ProductDetailDto>();
+
+            return await response.Content
+                .ReadFromJsonAsync<ProductDetailDto>();
         }
+
         public async Task UpdateProductAsync(UpdateProductRequest request)
         {
-            var response = await _http.PutAsJsonAsync($"api/products/{request.Id}", request);
+            var response = await _http.PutAsJsonAsync(
+                $"api/products/{request.Id}",
+                request);
+
             response.EnsureSuccessStatusCode();
         }
-        public async Task DeactivateProductAsync(Guid businessId, Guid id)
+
+        public async Task DeactivateProductAsync(Guid id)
         {
-            var response = await _http.DeleteAsync($"api/products/{businessId}/{id}");
+            var response = await _http.DeleteAsync(
+                $"api/products/{id}");
+
             response.EnsureSuccessStatusCode();
         }
     }

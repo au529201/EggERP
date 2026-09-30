@@ -25,17 +25,34 @@ public class ProductController : ControllerBase
         _activityLogService = activityLogService;
     }
 
-    [HttpGet("{businessId:guid}")]
-    public async Task<IActionResult> GetProducts(Guid businessId)
+    [HttpGet]
+    public async Task<IActionResult> GetProducts()
     {
-        var products = await _productService.GetProductsAsync(businessId);
+        var currentUser = await _userManager.GetUserAsync(User);
+
+        if (currentUser is null)
+        {
+            return Unauthorized();
+        }
+
+        var products = await _productService.GetProductsAsync(currentUser.BusinessId);
+
         return Ok(products);
     }
 
-    [HttpGet("{businessId:guid}/{id:guid}")]
-    public async Task<IActionResult> GetProductById(Guid businessId, Guid id)
+    [HttpGet("{id:guid}")]
+    public async Task<IActionResult> GetProductById(Guid id)
     {
-        var product = await _productService.GetProductByIdAsync(businessId, id);
+        var currentUser = await _userManager.GetUserAsync(User);
+
+        if (currentUser is null)
+        {
+            return Unauthorized();
+        }
+
+        var product = await _productService.GetProductByIdAsync(
+            currentUser.BusinessId,
+            id);
 
         if (product is null)
         {
@@ -48,62 +65,98 @@ public class ProductController : ControllerBase
     [HttpPost]
     public async Task<IActionResult> CreateProduct(Product product)
     {
-        var createdProduct = await _productService.CreateProductAsync(product);
-
         var currentUser = await _userManager.GetUserAsync(User);
-        if (currentUser is not null)
+
+        if (currentUser is null)
         {
-            await _activityLogService.LogAsync(
-                createdProduct.BusinessId, currentUser.Id, currentUser.FullName,
-                "Created Product", "Product", createdProduct.Id, createdProduct.Name);
+            return Unauthorized();
         }
 
+        // Never trust BusinessId sent by the client.
+        product.BusinessId = currentUser.BusinessId;
+
+        var createdProduct = await _productService.CreateProductAsync(product);
+
+        await _activityLogService.LogAsync(
+            currentUser.BusinessId,
+            currentUser.Id,
+            currentUser.FullName,
+            "Created Product",
+            "Product",
+            createdProduct.Id,
+            createdProduct.Name);
+
         return CreatedAtAction(
-            nameof(GetProducts),
-            new { businessId = createdProduct.BusinessId },
+            nameof(GetProductById),
+            new { id = createdProduct.Id },
             createdProduct);
     }
 
     [HttpPut("{id:guid}")]
     public async Task<IActionResult> UpdateProduct(Guid id, Product product)
     {
+        var currentUser = await _userManager.GetUserAsync(User);
+
+        if (currentUser is null)
+        {
+            return Unauthorized();
+        }
+
         if (id != product.Id)
         {
-            return BadRequest("Route id does not match product id in the request body.");
+            return BadRequest(
+                "Route id does not match product id in the request body.");
         }
+
+        // Never trust BusinessId sent by the client.
+        product.BusinessId = currentUser.BusinessId;
+
         var updated = await _productService.UpdateProductAsync(product);
+
         if (!updated)
         {
             return NotFound();
         }
 
-        var currentUser = await _userManager.GetUserAsync(User);
-        if (currentUser is not null)
-        {
-            await _activityLogService.LogAsync(
-                product.BusinessId, currentUser.Id, currentUser.FullName,
-                "Updated Product", "Product", id, product.Name);
-        }
+        await _activityLogService.LogAsync(
+            currentUser.BusinessId,
+            currentUser.Id,
+            currentUser.FullName,
+            "Updated Product",
+            "Product",
+            id,
+            product.Name);
 
         return NoContent();
     }
 
-    [HttpDelete("{businessId:guid}/{id:guid}")]
-    public async Task<IActionResult> DeactivateProduct(Guid businessId, Guid id)
+    [HttpDelete("{id:guid}")]
+    public async Task<IActionResult> DeactivateProduct(Guid id)
     {
-        var deactivated = await _productService.DeactivateProductAsync(businessId, id);
+        var currentUser = await _userManager.GetUserAsync(User);
+
+        if (currentUser is null)
+        {
+            return Unauthorized();
+        }
+
+        var deactivated = await _productService.DeactivateProductAsync(
+            currentUser.BusinessId,
+            id);
+
         if (!deactivated)
         {
             return NotFound();
         }
 
-        var currentUser = await _userManager.GetUserAsync(User);
-        if (currentUser is not null)
-        {
-            await _activityLogService.LogAsync(
-                businessId, currentUser.Id, currentUser.FullName,
-                "Deactivated Product", "Product", id, null);
-        }
+        await _activityLogService.LogAsync(
+            currentUser.BusinessId,
+            currentUser.Id,
+            currentUser.FullName,
+            "Deactivated Product",
+            "Product",
+            id,
+            null);
 
         return NoContent();
     }

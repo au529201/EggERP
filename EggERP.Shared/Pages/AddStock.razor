@@ -187,8 +187,8 @@ else
 
     protected override async Task OnInitializedAsync()
     {
-        products = await ProductApiService.GetProductsAsync(businessId);
-        suppliers = await SupplierApiService.GetSuppliersAsync(businessId);
+       products = await ProductApiService.GetProductsAsync();
+       suppliers = await SupplierApiService.GetSuppliersAsync(businessId);
 
         var flockBoard = await FlockApiService.GetBoardAsync();
         var eggBoard = await EggApiService.GetBoardAsync();

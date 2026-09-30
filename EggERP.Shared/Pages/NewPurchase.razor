@@ -152,7 +152,7 @@ else
 
     protected override async Task OnInitializedAsync()
     {
-        products = await ProductApiService.GetProductsAsync(businessId);
+        products = await ProductApiService.GetProductsAsync();
         suppliers = await SupplierApiService.GetSuppliersAsync(businessId);
 
         if (!string.IsNullOrEmpty(QueryProductId) && Guid.TryParse(QueryProductId, out var pid)

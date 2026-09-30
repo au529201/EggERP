@@ -64,7 +64,6 @@ else
     private List<ProductDto>? products;
     private string searchText = string.Empty;
     private string selectedGroup = string.Empty;
-    private readonly Guid businessId = Guid.Parse("11111111-1111-1111-1111-111111111111");
 
     private int page = 1;
     private const int pageSize = 7;
@@ -87,7 +86,7 @@ else
 
     protected override async Task OnInitializedAsync()
     {
-        products = await ProductApiService.GetProductsAsync(businessId);
+        products = await ProductApiService.GetProductsAsync();
     }
     private async Task DeactivateProduct(Guid id, string name)
     {
@@ -97,7 +96,7 @@ else
             return;
         }
 
-        await ProductApiService.DeactivateProductAsync(businessId, id);
-        products = await ProductApiService.GetProductsAsync(businessId);
+        await ProductApiService.DeactivateProductAsync(id);
+        products = await ProductApiService.GetProductsAsync();
     }
 }
