@@ -4,6 +4,8 @@
 @inject ISaleApiService SaleApiService
 @inject IProductApiService ProductApiService
 @inject ICustomerApiService CustomerApiService
+@inject IFlockApiService FlockApiService
+@inject IEggApiService EggApiService
 @inject NavigationManager Navigation
 @inject IJSRuntime JsRuntime
 
@@ -24,6 +26,7 @@ else
 {
     <div class="mb-3" style="max-width: 420px;">
         <label>Customer</label>
+
         <select class="form-select"
                 @bind="selectedCustomerId"
                 disabled="@isSaving">
@@ -38,16 +41,17 @@ else
         </select>
     </div>
 
-    <div class="table-responsive">
-        <table class="table txn-table">
+    <div class="table-responsive txn-table-scroll">
+        <table class="table txn-table txn-table-standard">
             <thead>
                 <tr>
                     <th class="txn-col-product">Type / Product</th>
-                    <th>Description</th>
-                    <th class="txn-col-qty">Qty</th>
+                    <th class="txn-col-description">Description</th>
+                    <th class="txn-col-qty">Quantity</th>
+                    <th class="txn-col-stock">Stock</th>
                     <th class="txn-col-money">Price</th>
                     <th class="txn-col-total">Sale</th>
-                    <th class="txn-col-action"></th>
+                    <th class="txn-col-action">Action</th>
                 </tr>
             </thead>
 
@@ -71,7 +75,7 @@ else
                             </select>
                         </td>
 
-                        <td>
+                        <td class="txn-col-description">
                             @GetDescription(line.ProductId)
                         </td>
 
@@ -83,6 +87,12 @@ else
                                    class="form-control"
                                    @bind="line.Quantity"
                                    disabled="@isSaving" />
+                        </td>
+
+                        <td class="txn-col-stock">
+                            <span class="txn-stock-value">
+                                @GetStock(line.ProductId).ToString("N0")
+                            </span>
                         </td>
 
                         <td class="txn-col-money">
@@ -126,6 +136,7 @@ else
     <div class="txn-row">
         <div class="txn-field">
             <label>Status</label>
+
             <select class="form-select"
                     @bind="status"
                     disabled="@isSaving">
@@ -136,6 +147,7 @@ else
 
         <div class="txn-field">
             <label>Payment Method</label>
+
             <select class="form-select"
                     @bind="paymentMethod"
                     @bind:after="OnPaymentMethodChanged"
@@ -149,6 +161,7 @@ else
 
         <div class="txn-field">
             <label>Bank Name / Payment Source</label>
+
             <input class="form-control"
                    @bind="bankName"
                    placeholder="e.g. BDO, GCash, Maya"
@@ -157,6 +170,7 @@ else
 
         <div class="txn-field">
             <label>Reference ID</label>
+
             <input class="form-control"
                    @bind="referenceNumber"
                    placeholder="Required for non-cash"
@@ -165,6 +179,7 @@ else
 
         <div class="txn-field">
             <label>Date</label>
+
             <input type="date"
                    class="form-control"
                    @bind="transactionDate"
@@ -182,7 +197,9 @@ else
     <div class="txn-bottom-row">
         <div class="txn-notes">
             <label>Notes</label>
+
             <textarea class="form-control"
+                      rows="1"
                       @bind="notes"
                       placeholder="Optional transaction notes..."
                       disabled="@isSaving"></textarea>
@@ -224,6 +241,8 @@ else
     private List<CustomerDto> customers = new();
     private List<SaleLine> lines = new();
 
+    private Dictionary<Guid, int> stockOnHand = new();
+
     private string selectedCustomerId = string.Empty;
 
     private string paymentMethod = "Cash";
@@ -256,6 +275,18 @@ else
             await CustomerApiService.GetCustomersAsync(
                 businessId);
 
+        var flockBoard =
+            await FlockApiService.GetBoardAsync();
+
+        var eggBoard =
+            await EggApiService.GetBoardAsync();
+
+        foreach (var row in flockBoard.Concat(eggBoard))
+        {
+            stockOnHand[row.ProductId] =
+                row.Available;
+        }
+
         if (!string.IsNullOrWhiteSpace(QueryProductId) &&
             Guid.TryParse(QueryProductId, out var productId) &&
             products.Any(p => p.Id == productId))
@@ -263,6 +294,7 @@ else
             var line = new SaleLine
             {
                 ProductId = QueryProductId,
+
                 Quantity =
                     QueryQty is > 0
                         ? QueryQty.Value
@@ -283,8 +315,17 @@ else
         isLoading = false;
     }
 
-    private string GetDescription(
-        string productId)
+    private int GetStock(string productId)
+    {
+        if (!Guid.TryParse(productId, out var id))
+            return 0;
+
+        return stockOnHand.TryGetValue(id, out var stock)
+            ? stock
+            : 0;
+    }
+
+    private string GetDescription(string productId)
     {
         if (!Guid.TryParse(
                 productId,
@@ -299,8 +340,7 @@ else
             ?? string.Empty;
     }
 
-    private void OnProductChanged(
-        SaleLine line)
+    private void OnProductChanged(SaleLine line)
     {
         if (!Guid.TryParse(
                 line.ProductId,
@@ -323,20 +363,15 @@ else
     private void AddLine()
     {
         if (isSaving)
-        {
             return;
-        }
 
         lines.Add(new SaleLine());
     }
 
-    private void RemoveLine(
-        SaleLine line)
+    private void RemoveLine(SaleLine line)
     {
         if (isSaving)
-        {
             return;
-        }
 
         lines.Remove(line);
 
@@ -358,9 +393,7 @@ else
     private async Task Cancel()
     {
         if (isSaving)
-        {
             return;
-        }
 
         var confirmed =
             await JsRuntime.InvokeAsync<bool>(
@@ -376,9 +409,7 @@ else
     private async Task HandleSave()
     {
         if (isSaving)
-        {
             return;
-        }
 
         errorMessage = null;
 

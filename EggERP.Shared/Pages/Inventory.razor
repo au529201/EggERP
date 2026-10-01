@@ -8,21 +8,34 @@
 
 <div class="row mb-2 g-2">
     <div class="col-md-4">
-        <input class="form-control" placeholder="Search inventory..." @bind="searchText" @bind:event="oninput" @bind:after="ResetPage" />
+        <input class="form-control"
+               placeholder="Search inventory..."
+               @bind="searchText"
+               @bind:event="oninput"
+               @bind:after="ResetPage" />
     </div>
+
     <div class="col-md-3">
-        <select class="form-select" @bind="selectedGroup" @bind:after="ResetPage">
+        <select class="form-select"
+                @bind="selectedGroup"
+                @bind:after="ResetPage">
             <option value="">All (Flock/Egg)</option>
             <option value="Flock">Flock</option>
             <option value="Egg">Egg</option>
         </select>
     </div>
+
     <div class="col-md-3">
-        <input type="date" class="form-control" @bind="selectedDate" @bind:after="LoadData" />
+        <input type="date"
+               class="form-control"
+               @bind="selectedDate"
+               @bind:after="LoadData" />
     </div>
 </div>
+
 <small class="form-text text-muted d-block mb-3">
-    Available always reflects current stock. Bought/Sold reflect purchases and sales up to the selected date only.
+    Available always reflects current stock. Bought/Sold reflect purchases
+    and sales up to the selected date only.
 </small>
 
 @if (isLoading)
@@ -35,54 +48,68 @@ else if (!FilteredRows.Any())
 }
 else
 {
-    <table class="table">
-        <thead>
-            <tr>
-                <th>Group</th>
-                <th>Type</th>
-                <th>Description</th>
-                <th>Available</th>
-                <th>Unit</th>
-                <th>Price</th>
-                <th>Bought</th>
-                <th>Sold</th>
-                <th>Status</th>
-            </tr>
-        </thead>
-        <tbody>
-            @foreach (var row in PagedRows)
-            {
+    <div class="erp-table-scroll">
+        <table class="table erp-data-table">
+            <thead>
                 <tr>
-                    <td>@row.Group</td>
-                    <td>@row.Type</td>
-                    <td>@row.Description</td>
-                    <td>@row.Available</td>
-                    <td>@row.Unit</td>
-                    <td>@row.SellingPrice.ToString("N2")</td>
-                    <td>@row.BoughtAsOfDate</td>
-                    <td>@row.SoldAsOfDate</td>
-                    <td>
-                        @if (row.Available <= row.ReorderLevel)
-                        {
-                            <span class="badge bg-danger">Low Stock</span>
-                        }
-                        else
-                        {
-                            <span class="badge bg-success">OK</span>
-                        }
-                    </td>
+                    <th>Group</th>
+                    <th>Type</th>
+                    <th>Description</th>
+                    <th>Available</th>
+                    <th>Unit</th>
+                    <th>Price</th>
+                    <th>Bought</th>
+                    <th>Sold</th>
+                    <th>Status</th>
                 </tr>
-            }
-        </tbody>
-    </table>
+            </thead>
 
-    <Pager Total="FilteredRows.Count()" Page="page" PageSize="pageSize" PageChanged="OnPageChanged" />
+            <tbody>
+                @foreach (var row in PagedRows)
+                {
+                    <tr>
+                        <td>@row.Group</td>
+                        <td>@row.Type</td>
+                        <td>@row.Description</td>
+                        <td>@row.Available</td>
+                        <td>@row.Unit</td>
+                        <td>@row.SellingPrice.ToString("N2")</td>
+                        <td>@row.BoughtAsOfDate</td>
+                        <td>@row.SoldAsOfDate</td>
+
+                        <td>
+                            @if (row.Available <= row.ReorderLevel)
+                            {
+                                <span class="badge bg-danger">
+                                    Low Stock
+                                </span>
+                            }
+                            else
+                            {
+                                <span class="badge bg-success">
+                                    OK
+                                </span>
+                            }
+                        </td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+    </div>
+
+    <Pager Total="FilteredRows.Count()"
+           Page="page"
+           PageSize="pageSize"
+           PageChanged="OnPageChanged" />
 }
 
 @code {
     private List<InventoryBoardRowDto> rows = new();
+
     private bool isLoading = true;
+
     private DateTime selectedDate = DateTime.Today;
+
     private string searchText = string.Empty;
     private string selectedGroup = string.Empty;
 
@@ -91,17 +118,35 @@ else
 
     private IEnumerable<InventoryBoardRowDto> FilteredRows =>
         rows.Where(r =>
-            (string.IsNullOrWhiteSpace(searchText) ||
-             r.Type.Contains(searchText, StringComparison.OrdinalIgnoreCase) ||
-             r.Description.Contains(searchText, StringComparison.OrdinalIgnoreCase))
+            (
+                string.IsNullOrWhiteSpace(searchText) ||
+                r.Type.Contains(
+                    searchText,
+                    StringComparison.OrdinalIgnoreCase) ||
+                r.Description.Contains(
+                    searchText,
+                    StringComparison.OrdinalIgnoreCase)
+            )
             &&
-            (string.IsNullOrWhiteSpace(selectedGroup) || r.Group == selectedGroup));
+            (
+                string.IsNullOrWhiteSpace(selectedGroup) ||
+                r.Group == selectedGroup
+            ));
 
     private IEnumerable<InventoryBoardRowDto> PagedRows =>
-        FilteredRows.Skip((page - 1) * pageSize).Take(pageSize);
+        FilteredRows
+            .Skip((page - 1) * pageSize)
+            .Take(pageSize);
 
-    private void ResetPage() => page = 1;
-    private void OnPageChanged(int newPage) => page = newPage;
+    private void ResetPage()
+    {
+        page = 1;
+    }
+
+    private void OnPageChanged(int newPage)
+    {
+        page = newPage;
+    }
 
     protected override async Task OnInitializedAsync()
     {
@@ -112,7 +157,10 @@ else
     {
         isLoading = true;
         page = 1;
-        rows = await InventoryApiService.GetBoardAsOfDateAsync(selectedDate);
+
+        rows = await InventoryApiService
+            .GetBoardAsOfDateAsync(selectedDate);
+
         isLoading = false;
     }
 }

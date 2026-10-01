@@ -4,6 +4,8 @@
 @inject IPurchaseApiService PurchaseApiService
 @inject IProductApiService ProductApiService
 @inject ISupplierApiService SupplierApiService
+@inject IFlockApiService FlockApiService
+@inject IEggApiService EggApiService
 @inject NavigationManager Navigation
 @inject IJSRuntime JsRuntime
 
@@ -39,16 +41,17 @@ else
         </select>
     </div>
 
-    <div class="table-responsive">
-        <table class="table txn-table">
+    <div class="table-responsive txn-table-scroll">
+        <table class="table txn-table txn-table-standard">
             <thead>
                 <tr>
                     <th class="txn-col-product">Type / Product</th>
-                    <th>Description</th>
-                    <th class="txn-col-qty">Qty</th>
+                    <th class="txn-col-description">Description</th>
+                    <th class="txn-col-qty">Quantity</th>
+                    <th class="txn-col-stock">Stock</th>
                     <th class="txn-col-money">Cost</th>
                     <th class="txn-col-total">Pay</th>
-                    <th class="txn-col-action"></th>
+                    <th class="txn-col-action">Action</th>
                 </tr>
             </thead>
 
@@ -72,7 +75,7 @@ else
                             </select>
                         </td>
 
-                        <td>
+                        <td class="txn-col-description">
                             @GetDescription(line.ProductId)
                         </td>
 
@@ -84,6 +87,12 @@ else
                                    class="form-control"
                                    @bind="line.Quantity"
                                    disabled="@isSaving" />
+                        </td>
+
+                        <td class="txn-col-stock">
+                            <span class="txn-stock-value">
+                                @GetStock(line.ProductId).ToString("N0")
+                            </span>
                         </td>
 
                         <td class="txn-col-money">
@@ -184,6 +193,7 @@ else
         <div class="txn-notes">
             <label>Notes</label>
             <textarea class="form-control"
+                      rows="1"
                       @bind="notes"
                       placeholder="Optional transaction notes..."
                       disabled="@isSaving"></textarea>
@@ -220,13 +230,14 @@ else
             string.Empty;
 
         public decimal Quantity { get; set; } = 1;
-
         public decimal UnitCost { get; set; }
     }
 
     private List<ProductDto> products = new();
     private List<SupplierDto> suppliers = new();
     private List<PurchaseLine> lines = new();
+
+    private Dictionary<Guid, int> stockOnHand = new();
 
     private string selectedSupplierId = string.Empty;
 
@@ -264,6 +275,18 @@ else
                 .GetSuppliersAsync(
                     businessId);
 
+        var flockBoard =
+            await FlockApiService.GetBoardAsync();
+
+        var eggBoard =
+            await EggApiService.GetBoardAsync();
+
+        foreach (var row in flockBoard.Concat(eggBoard))
+        {
+            stockOnHand[row.ProductId] =
+                row.Available;
+        }
+
         if (!string.IsNullOrWhiteSpace(QueryProductId) &&
             Guid.TryParse(
                 QueryProductId,
@@ -298,8 +321,17 @@ else
         isLoading = false;
     }
 
-    private string GetDescription(
-        string productId)
+    private int GetStock(string productId)
+    {
+        if (!Guid.TryParse(productId, out var id))
+            return 0;
+
+        return stockOnHand.TryGetValue(id, out var stock)
+            ? stock
+            : 0;
+    }
+
+    private string GetDescription(string productId)
     {
         if (!Guid.TryParse(
                 productId,
@@ -315,8 +347,7 @@ else
             ?? string.Empty;
     }
 
-    private void OnProductChanged(
-        PurchaseLine line)
+    private void OnProductChanged(PurchaseLine line)
     {
         if (!Guid.TryParse(
                 line.ProductId,
@@ -339,21 +370,16 @@ else
     private void AddLine()
     {
         if (isSaving)
-        {
             return;
-        }
 
         lines.Add(
             new PurchaseLine());
     }
 
-    private void RemoveLine(
-        PurchaseLine line)
+    private void RemoveLine(PurchaseLine line)
     {
         if (isSaving)
-        {
             return;
-        }
 
         lines.Remove(line);
 
@@ -376,9 +402,7 @@ else
     private async Task Cancel()
     {
         if (isSaving)
-        {
             return;
-        }
 
         var confirmed =
             await JsRuntime.InvokeAsync<bool>(
@@ -395,9 +419,7 @@ else
     private async Task HandleSave()
     {
         if (isSaving)
-        {
             return;
-        }
 
         errorMessage = null;
 

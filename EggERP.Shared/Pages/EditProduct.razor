@@ -16,10 +16,14 @@ else if (notFound)
 }
 else
 {
-    <EditForm Model="@editModel" OnValidSubmit="HandleSave">
+    <EditForm Model="@editModel"
+              OnValidSubmit="HandleSave">
+
         <div class="mb-3">
             <label>Group</label>
-            <select class="form-select" @bind="editModel.Group">
+
+            <select class="form-select"
+                    @bind="editModel.Group">
                 <option value="Flock">Flock</option>
                 <option value="Egg">Egg</option>
             </select>
@@ -27,44 +31,75 @@ else
 
         <div class="mb-3">
             <label>Type</label>
+
             <InputText class="form-control"
                        @bind-Value="editModel.Type" />
         </div>
 
         <div class="mb-3">
             <label>Description</label>
+
             <InputText class="form-control"
                        @bind-Value="editModel.Description" />
         </div>
 
         <div class="mb-3">
             <label>Unit</label>
+
             <InputText class="form-control"
                        @bind-Value="editModel.Unit" />
         </div>
 
-        <div class="mb-3">
-            <label>Cost Price</label>
-            <InputNumber class="form-control"
-                         @bind-Value="editModel.CostPrice" />
-        </div>
+        <div class="row g-3 mb-3">
 
-        <div class="mb-3">
-            <label>Sell Price</label>
-            <InputNumber class="form-control"
-                         @bind-Value="editModel.SellingPrice" />
+            <div class="col-md-4">
+                <label>Cost Price</label>
+
+                <InputNumber class="form-control"
+                             @bind-Value="editModel.CostPrice" />
+            </div>
+
+            <div class="col-md-4">
+                <label>Sell Price</label>
+
+                <InputNumber class="form-control"
+                             @bind-Value="editModel.SellingPrice" />
+            </div>
+
+            <div class="col-md-4">
+                <label>Low Stock Warning</label>
+
+                <InputNumber class="form-control"
+                             @bind-Value="editModel.ReorderLevel" />
+
+                <small class="form-text text-muted">
+                    Low Stock will trigger when available
+                    quantity reaches this number or below.
+                </small>
+            </div>
+
         </div>
 
         @if (!string.IsNullOrEmpty(errorMessage))
         {
-            <p style="color:red">@errorMessage</p>
+            <div class="alert alert-danger">
+                @errorMessage
+            </div>
         }
 
-<button type="submit"
-        class="btn btn-primary"
-        disabled="@isSaving">
-    @(isSaving ? "Saving..." : "Save")
-</button>
+        <div class="d-flex gap-2">
+            <a href="/products"
+               class="btn btn-outline-secondary">
+                Cancel
+            </a>
+
+            <button type="submit"
+                    class="btn btn-primary"
+                    disabled="@isSaving">
+                @(isSaving ? "Saving..." : "Save Changes")
+            </button>
+        </div>
+
     </EditForm>
 }
 
@@ -72,89 +107,110 @@ else
     [Parameter]
     public Guid Id { get; set; }
 
-    private readonly Guid businessId =
-        Guid.Parse("11111111-1111-1111-1111-111111111111");
-
     private UpdateProductRequest editModel = new();
 
-private bool isLoading = true;
-private bool notFound = false;
-private bool isSaving = false;
+    private bool isLoading = true;
+    private bool notFound;
+    private bool isSaving;
 
-private string? errorMessage;
+    private string? errorMessage;
 
     protected override async Task OnInitializedAsync()
     {
-        var product =
-await ProductApiService.GetProductByIdAsync(Id);
-        if (product is null)
+        try
         {
-            notFound = true;
+            var product =
+                await ProductApiService.GetProductByIdAsync(Id);
+
+            if (product is null)
+            {
+                notFound = true;
+                return;
+            }
+
+            editModel = new UpdateProductRequest
+            {
+                Id = product.Id,
+                BusinessId = product.BusinessId,
+                CategoryId = product.CategoryId,
+                Group = product.Group,
+                Type = product.Type,
+                Description = product.Description,
+                CostPrice = product.CostPrice,
+                SellingPrice = product.SellingPrice,
+                Unit = product.Unit,
+                ReorderLevel = product.ReorderLevel,
+                IsActive = product.IsActive
+            };
+        }
+        catch (Exception ex)
+        {
+            errorMessage =
+                $"Failed to load product: {ex.Message}";
+        }
+        finally
+        {
             isLoading = false;
+        }
+    }
+
+    private async Task HandleSave()
+    {
+        if (isSaving)
+        {
             return;
         }
 
-        editModel = new UpdateProductRequest
+        errorMessage = null;
+
+        if (string.IsNullOrWhiteSpace(editModel.Type))
         {
-            Id = product.Id,
-            BusinessId = businessId,
-            CategoryId = product.CategoryId,
-            Group = product.Group,
-            Type = product.Type,
-            Description = product.Description,
-            CostPrice = product.CostPrice,
-            SellingPrice = product.SellingPrice,
-            Unit = product.Unit,
-            IsActive = true
-        };
+            errorMessage = "Type is required.";
+            return;
+        }
 
-        isLoading = false;
+        if (string.IsNullOrWhiteSpace(editModel.Unit))
+        {
+            errorMessage = "Unit is required.";
+            return;
+        }
+
+        if (editModel.CostPrice < 0)
+        {
+            errorMessage =
+                "Cost Price cannot be negative.";
+            return;
+        }
+
+        if (editModel.SellingPrice < 0)
+        {
+            errorMessage =
+                "Sell Price cannot be negative.";
+            return;
+        }
+
+        if (editModel.ReorderLevel < 0)
+        {
+            errorMessage =
+                "Low Stock Warning cannot be negative.";
+            return;
+        }
+
+        isSaving = true;
+
+        try
+        {
+            await ProductApiService
+                .UpdateProductAsync(editModel);
+
+            Navigation.NavigateTo("/products");
+        }
+        catch (Exception ex)
+        {
+            errorMessage =
+                $"Failed to save product: {ex.Message}";
+
+            isSaving = false;
+        }
     }
-
-private async Task HandleSave()
-{
-    if (isSaving)
-    {
-        return;
-    }
-
-    errorMessage = null;
-
-    if (string.IsNullOrWhiteSpace(editModel.Type))
-    {
-        errorMessage = "Type is required.";
-        return;
-    }
-
-    if (string.IsNullOrWhiteSpace(editModel.Unit))
-    {
-        errorMessage = "Unit is required.";
-        return;
-    }
-
-    if (editModel.CostPrice < 0)
-    {
-        errorMessage = "Cost Price cannot be negative.";
-        return;
-    }
-
-    if (editModel.SellingPrice < 0)
-    {
-        errorMessage = "Sell Price cannot be negative.";
-        return;
-    }
-
-    isSaving = true;
-
-    try
-    {
-        await ProductApiService.UpdateProductAsync(editModel);
-        Navigation.NavigateTo("/products");
-    }
-    catch (Exception ex)
-    {
-        errorMessage = $"Failed to save product: {ex.Message}";
-        isSaving = false;
-    }
-}
 }

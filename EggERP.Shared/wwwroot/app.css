@@ -259,8 +259,163 @@ html, body, .nav-scrollable, .table-responsive {
 ::-webkit-scrollbar-thumb:hover {
     background-color: rgba(200, 134, 43, 0.85);
 }
+/* =========================================================
+   Responsive / Scrollable Data Tables
+   ========================================================= */
 
-/* Footer */
+/*
+   Every Bootstrap .table-responsive container becomes the
+   horizontal scrolling area.
+
+   The PAGE itself stays at normal width.
+   Only the TABLE can scroll left/right.
+*/
+.table-responsive {
+    width: 100%;
+    max-width: 100%;
+    overflow-x: auto;
+    overflow-y: hidden;
+    -webkit-overflow-scrolling: touch;
+    overscroll-behavior-x: contain;
+}
+
+    /*
+   Data tables are allowed to become wider than their container.
+   This prevents columns from being crushed together.
+*/
+    .table-responsive > .table {
+        width: max-content;
+        min-width: 100%;
+        margin-bottom: 0;
+        table-layout: auto;
+    }
+
+        /*
+   Keep ordinary table values readable on one line.
+*/
+        .table-responsive > .table > thead > tr > th,
+        .table-responsive > .table > tbody > tr > td {
+            white-space: nowrap;
+            vertical-align: middle;
+        }
+
+        /*
+   Comfortable spacing between columns.
+*/
+        .table-responsive > .table > thead > tr > th {
+            padding: 0.8rem 1rem;
+        }
+
+        .table-responsive > .table > tbody > tr > td {
+            padding: 0.75rem 1rem;
+        }
+
+    /*
+   Give common content columns more breathing room.
+*/
+    .table-responsive .col-name,
+    .table-responsive .col-product,
+    .table-responsive .col-type,
+    .table-responsive .col-party {
+        min-width: 200px;
+    }
+
+    .table-responsive .col-description,
+    .table-responsive .col-notes {
+        min-width: 240px;
+        max-width: 360px;
+        white-space: normal !important;
+    }
+
+    .table-responsive .col-date {
+        min-width: 160px;
+    }
+
+    .table-responsive .col-status {
+        min-width: 120px;
+    }
+
+    .table-responsive .col-money {
+        min-width: 130px;
+    }
+
+    .table-responsive .col-actions {
+        min-width: 180px;
+    }
+
+/* =========================================================
+   Transaction Tables
+   Add Stock / Remove Stock / Purchases / Sales / Expenses
+   ========================================================= */
+
+.txn-table {
+    width: max-content;
+    min-width: 100%;
+    table-layout: auto;
+    vertical-align: middle;
+    margin-bottom: 0;
+}
+
+    .txn-table th,
+    .txn-table td {
+        vertical-align: middle;
+        white-space: nowrap;
+    }
+
+/* Group */
+.txn-col-group {
+    min-width: 120px;
+}
+
+/* Product / type */
+.txn-col-product {
+    min-width: 230px;
+}
+
+/* Quantity */
+.txn-col-qty {
+    width: 110px;
+    min-width: 110px;
+}
+
+    .txn-col-qty input {
+        min-width: 90px;
+    }
+
+/* Reason */
+.txn-col-reason {
+    min-width: 180px;
+}
+
+/* Customer / Supplier */
+.txn-col-party {
+    min-width: 220px;
+}
+
+/* Cost / price */
+.txn-col-money {
+    min-width: 140px;
+}
+
+/* Calculated totals */
+.txn-col-total {
+    min-width: 150px;
+    white-space: nowrap;
+}
+
+/* Action buttons */
+.txn-col-action {
+    min-width: 130px;
+    text-align: center;
+}
+
+/* Stock quantity helper */
+.stock-hint {
+    margin-top: 0.25rem;
+    font-size: 0.8rem;
+    color: var(--egg-clay, #8B5E3C);
+    white-space: nowrap;
+}
 .txn-row {
     display: grid;
     grid-template-columns: minmax(130px, 0.8fr) minmax(160px, 1fr) minmax(190px, 1.2fr) minmax(170px, 1fr) minmax(150px, 0.9fr);
@@ -371,5 +526,121 @@ html, body, .nav-scrollable, .table-responsive {
         .txn-actions .btn-primary {
             width: 100%;
             min-width: 0;
+        }
+}
+/* =========================================================
+   ERP SCROLLABLE DATA TABLES
+   Products, Inventory and other long listing tables
+   ========================================================= */
+
+.erp-table-scroll {
+    display: block;
+    width: 100%;
+    max-width: 100%;
+    overflow-x: auto;
+    overflow-y: hidden;
+    -webkit-overflow-scrolling: touch;
+    overscroll-behavior-x: contain;
+    scrollbar-width: thin;
+    scrollbar-color: rgba(200, 134, 43, 0.65) transparent;
+}
+
+/*
+   The table may be wider than the screen.
+   The wrapper above — NOT the page — handles the scrolling.
+*/
+.erp-data-table {
+    width: max-content !important;
+    min-width: 100%;
+    margin-bottom: 0;
+    table-layout: auto;
+}
+
+    .erp-data-table th,
+    .erp-data-table td {
+        padding: 0.75rem 1rem;
+        vertical-align: middle;
+        white-space: nowrap;
+    }
+
+        /* Group */
+        .erp-data-table th:nth-child(1),
+        .erp-data-table td:nth-child(1) {
+            min-width: 100px;
+        }
+
+        /* Type */
+        .erp-data-table th:nth-child(2),
+        .erp-data-table td:nth-child(2) {
+            min-width: 190px;
+        }
+
+        /* Description */
+        .erp-data-table th:nth-child(3),
+        .erp-data-table td:nth-child(3) {
+            min-width: 230px;
+        }
+
+        /*
+   Remaining columns receive enough room to avoid
+   being compressed into unreadable cells.
+*/
+        .erp-data-table th:nth-child(n+4),
+        .erp-data-table td:nth-child(n+4) {
+            min-width: 110px;
+        }
+
+/* Buttons stay together horizontally. */
+.erp-table-actions {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    white-space: nowrap;
+}
+
+    .erp-table-actions .btn {
+        flex: 0 0 auto;
+    }
+
+/*
+   Prevent the table from increasing the width
+   of the surrounding application layout.
+*/
+main,
+article,
+.page,
+.content,
+.content-card {
+    min-width: 0;
+    max-width: 100%;
+}
+
+/*
+   Horizontal movement belongs to individual table
+   wrappers, not to the complete application page.
+*/
+html,
+body {
+    max-width: 100%;
+    overflow-x: hidden;
+}
+
+/* Touch devices */
+@media (max-width: 768px) {
+
+    .erp-table-scroll {
+        width: 100%;
+        max-width: 100%;
+        overflow-x: auto;
+        touch-action: pan-x pan-y;
+    }
+
+    .erp-data-table {
+        min-width: 1000px;
+    }
+
+        .erp-data-table th,
+        .erp-data-table td {
+            padding: 0.65rem 0.75rem;
         }
 }

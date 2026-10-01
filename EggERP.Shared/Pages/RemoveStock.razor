@@ -18,18 +18,19 @@
 }
 else
 {
-    <div class="table-responsive">
-        <table class="table txn-table">
+    <div class="table-responsive txn-table-scroll">
+        <table class="table txn-table txn-table-stock">
             <thead>
                 <tr>
-                    <th style="width:100px;">Group</th>
-                    <th>Type / Product</th>
-                    <th class="txn-col-qty">Qty</th>
-                    <th style="width:125px;">Reason</th>
-                    <th style="min-width:180px;">Customer</th>
+                    <th class="txn-col-group">Group</th>
+                    <th class="txn-col-product">Type / Product</th>
+                    <th class="txn-col-qty">Quantity</th>
+                    <th class="txn-col-stock">Stock</th>
+                    <th class="txn-col-reason">Reason</th>
+                    <th class="txn-col-party">Customer</th>
                     <th class="txn-col-money">Price</th>
                     <th class="txn-col-total">Total</th>
-                    <th class="txn-col-action"></th>
+                    <th class="txn-col-action">Action</th>
                 </tr>
             </thead>
 
@@ -37,7 +38,7 @@ else
                 @foreach (var line in lines)
                 {
                     <tr>
-                        <td>
+                        <td class="txn-col-group">
                             <select class="form-select"
                                     @bind="line.Group"
                                     @bind:after="() => OnGroupChanged(line)"
@@ -47,7 +48,7 @@ else
                             </select>
                         </td>
 
-                        <td>
+                        <td class="txn-col-product">
                             <select class="form-select"
                                     @bind="line.ProductId"
                                     @bind:after="() => OnProductChanged(line)"
@@ -61,14 +62,6 @@ else
                                     </option>
                                 }
                             </select>
-
-                            @if (Guid.TryParse(line.ProductId, out var pid) &&
-                                 stockOnHand.TryGetValue(pid, out var qty))
-                            {
-                                <div class="stock-hint">
-                                    @qty in stock
-                                </div>
-                            }
                         </td>
 
                         <td class="txn-col-qty">
@@ -81,7 +74,13 @@ else
                                    disabled="@isSaving" />
                         </td>
 
-                        <td>
+                        <td class="txn-col-stock">
+                            <span class="txn-stock-value">
+                                @GetStock(line.ProductId).ToString("N0")
+                            </span>
+                        </td>
+
+                        <td class="txn-col-reason">
                             <select class="form-select"
                                     @bind="line.Reason"
                                     disabled="@isSaving">
@@ -96,15 +95,13 @@ else
                             </select>
                         </td>
 
-                        <td>
+                        <td class="txn-col-party">
                             @if (line.Reason == "Sold")
                             {
                                 <select class="form-select"
                                         @bind="line.CustomerId"
                                         disabled="@isSaving">
-                                    <option value="">
-                                        Walk-in
-                                    </option>
+                                    <option value="">Walk-in</option>
 
                                     @foreach (var customer in customers ?? new())
                                     {
@@ -180,7 +177,6 @@ else
         {
             <div class="txn-field">
                 <label>Status</label>
-
                 <select class="form-select"
                         @bind="status"
                         disabled="@isSaving">
@@ -191,7 +187,6 @@ else
 
             <div class="txn-field">
                 <label>Payment Method</label>
-
                 <select class="form-select"
                         @bind="paymentMethod"
                         @bind:after="OnPaymentMethodChanged"
@@ -205,7 +200,6 @@ else
 
             <div class="txn-field">
                 <label>Bank Name / Payment Source</label>
-
                 <input class="form-control"
                        @bind="bankName"
                        placeholder="e.g. BDO, GCash, Maya"
@@ -214,7 +208,6 @@ else
 
             <div class="txn-field">
                 <label>Reference ID</label>
-
                 <input class="form-control"
                        @bind="referenceNumber"
                        placeholder="Required for non-cash"
@@ -224,7 +217,6 @@ else
 
         <div class="txn-field">
             <label>Date</label>
-
             <input type="date"
                    class="form-control"
                    @bind="movementDate"
@@ -242,8 +234,8 @@ else
     <div class="txn-bottom-row">
         <div class="txn-notes">
             <label>Notes</label>
-
             <textarea class="form-control"
+                      rows="1"
                       @bind="notes"
                       placeholder="Optional transaction notes..."
                       disabled="@isSaving"></textarea>
@@ -297,9 +289,7 @@ else
 
     private List<ProductDto>? products;
     private List<CustomerDto>? customers;
-
     private List<Line> lines = new();
-
     private Dictionary<Guid, int> stockOnHand = new();
 
     private string status = "Paid";
@@ -311,7 +301,6 @@ else
     private string? errorMessage;
 
     private DateTime movementDate = DateTime.Today;
-
     private bool isSaving;
 
     private readonly Guid businessId =
@@ -349,6 +338,16 @@ else
         lines.Add(new Line());
     }
 
+    private int GetStock(string productId)
+    {
+        if (!Guid.TryParse(productId, out var id))
+            return 0;
+
+        return stockOnHand.TryGetValue(id, out var stock)
+            ? stock
+            : 0;
+    }
+
     private string[] OutReasons(string group)
     {
         return group == "Flock"
@@ -356,8 +355,7 @@ else
             : eggOutReasons;
     }
 
-    private IEnumerable<ProductDto> AvailableProducts(
-        Line current)
+    private IEnumerable<ProductDto> AvailableProducts(Line current)
     {
         var takenIds =
             lines
@@ -410,9 +408,7 @@ else
     private void AddLine()
     {
         if (isSaving || !CanAddLine())
-        {
             return;
-        }
 
         lines.Add(
             new Line
@@ -424,16 +420,12 @@ else
     private void RemoveLine(Line line)
     {
         if (isSaving)
-        {
             return;
-        }
 
         lines.Remove(line);
 
         if (lines.Count == 0)
-        {
             lines.Add(new Line());
-        }
     }
 
     private void OnPaymentMethodChanged()
@@ -448,9 +440,7 @@ else
     private async Task Cancel()
     {
         if (isSaving)
-        {
             return;
-        }
 
         var confirmed =
             await JsRuntime.InvokeAsync<bool>(
@@ -458,17 +448,13 @@ else
                 "Discard this entry and go back? Unsaved changes will be lost.");
 
         if (confirmed)
-        {
             Navigation.NavigateTo("/eggs");
-        }
     }
 
     private async Task HandleSave()
     {
         if (isSaving)
-        {
             return;
-        }
 
         errorMessage = null;
 
@@ -560,25 +546,17 @@ else
             var request =
                 new ProcessStockTransactionRequest
                 {
-                    BusinessId =
-                        businessId,
-
-                    Direction =
-                        "Out",
-
-                    MovementDate =
-                        movementDate,
+                    BusinessId = businessId,
+                    Direction = "Out",
+                    MovementDate = movementDate,
 
                     Notes =
                         string.IsNullOrWhiteSpace(notes)
                             ? null
                             : notes.Trim(),
 
-                    Status =
-                        status,
-
-                    PaymentMethod =
-                        paymentMethod,
+                    Status = status,
+                    PaymentMethod = paymentMethod,
 
                     PaymentSource =
                         HasPaymentLine &&
@@ -602,20 +580,11 @@ else
                         enteredLines.Select(l =>
                             new StockTransactionLineRequest
                             {
-                                Group =
-                                    l.Group,
-
-                                ProductId =
-                                    Guid.Parse(l.ProductId),
-
-                                Reason =
-                                    l.Reason,
-
-                                Quantity =
-                                    l.Quantity,
-
-                                UnitPrice =
-                                    l.UnitPrice,
+                                Group = l.Group,
+                                ProductId = Guid.Parse(l.ProductId),
+                                Reason = l.Reason,
+                                Quantity = l.Quantity,
+                                UnitPrice = l.UnitPrice,
 
                                 CustomerId =
                                     Guid.TryParse(
@@ -627,8 +596,7 @@ else
                 };
 
             var error =
-                await StockApiService.ProcessAsync(
-                    request);
+                await StockApiService.ProcessAsync(request);
 
             if (error is not null)
             {

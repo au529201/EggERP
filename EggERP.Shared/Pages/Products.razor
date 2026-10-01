@@ -3,20 +3,31 @@
 @using EggERP.Shared.Services
 @inject IProductApiService ProductApiService
 @inject IJSRuntime JsRuntime
+
 <h3>Products</h3>
+
 <a class="btn btn-primary mb-3" href="/products/add">+ Add Product</a>
-<div class="row mb-3">
+
+<div class="row mb-3 g-2">
     <div class="col-md-6">
-        <input class="form-control" placeholder="Search products..." @bind="searchText" @bind:event="oninput" @bind:after="ResetPage" />
+        <input class="form-control"
+               placeholder="Search products..."
+               @bind="searchText"
+               @bind:event="oninput"
+               @bind:after="ResetPage" />
     </div>
+
     <div class="col-md-6">
-        <select class="form-select" @bind="selectedGroup" @bind:after="ResetPage">
+        <select class="form-select"
+                @bind="selectedGroup"
+                @bind:after="ResetPage">
             <option value="">All (Flock/Egg)</option>
             <option value="Flock">Flock</option>
             <option value="Egg">Egg</option>
         </select>
     </div>
 </div>
+
 @if (products is null)
 {
     <p>Loading...</p>
@@ -27,39 +38,57 @@ else if (!FilteredProducts.Any())
 }
 else
 {
-    <table class="table">
-        <thead>
-            <tr>
-                <th>Group</th>
-                <th>Type</th>
-                <th>Description</th>
-                <th>Unit</th>
-                <th>Cost Price</th>
-                <th>Sell Price</th>
-                <th></th>
-            </tr>
-        </thead>
-        <tbody>
-            @foreach (var product in PagedProducts)
-            {
+    <div class="erp-table-scroll">
+        <table class="table erp-data-table">
+            <thead>
                 <tr>
-                    <td>@product.Group</td>
-                    <td>@product.Type</td>
-                    <td>@product.Description</td>
-                    <td>@product.Unit</td>
-                    <td>@product.CostPrice.ToString("N2")</td>
-                    <td>@product.SellingPrice.ToString("N2")</td>
-                    <td>
-                        <a class="btn btn-sm btn-secondary" href="@($"/products/edit/{product.Id}")">Edit</a>
-                        <button class="btn btn-sm btn-danger" @onclick="() => DeactivateProduct(product.Id, product.Name)">Deactivate</button>
-                    </td>
+                    <th>Group</th>
+                    <th>Type</th>
+                    <th>Description</th>
+                    <th>Unit</th>
+                    <th>Cost Price</th>
+<th>Sell Price</th>
+<th>Low Stock At</th>
+<th>Actions</th>
                 </tr>
-            }
-        </tbody>
-    </table>
+            </thead>
 
-    <Pager Total="FilteredProducts.Count()" Page="page" PageSize="pageSize" PageChanged="OnPageChanged" />
+            <tbody>
+                @foreach (var product in PagedProducts)
+                {
+                    <tr>
+                        <td>@product.Group</td>
+                        <td>@product.Type</td>
+                        <td>@product.Description</td>
+                        <td>@product.Unit</td>
+                        <td>@product.CostPrice.ToString("N2")</td>
+                        <td>@product.SellingPrice.ToString("N2")</td>
+                        <td>@product.ReorderLevel.ToString("N0")</td>
+                        <td>
+                            <div class="erp-table-actions">
+                                <a class="btn btn-sm btn-secondary"
+                                   href="@($"/products/edit/{product.Id}")">
+                                    Edit
+                                </a>
+
+                                <button class="btn btn-sm btn-danger"
+                                        @onclick="() => DeactivateProduct(product.Id, product.Name)">
+                                    Deactivate
+                                </button>
+                            </div>
+                        </td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+    </div>
+
+    <Pager Total="FilteredProducts.Count()"
+           Page="page"
+           PageSize="pageSize"
+           PageChanged="OnPageChanged" />
 }
+
 @code {
     private List<ProductDto>? products;
     private string searchText = string.Empty;
@@ -72,25 +101,47 @@ else
         products is null
             ? Enumerable.Empty<ProductDto>()
             : products.Where(p =>
-                (string.IsNullOrWhiteSpace(searchText) ||
-                 p.Type.Contains(searchText, StringComparison.OrdinalIgnoreCase) ||
-                 (p.Description ?? string.Empty).Contains(searchText, StringComparison.OrdinalIgnoreCase))
+                (
+                    string.IsNullOrWhiteSpace(searchText) ||
+                    p.Type.Contains(
+                        searchText,
+                        StringComparison.OrdinalIgnoreCase) ||
+                    (p.Description ?? string.Empty).Contains(
+                        searchText,
+                        StringComparison.OrdinalIgnoreCase)
+                )
                 &&
-                (string.IsNullOrWhiteSpace(selectedGroup) || p.Group == selectedGroup));
+                (
+                    string.IsNullOrWhiteSpace(selectedGroup) ||
+                    p.Group == selectedGroup
+                ));
 
     private IEnumerable<ProductDto> PagedProducts =>
-        FilteredProducts.Skip((page - 1) * pageSize).Take(pageSize);
+        FilteredProducts
+            .Skip((page - 1) * pageSize)
+            .Take(pageSize);
 
-    private void ResetPage() => page = 1;
-    private void OnPageChanged(int newPage) => page = newPage;
+    private void ResetPage()
+    {
+        page = 1;
+    }
+
+    private void OnPageChanged(int newPage)
+    {
+        page = newPage;
+    }
 
     protected override async Task OnInitializedAsync()
     {
         products = await ProductApiService.GetProductsAsync();
     }
+
     private async Task DeactivateProduct(Guid id, string name)
     {
-        var confirmed = await JsRuntime.InvokeAsync<bool>("confirm", $"Deactivate '{name}'? It will be hidden from the active product list.");
+        var confirmed = await JsRuntime.InvokeAsync<bool>(
+            "confirm",
+            $"Deactivate '{name}'? It will be hidden from the active product list.");
+
         if (!confirmed)
         {
             return;
