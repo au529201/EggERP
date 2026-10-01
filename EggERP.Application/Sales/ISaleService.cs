@@ -24,7 +24,9 @@ public interface ISaleService
         string paymentMethod,
         string? paymentSource,
         string? referenceNumber,
-        string status);
+        string status,
+        DateTime? saleDate = null,
+        string? notes = null);
 
     Task<(bool Succeeded, string? Error)> MarkAsPaidAsync(
         Guid businessId,

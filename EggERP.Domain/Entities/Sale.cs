@@ -9,6 +9,7 @@ public class Sale
     public Guid? CustomerId { get; set; }
 
     public DateTime SaleDateUtc { get; set; }
+    public string? Notes { get; set; }
 
     public decimal Subtotal { get; set; }
 

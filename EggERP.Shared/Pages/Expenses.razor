@@ -47,6 +47,13 @@
     </div>
 </div>
 
+@if (!string.IsNullOrWhiteSpace(errorMessage))
+{
+    <div class="alert alert-danger">
+        @errorMessage
+    </div>
+}
+
 @if (expenses is null)
 {
     <p>Loading...</p>
@@ -67,6 +74,7 @@ else
                     <th>Amount</th>
                     <th>Payment Method</th>
                     <th>Status</th>
+                    <th>Action</th>
                 </tr>
             </thead>
 
@@ -74,21 +82,63 @@ else
                 @foreach (var expense in PagedExpenses)
                 {
                     <tr>
-                        <td>@expense.ExpenseDateUtc.ToLocalTime().ToString("d")</td>
-                        <td>@expense.Description</td>
-                        <td>@expense.Category</td>
-                        <td>@expense.Amount.ToString("N2")</td>
-                        <td>@expense.PaymentMethod</td>
+                        <td>
+                            @expense.ExpenseDateUtc.ToLocalTime().ToString("d")
+                        </td>
+
+                        <td>
+                            @expense.Description
+                        </td>
+
+                        <td>
+                            @expense.Category
+                        </td>
+
+                        <td>
+                            @expense.Amount.ToString("N2")
+                        </td>
+
+                        <td>
+                            @expense.PaymentMethod
+                        </td>
+
                         <td>
                             @if (expense.Status == "Paid")
                             {
-                                <span class="badge bg-success">Paid</span>
+                                <span class="badge bg-success">
+                                    Paid
+                                </span>
                             }
                             else
                             {
                                 <span class="badge bg-warning text-dark">
-                                    @expense.Status
+                                    Pending
                                 </span>
+                            }
+                        </td>
+
+                        <td>
+                            @if (updatingExpenseId == expense.Id)
+                            {
+                                <span class="text-muted">
+                                    Updating...
+                                </span>
+                            }
+                            else if (expense.Status == "Pending")
+                            {
+                                <button type="button"
+                                        class="btn btn-sm btn-success"
+                                        @onclick='() => ChangeStatus(expense, "Paid")'>
+                                    Mark Paid
+                                </button>
+                            }
+                            else
+                            {
+                                <button type="button"
+                                        class="btn btn-sm btn-outline-warning"
+                                        @onclick='() => ChangeStatus(expense, "Pending")'>
+                                    Mark Pending
+                                </button>
                             }
                         </td>
                     </tr>
@@ -110,6 +160,9 @@ else
     private string selectedStatus = string.Empty;
     private DateTime? startDate;
 
+    private Guid? updatingExpenseId;
+    private string? errorMessage;
+
     private readonly Guid businessId =
         Guid.Parse("11111111-1111-1111-1111-111111111111");
 
@@ -121,9 +174,18 @@ else
         .Where(e =>
             (
                 string.IsNullOrWhiteSpace(searchText) ||
-                (e.Description ?? string.Empty).Contains(searchText, StringComparison.OrdinalIgnoreCase) ||
-                (e.Category ?? string.Empty).Contains(searchText, StringComparison.OrdinalIgnoreCase) ||
-                (e.PaymentMethod ?? string.Empty).Contains(searchText, StringComparison.OrdinalIgnoreCase)
+                (e.Description ?? string.Empty)
+                    .Contains(
+                        searchText,
+                        StringComparison.OrdinalIgnoreCase) ||
+                (e.Category ?? string.Empty)
+                    .Contains(
+                        searchText,
+                        StringComparison.OrdinalIgnoreCase) ||
+                (e.PaymentMethod ?? string.Empty)
+                    .Contains(
+                        searchText,
+                        StringComparison.OrdinalIgnoreCase)
             )
             &&
             (
@@ -133,7 +195,9 @@ else
             &&
             (
                 !startDate.HasValue ||
-                e.ExpenseDateUtc.ToLocalTime().Date >= startDate.Value.Date
+                e.ExpenseDateUtc
+                    .ToLocalTime()
+                    .Date >= startDate.Value.Date
             ));
 
     private IEnumerable<ExpenseDto> PagedExpenses =>
@@ -143,12 +207,56 @@ else
 
     protected override async Task OnInitializedAsync()
     {
-        expenses = await ExpenseApiService.GetExpensesAsync(businessId);
+        expenses =
+            await ExpenseApiService.GetExpensesAsync(
+                businessId);
     }
 
-    private void ResetPage() => page = 1;
+    private void ResetPage()
+    {
+        page = 1;
+    }
 
-    private void OnPageChanged(int newPage) => page = newPage;
+    private void OnPageChanged(int newPage)
+    {
+        page = newPage;
+    }
+
+    private async Task ChangeStatus(
+        ExpenseDto expense,
+        string newStatus)
+    {
+        if (updatingExpenseId.HasValue)
+        {
+            return;
+        }
+
+        if (expense.Status == newStatus)
+        {
+            return;
+        }
+
+        errorMessage = null;
+        updatingExpenseId = expense.Id;
+
+        try
+        {
+            await ExpenseApiService.UpdateStatusAsync(
+                expense.Id,
+                newStatus);
+
+            expense.Status = newStatus;
+        }
+        catch (Exception ex)
+        {
+            errorMessage =
+                $"Failed to update expense status: {ex.Message}";
+        }
+        finally
+        {
+            updatingExpenseId = null;
+        }
+    }
 
     private void ClearFilters()
     {

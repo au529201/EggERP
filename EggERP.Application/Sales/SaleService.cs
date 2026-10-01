@@ -30,7 +30,9 @@ public class SaleService : ISaleService
         string paymentMethod,
         string? paymentSource,
         string? referenceNumber,
-        string status)
+        string status,
+        DateTime? saleDate = null,
+        string? notes = null)
     {
         PaymentValidation.EnsureValid(paymentMethod, referenceNumber, paymentSource);
 
@@ -81,7 +83,15 @@ public class SaleService : ISaleService
             Id = Guid.NewGuid(),
             BusinessId = businessId,
             CustomerId = customerId,
-            SaleDateUtc = DateTime.UtcNow,
+            SaleDateUtc = saleDate.HasValue
+    ? DateTime.SpecifyKind(
+        saleDate.Value.Date,
+        DateTimeKind.Local).ToUniversalTime()
+    : DateTime.UtcNow,
+
+            Notes = string.IsNullOrWhiteSpace(notes)
+    ? null
+    : notes.Trim(),
             Subtotal = subtotal,
             TaxAmount = 0,
             DiscountAmount = 0,

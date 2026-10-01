@@ -8,92 +8,240 @@
 
 <h3>Add Expense</h3>
 
-<table class="table">
-    <thead>
-        <tr>
-            <th>Description</th>
-            <th>Category</th>
-            <th>Amount</th>
-            <th></th>
-        </tr>
-    </thead>
-    <tbody>
-        @foreach (var line in lines)
-        {
+<div class="table-responsive">
+    <table class="table txn-table">
+        <thead>
             <tr>
-                <td><input class="form-control" @bind="line.Description" /></td>
-                <td><input class="form-control" @bind="line.Category" placeholder="e.g. Feed, Utilities" /></td>
-                <td><input type="number" step="0.01" class="form-control" @bind="line.Amount" /></td>
-                <td><button class="btn btn-sm btn-danger" @onclick="() => RemoveLine(line)">Remove</button></td>
+                <th>Description</th>
+                <th>Category</th>
+                <th class="txn-col-money">Amount</th>
+                <th class="txn-col-action"></th>
             </tr>
-        }
-    </tbody>
-</table>
+        </thead>
 
-<button class="btn btn-secondary mb-3" @onclick="AddLine">+ Add Line</button>
+        <tbody>
+            @foreach (var line in lines)
+            {
+                <tr>
+                    <td>
+                        <input class="form-control"
+                               @bind="line.Description"
+                               placeholder="e.g. Davao Light"
+                               disabled="@isSaving" />
+                    </td>
 
-<h5>Total Amount: @(lines.Sum(l => l.Amount).ToString("N2"))</h5>
+                    <td>
+                        <input class="form-control"
+                               @bind="line.Category"
+                               placeholder="e.g. Electricity Bill"
+                               disabled="@isSaving" />
+                    </td>
+
+                    <td class="txn-col-money">
+                        <input type="number"
+                               step="0.01"
+                               min="0.01"
+                               class="form-control"
+                               @bind="line.Amount"
+                               disabled="@isSaving" />
+                    </td>
+
+                    <td class="txn-col-action">
+                        <button type="button"
+                                class="btn btn-sm btn-danger"
+                                @onclick="() => RemoveLine(line)"
+                                disabled="@isSaving">
+                            Remove
+                        </button>
+                    </td>
+                </tr>
+            }
+        </tbody>
+    </table>
+</div>
+
+<button type="button"
+        class="btn btn-secondary"
+        @onclick="AddLine"
+        disabled="@isSaving">
+    + Add Line
+</button>
+
+<h5 class="txn-total">
+    Total Amount: @TotalAmount.ToString("N2")
+</h5>
 
 <div class="txn-row">
-    <div>
+    <div class="txn-field">
         <label>Status</label>
-        <select class="form-select" @bind="status">
+
+        <select class="form-select"
+                @bind="status"
+                disabled="@isSaving">
             <option value="Paid">Paid</option>
             <option value="Pending">Pending</option>
-            <option value="Partial">Partial</option>
         </select>
     </div>
-    <div>
+
+    <div class="txn-field">
         <label>Payment Method</label>
-        <select class="form-select" @bind="paymentMethod">
+
+        <select class="form-select"
+                @bind="paymentMethod"
+                @bind:after="OnPaymentMethodChanged"
+                disabled="@isSaving">
             <option value="Cash">Cash</option>
             <option value="Credit Card">Credit Card</option>
             <option value="Debit Card">Debit Card</option>
             <option value="Other">Other</option>
         </select>
     </div>
-    <div>
-        <label>Bank Name</label>
-        <input class="form-control" @bind="bankName" placeholder="e.g. BDO, MariBank, GCash" />
+
+    <div class="txn-field">
+        <label>Bank Name / Payment Source</label>
+
+        <input class="form-control"
+               @bind="bankName"
+               placeholder="e.g. BDO, GCash, Maya"
+               disabled="@(isSaving || paymentMethod == "Cash")" />
     </div>
-    <div>
+
+    <div class="txn-field">
         <label>Reference ID</label>
-        <input class="form-control" @bind="referenceNumber" />
+
+        <input class="form-control"
+               @bind="referenceNumber"
+               placeholder="Required for non-cash"
+               disabled="@(isSaving || paymentMethod == "Cash")" />
+    </div>
+
+    <div class="txn-field">
+        <label>Date</label>
+
+        <input type="date"
+               class="form-control"
+               @bind="expenseDate"
+               disabled="@isSaving" />
     </div>
 </div>
 
-@if (!string.IsNullOrEmpty(errorMessage))
+@if (!string.IsNullOrWhiteSpace(errorMessage))
 {
-    <p style="color:red">@errorMessage</p>
+    <div class="alert alert-danger">
+        @errorMessage
+    </div>
 }
 
-<div class="txn-actions">
-    <button class="btn btn-outline-secondary" @onclick="Cancel">Cancel</button>
-    <button class="btn btn-primary" @onclick="HandleSave">Complete Transaction</button>
+<div class="txn-bottom-row">
+    <div class="txn-notes">
+        <label>Notes</label>
+
+        <textarea class="form-control"
+                  @bind="notes"
+                  placeholder="Optional expense notes..."
+                  disabled="@isSaving"></textarea>
+    </div>
+
+    <div class="txn-actions">
+        <button type="button"
+                class="btn btn-outline-secondary"
+                @onclick="Cancel"
+                disabled="@isSaving">
+            Cancel
+        </button>
+
+        <button type="button"
+                class="btn btn-primary"
+                @onclick="HandleSave"
+                disabled="@isSaving">
+            @(isSaving ? "Processing..." : "Complete Transaction")
+        </button>
+    </div>
 </div>
 
 @code {
     private class Line
     {
-        public string Description { get; set; } = string.Empty;
-        public string Category { get; set; } = string.Empty;
+        public string Description { get; set; } =
+            string.Empty;
+
+        public string Category { get; set; } =
+            string.Empty;
+
         public decimal Amount { get; set; }
     }
 
-    private List<Line> lines = new() { new Line() };
+    private List<Line> lines =
+        new()
+        {
+            new Line()
+        };
+
     private string status = "Paid";
     private string paymentMethod = "Cash";
+
     private string? bankName;
     private string? referenceNumber;
+    private string? notes;
     private string? errorMessage;
-    private readonly Guid businessId = Guid.Parse("11111111-1111-1111-1111-111111111111");
 
-    private void AddLine() => lines.Add(new Line());
-    private void RemoveLine(Line line) => lines.Remove(line);
+    private DateTime expenseDate =
+        DateTime.Today;
+
+    private bool isSaving;
+
+    private readonly Guid businessId =
+        Guid.Parse("11111111-1111-1111-1111-111111111111");
+
+    private decimal TotalAmount =>
+        lines.Sum(l => l.Amount);
+
+    private void AddLine()
+    {
+        if (isSaving)
+        {
+            return;
+        }
+
+        lines.Add(new Line());
+    }
+
+    private void RemoveLine(Line line)
+    {
+        if (isSaving)
+        {
+            return;
+        }
+
+        lines.Remove(line);
+
+        if (lines.Count == 0)
+        {
+            lines.Add(new Line());
+        }
+    }
+
+    private void OnPaymentMethodChanged()
+    {
+        if (paymentMethod == "Cash")
+        {
+            bankName = null;
+            referenceNumber = null;
+        }
+    }
 
     private async Task Cancel()
     {
-        var confirmed = await JsRuntime.InvokeAsync<bool>("confirm", "Discard these expenses and go back? Unsaved changes will be lost.");
+        if (isSaving)
+        {
+            return;
+        }
+
+        var confirmed =
+            await JsRuntime.InvokeAsync<bool>(
+                "confirm",
+                "Discard these expenses and go back? Unsaved changes will be lost.");
+
         if (confirmed)
         {
             Navigation.NavigateTo("/expenses");
@@ -102,42 +250,121 @@
 
     private async Task HandleSave()
     {
+        if (isSaving)
+        {
+            return;
+        }
+
         errorMessage = null;
 
-        var validLines = lines.Where(l => !string.IsNullOrWhiteSpace(l.Description) && l.Amount > 0).ToList();
-        if (validLines.Count == 0)
+        var enteredLines =
+            lines
+                .Where(l =>
+                    !string.IsNullOrWhiteSpace(l.Description) ||
+                    !string.IsNullOrWhiteSpace(l.Category) ||
+                    l.Amount != 0)
+                .ToList();
+
+        if (enteredLines.Count == 0)
         {
-            errorMessage = "Add at least one valid expense line.";
+            errorMessage =
+                "Add at least one expense line.";
             return;
         }
 
-        if (paymentMethod != "Cash" && (string.IsNullOrWhiteSpace(bankName) || string.IsNullOrWhiteSpace(referenceNumber)))
+        if (enteredLines.Any(l =>
+                string.IsNullOrWhiteSpace(l.Description)))
         {
-            errorMessage = "Bank Name and Reference ID are required for non-cash payments.";
+            errorMessage =
+                "Description is required for every expense line.";
             return;
         }
+
+        if (enteredLines.Any(l =>
+                l.Amount <= 0))
+        {
+            errorMessage =
+                "Expense amounts must be greater than zero.";
+            return;
+        }
+
+        if (status != "Paid" &&
+            status != "Pending")
+        {
+            errorMessage =
+                "Status must be Paid or Pending.";
+            return;
+        }
+
+        if (paymentMethod != "Cash" &&
+            (string.IsNullOrWhiteSpace(bankName) ||
+             string.IsNullOrWhiteSpace(referenceNumber)))
+        {
+            errorMessage =
+                "Bank Name / Payment Source and Reference ID are required for non-cash payments.";
+            return;
+        }
+
+        isSaving = true;
 
         try
         {
-            foreach (var line in validLines)
+            foreach (var line in enteredLines)
             {
-                await ExpenseApiService.CreateExpenseAsync(new CreateExpenseRequest
-                {
-                    BusinessId = businessId,
-                    Description = line.Description,
-                    Category = line.Category,
-                    Amount = line.Amount,
-                    PaymentMethod = paymentMethod,
-                    PaymentSource = paymentMethod == "Cash" ? null : bankName,
-                    ReferenceNumber = paymentMethod == "Cash" ? null : referenceNumber,
-                    Status = status
-                });
+                var request =
+                    new CreateExpenseRequest
+                    {
+                        BusinessId =
+                            businessId,
+
+                        Description =
+                            line.Description.Trim(),
+
+                        Category =
+                            string.IsNullOrWhiteSpace(line.Category)
+                                ? string.Empty
+                                : line.Category.Trim(),
+
+                        Amount =
+                            line.Amount,
+
+                        ExpenseDate =
+                            expenseDate,
+
+                        PaymentMethod =
+                            paymentMethod,
+
+                        PaymentSource =
+                            paymentMethod == "Cash"
+                                ? null
+                                : bankName?.Trim(),
+
+                        ReferenceNumber =
+                            paymentMethod == "Cash"
+                                ? null
+                                : referenceNumber?.Trim(),
+
+                        Status =
+                            status,
+
+                        Notes =
+                            string.IsNullOrWhiteSpace(notes)
+                                ? null
+                                : notes.Trim()
+                    };
+
+                await ExpenseApiService
+                    .CreateExpenseAsync(request);
             }
+
             Navigation.NavigateTo("/expenses");
         }
         catch (Exception ex)
         {
-            errorMessage = $"Failed to save expenses: {ex.Message}";
+            errorMessage =
+                $"Failed to save expenses: {ex.Message}";
+
+            isSaving = false;
         }
     }
 }

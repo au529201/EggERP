@@ -25,7 +25,32 @@ public class ExpenseRepository : IExpenseRepository
     public async Task<Expense> AddAsync(Expense expense)
     {
         _dbContext.Expenses.Add(expense);
+
         await _dbContext.SaveChangesAsync();
+
         return expense;
+    }
+
+    public async Task<bool> UpdateStatusAsync(
+        Guid businessId,
+        Guid id,
+        string status)
+    {
+        var expense = await _dbContext.Expenses
+            .FirstOrDefaultAsync(e =>
+                e.BusinessId == businessId &&
+                e.Id == id);
+
+        if (expense is null)
+        {
+            return false;
+        }
+
+        expense.Status = status;
+        expense.UpdatedAtUtc = DateTime.UtcNow;
+
+        await _dbContext.SaveChangesAsync();
+
+        return true;
     }
 }

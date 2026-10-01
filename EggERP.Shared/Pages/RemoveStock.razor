@@ -18,147 +18,253 @@
 }
 else
 {
-    <table class="table">
-        <thead>
-            <tr>
-                <th>Group</th>
-                <th>Type</th>
-                <th>Quantity</th>
-                <th>Reason</th>
-                <th>Customer</th>
-                <th>Price</th>
-                <th>Total</th>
-                <th></th>
-            </tr>
-        </thead>
-        <tbody>
-            @foreach (var line in lines)
-            {
+    <div class="table-responsive">
+        <table class="table txn-table">
+            <thead>
                 <tr>
-                    <td>
-                        <select class="form-select" @bind="line.Group" @bind:after="() => OnGroupChanged(line)">
-                            <option value="Flock">Flock</option>
-                            <option value="Egg">Egg</option>
-                        </select>
-                    </td>
-                    <td>
-                        <select class="form-select" @bind="line.ProductId" @bind:after="() => OnProductChanged(line)">
-                            <option value="">Select product</option>
-                            @foreach (var product in AvailableProducts(line))
-                            {
-                                <option value="@product.Id">@product.Type - @product.Description</option>
-                            }
-                        </select>
-                        @if (Guid.TryParse(line.ProductId, out var pid) && stockOnHand.TryGetValue(pid, out var qty))
-                        {
-                            <div class="stock-hint">@qty in stock</div>
-                        }
-                    </td>
-                    <td>
-                        <input type="number" step="1" min="1" class="form-control" @bind="line.Quantity" />
-                    </td>
-                    <td>
-                        <select class="form-select" @bind="line.Reason">
-                            <option value="Sold">Sold</option>
-                            @foreach (var r in OutReasons(line.Group))
-                            {
-                                <option value="@r">@r</option>
-                            }
-                        </select>
-                    </td>
-                    <td>
-                        @if (line.Reason == "Sold")
-                        {
-                            <select class="form-select" @bind="line.CustomerId">
-                                <option value="">Walk-in</option>
-                                @foreach (var c in customers ?? new())
+                    <th style="width:100px;">Group</th>
+                    <th>Type / Product</th>
+                    <th class="txn-col-qty">Qty</th>
+                    <th style="width:125px;">Reason</th>
+                    <th style="min-width:180px;">Customer</th>
+                    <th class="txn-col-money">Price</th>
+                    <th class="txn-col-total">Total</th>
+                    <th class="txn-col-action"></th>
+                </tr>
+            </thead>
+
+            <tbody>
+                @foreach (var line in lines)
+                {
+                    <tr>
+                        <td>
+                            <select class="form-select"
+                                    @bind="line.Group"
+                                    @bind:after="() => OnGroupChanged(line)"
+                                    disabled="@isSaving">
+                                <option value="Flock">Flock</option>
+                                <option value="Egg">Egg</option>
+                            </select>
+                        </td>
+
+                        <td>
+                            <select class="form-select"
+                                    @bind="line.ProductId"
+                                    @bind:after="() => OnProductChanged(line)"
+                                    disabled="@isSaving">
+                                <option value="">Select product</option>
+
+                                @foreach (var product in AvailableProducts(line))
                                 {
-                                    <option value="@c.Id">@c.Name</option>
+                                    <option value="@product.Id">
+                                        @product.Type - @product.Description
+                                    </option>
                                 }
                             </select>
-                        }
-                    </td>
-                    <td>
-                        @if (line.Reason == "Sold")
-                        {
-                            <input type="number" step="0.01" class="form-control" @bind="line.UnitPrice" />
-                        }
-                    </td>
-                    <td>
-                        @if (line.Reason == "Sold")
-                        {
-                            @((line.Quantity * line.UnitPrice).ToString("N2"))
-                        }
-                    </td>
-                    <td>
-                        <button class="btn btn-sm btn-danger" @onclick="() => RemoveLine(line)">Remove</button>
-                    </td>
-                </tr>
-            }
-        </tbody>
-    </table>
 
-    <button class="btn btn-secondary mb-3" @onclick="AddLine" disabled="@(!CanAddLine())">+ Add Line</button>
+                            @if (Guid.TryParse(line.ProductId, out var pid) &&
+                                 stockOnHand.TryGetValue(pid, out var qty))
+                            {
+                                <div class="stock-hint">
+                                    @qty in stock
+                                </div>
+                            }
+                        </td>
+
+                        <td class="txn-col-qty">
+                            <input type="number"
+                                   step="1"
+                                   min="1"
+                                   max="9999"
+                                   class="form-control"
+                                   @bind="line.Quantity"
+                                   disabled="@isSaving" />
+                        </td>
+
+                        <td>
+                            <select class="form-select"
+                                    @bind="line.Reason"
+                                    disabled="@isSaving">
+                                <option value="Sold">Sold</option>
+
+                                @foreach (var reason in OutReasons(line.Group))
+                                {
+                                    <option value="@reason">
+                                        @reason
+                                    </option>
+                                }
+                            </select>
+                        </td>
+
+                        <td>
+                            @if (line.Reason == "Sold")
+                            {
+                                <select class="form-select"
+                                        @bind="line.CustomerId"
+                                        disabled="@isSaving">
+                                    <option value="">
+                                        Walk-in
+                                    </option>
+
+                                    @foreach (var customer in customers ?? new())
+                                    {
+                                        <option value="@customer.Id">
+                                            @customer.Name
+                                        </option>
+                                    }
+                                </select>
+                            }
+                            else
+                            {
+                                <span class="text-muted">—</span>
+                            }
+                        </td>
+
+                        <td class="txn-col-money">
+                            @if (line.Reason == "Sold")
+                            {
+                                <input type="number"
+                                       step="0.01"
+                                       min="0"
+                                       class="form-control"
+                                       @bind="line.UnitPrice"
+                                       disabled="@isSaving" />
+                            }
+                            else
+                            {
+                                <span class="text-muted">—</span>
+                            }
+                        </td>
+
+                        <td class="txn-col-total">
+                            @if (line.Reason == "Sold")
+                            {
+                                @((line.Quantity * line.UnitPrice).ToString("N2"))
+                            }
+                            else
+                            {
+                                <span class="text-muted">—</span>
+                            }
+                        </td>
+
+                        <td class="txn-col-action">
+                            <button type="button"
+                                    class="btn btn-sm btn-danger"
+                                    @onclick="() => RemoveLine(line)"
+                                    disabled="@isSaving">
+                                Remove
+                            </button>
+                        </td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+    </div>
+
+    <button type="button"
+            class="btn btn-secondary"
+            @onclick="AddLine"
+            disabled="@(isSaving || !CanAddLine())">
+        + Add Line
+    </button>
 
     @if (HasPaymentLine)
     {
-        <h5>Total Amount: @(TotalSale.ToString("N2"))</h5>
+        <h5 class="txn-total">
+            Sold Total: @TotalSale.ToString("N2")
+        </h5>
+    }
 
-        <div class="txn-row">
-            <div>
+    <div class="txn-row">
+        @if (HasPaymentLine)
+        {
+            <div class="txn-field">
                 <label>Status</label>
-<select class="form-select" @bind="status">
-    <option value="Paid">Paid</option>
-    <option value="Pending">Pending</option>
-</select>
+
+                <select class="form-select"
+                        @bind="status"
+                        disabled="@isSaving">
+                    <option value="Paid">Paid</option>
+                    <option value="Pending">Pending</option>
+                </select>
             </div>
-            <div>
+
+            <div class="txn-field">
                 <label>Payment Method</label>
-                <select class="form-select" @bind="paymentMethod">
+
+                <select class="form-select"
+                        @bind="paymentMethod"
+                        @bind:after="OnPaymentMethodChanged"
+                        disabled="@isSaving">
                     <option value="Cash">Cash</option>
                     <option value="Credit Card">Credit Card</option>
                     <option value="Debit Card">Debit Card</option>
                     <option value="Other">Other</option>
                 </select>
             </div>
-            <div>
-                <label>Bank Name</label>
-                <input class="form-control" @bind="bankName" placeholder="e.g. BDO, MariBank, GCash" />
+
+            <div class="txn-field">
+                <label>Bank Name / Payment Source</label>
+
+                <input class="form-control"
+                       @bind="bankName"
+                       placeholder="e.g. BDO, GCash, Maya"
+                       disabled="@(isSaving || paymentMethod == "Cash")" />
             </div>
-            <div>
+
+            <div class="txn-field">
                 <label>Reference ID</label>
-                <input class="form-control" @bind="referenceNumber" />
+
+                <input class="form-control"
+                       @bind="referenceNumber"
+                       placeholder="Required for non-cash"
+                       disabled="@(isSaving || paymentMethod == "Cash")" />
             </div>
+        }
+
+        <div class="txn-field">
+            <label>Date</label>
+
+            <input type="date"
+                   class="form-control"
+                   @bind="movementDate"
+                   disabled="@isSaving" />
+        </div>
+    </div>
+
+    @if (!string.IsNullOrWhiteSpace(errorMessage))
+    {
+        <div class="alert alert-danger">
+            @errorMessage
         </div>
     }
 
-    <div class="mb-3" style="max-width:400px;">
-        <label>Date</label>
-        <input type="date" class="form-control" @bind="movementDate" />
+    <div class="txn-bottom-row">
+        <div class="txn-notes">
+            <label>Notes</label>
+
+            <textarea class="form-control"
+                      @bind="notes"
+                      placeholder="Optional transaction notes..."
+                      disabled="@isSaving"></textarea>
+        </div>
+
+        <div class="txn-actions">
+            <button type="button"
+                    class="btn btn-outline-secondary"
+                    @onclick="Cancel"
+                    disabled="@isSaving">
+                Cancel
+            </button>
+
+            <button type="button"
+                    class="btn btn-primary"
+                    @onclick="HandleSave"
+                    disabled="@isSaving">
+                @(isSaving ? "Processing..." : "Complete Transaction")
+            </button>
+        </div>
     </div>
-    <div class="mb-3" style="max-width:600px;">
-        <label>Notes</label>
-        <textarea class="form-control" @bind="notes"></textarea>
-    </div>
-
-    @if (!string.IsNullOrEmpty(errorMessage))
-    {
-        <p style="color:red">@errorMessage</p>
-    }
-
-<div class="txn-actions">
-    <button class="btn btn-outline-secondary"
-            @onclick="Cancel"
-            disabled="@isSaving">
-        Cancel
-    </button>
-
-    <button class="btn btn-primary"
-            @onclick="HandleSave"
-            disabled="@isSaving">
-        @(isSaving ? "Processing..." : "Complete Transaction")
-    </button>
-</div>
 }
 
 @code {
@@ -172,163 +278,374 @@ else
         public string CustomerId { get; set; } = string.Empty;
     }
 
-    private readonly string[] flockOutReasons = { "Moved", "Died", "Missing", "Culled" };
-    private readonly string[] eggOutReasons = { "Moved", "Broken", "Stolen", "Missing", "Hatched" };
+    private readonly string[] flockOutReasons =
+    {
+        "Moved",
+        "Died",
+        "Missing",
+        "Culled"
+    };
+
+    private readonly string[] eggOutReasons =
+    {
+        "Moved",
+        "Broken",
+        "Stolen",
+        "Missing",
+        "Hatched"
+    };
 
     private List<ProductDto>? products;
     private List<CustomerDto>? customers;
+
     private List<Line> lines = new();
+
     private Dictionary<Guid, int> stockOnHand = new();
 
     private string status = "Paid";
     private string paymentMethod = "Cash";
+
     private string? bankName;
     private string? referenceNumber;
-    private DateTime movementDate = DateTime.Today;
     private string? notes;
     private string? errorMessage;
+
+    private DateTime movementDate = DateTime.Today;
+
     private bool isSaving;
 
-    private readonly Guid businessId = Guid.Parse("11111111-1111-1111-1111-111111111111");
+    private readonly Guid businessId =
+        Guid.Parse("11111111-1111-1111-1111-111111111111");
 
-    private bool HasPaymentLine => lines.Any(l => l.Reason == "Sold");
-    private decimal TotalSale => lines.Where(l => l.Reason == "Sold").Sum(l => l.Quantity * l.UnitPrice);
+    private bool HasPaymentLine =>
+        lines.Any(l => l.Reason == "Sold");
+
+    private decimal TotalSale =>
+        lines
+            .Where(l => l.Reason == "Sold")
+            .Sum(l => l.Quantity * l.UnitPrice);
 
     protected override async Task OnInitializedAsync()
     {
-       products = await ProductApiService.GetProductsAsync();
-customers = await CustomerApiService.GetCustomersAsync(businessId);
+        products =
+            await ProductApiService.GetProductsAsync();
 
-        var flockBoard = await FlockApiService.GetBoardAsync();
-        var eggBoard = await EggApiService.GetBoardAsync();
+        customers =
+            await CustomerApiService
+                .GetCustomersAsync(businessId);
+
+        var flockBoard =
+            await FlockApiService.GetBoardAsync();
+
+        var eggBoard =
+            await EggApiService.GetBoardAsync();
+
         foreach (var row in flockBoard.Concat(eggBoard))
         {
-            stockOnHand[row.ProductId] = row.Available;
+            stockOnHand[row.ProductId] =
+                row.Available;
         }
 
         lines.Add(new Line());
     }
 
-    private string[] OutReasons(string group) => group == "Flock" ? flockOutReasons : eggOutReasons;
-
-    private IEnumerable<ProductDto> AvailableProducts(Line current)
+    private string[] OutReasons(string group)
     {
-        var takenIds = lines.Where(l => l != current && !string.IsNullOrEmpty(l.ProductId))
-                             .Select(l => l.ProductId).ToHashSet();
-        return (products ?? new()).Where(p => p.Group == current.Group && !takenIds.Contains(p.Id.ToString()));
+        return group == "Flock"
+            ? flockOutReasons
+            : eggOutReasons;
     }
 
-    private bool CanAddLine() => lines.Count < (products?.Count ?? 0);
+    private IEnumerable<ProductDto> AvailableProducts(
+        Line current)
+    {
+        var takenIds =
+            lines
+                .Where(l =>
+                    l != current &&
+                    !string.IsNullOrWhiteSpace(l.ProductId))
+                .Select(l => l.ProductId)
+                .ToHashSet();
+
+        return (products ?? new())
+            .Where(p =>
+                p.Group == current.Group &&
+                !takenIds.Contains(p.Id.ToString()));
+    }
+
+    private bool CanAddLine()
+    {
+        return lines.Count <
+               (products?.Count ?? 0);
+    }
 
     private void OnGroupChanged(Line line)
     {
         line.ProductId = string.Empty;
         line.Reason = OutReasons(line.Group)[0];
+        line.CustomerId = string.Empty;
+        line.UnitPrice = 0;
     }
 
     private void OnProductChanged(Line line)
     {
-        if (Guid.TryParse(line.ProductId, out var pid))
+        if (!Guid.TryParse(
+                line.ProductId,
+                out var productId))
         {
-            var product = products?.FirstOrDefault(p => p.Id == pid);
-            if (product is not null) line.UnitPrice = product.SellingPrice;
+            return;
+        }
+
+        var product =
+            products?.FirstOrDefault(
+                p => p.Id == productId);
+
+        if (product is not null)
+        {
+            line.UnitPrice =
+                product.SellingPrice;
         }
     }
 
-    private void AddLine() => lines.Add(new Line { Reason = OutReasons("Flock")[0] });
-    private void RemoveLine(Line line) => lines.Remove(line);
+    private void AddLine()
+    {
+        if (isSaving || !CanAddLine())
+        {
+            return;
+        }
+
+        lines.Add(
+            new Line
+            {
+                Reason = OutReasons("Flock")[0]
+            });
+    }
+
+    private void RemoveLine(Line line)
+    {
+        if (isSaving)
+        {
+            return;
+        }
+
+        lines.Remove(line);
+
+        if (lines.Count == 0)
+        {
+            lines.Add(new Line());
+        }
+    }
+
+    private void OnPaymentMethodChanged()
+    {
+        if (paymentMethod == "Cash")
+        {
+            bankName = null;
+            referenceNumber = null;
+        }
+    }
 
     private async Task Cancel()
     {
-        var confirmed = await JsRuntime.InvokeAsync<bool>("confirm", "Discard this entry and go back? Unsaved changes will be lost.");
+        if (isSaving)
+        {
+            return;
+        }
+
+        var confirmed =
+            await JsRuntime.InvokeAsync<bool>(
+                "confirm",
+                "Discard this entry and go back? Unsaved changes will be lost.");
+
         if (confirmed)
         {
             Navigation.NavigateTo("/eggs");
         }
     }
 
-private async Task HandleSave()
-{
-    if (isSaving)
-        return;
-
-    errorMessage = null;
-
-    var validLines = lines
-        .Where(l => !string.IsNullOrEmpty(l.ProductId) && l.Quantity > 0)
-        .ToList();
-
-    if (validLines.Count == 0)
+    private async Task HandleSave()
     {
-        errorMessage = "Add at least one valid line item.";
-        return;
-    }
-
-    if (HasPaymentLine &&
-        paymentMethod != "Cash" &&
-        (string.IsNullOrWhiteSpace(bankName) ||
-         string.IsNullOrWhiteSpace(referenceNumber)))
-    {
-        errorMessage =
-            "Bank Name and Reference ID are required for non-cash payments.";
-        return;
-    }
-
-    isSaving = true;
-
-    try
-    {
-        var request = new ProcessStockTransactionRequest
+        if (isSaving)
         {
-            BusinessId = businessId,
-            Direction = "Out",
-            MovementDate = movementDate,
-            Notes = notes,
-            Status = status,
-            PaymentMethod = paymentMethod,
-            PaymentSource = paymentMethod == "Cash"
-                ? null
-                : paymentMethod,
-            ReferenceNumber = paymentMethod == "Cash"
-                ? null
-                : referenceNumber,
-            BankName = paymentMethod == "Cash"
-                ? null
-                : bankName,
-
-            Lines = validLines.Select(l =>
-                new StockTransactionLineRequest
-                {
-                    Group = l.Group,
-                    ProductId = Guid.Parse(l.ProductId),
-                    Reason = l.Reason,
-                    Quantity = l.Quantity,
-                    UnitPrice = l.UnitPrice,
-                    CustomerId =
-                        Guid.TryParse(l.CustomerId, out var cid)
-                            ? cid
-                            : null
-                }).ToList()
-        };
-
-        var error = await StockApiService.ProcessAsync(request);
-
-        if (error is not null)
-        {
-            errorMessage = error;
             return;
         }
 
-        Navigation.NavigateTo("/eggs");
+        errorMessage = null;
+
+        var enteredLines =
+            lines
+                .Where(l =>
+                    !string.IsNullOrWhiteSpace(l.ProductId))
+                .ToList();
+
+        if (enteredLines.Count == 0)
+        {
+            errorMessage =
+                "Add at least one valid line item.";
+            return;
+        }
+
+        if (enteredLines.Any(l => l.Quantity <= 0))
+        {
+            errorMessage =
+                "Quantity must be greater than zero.";
+            return;
+        }
+
+        if (enteredLines.Any(l => l.Quantity > 9999))
+        {
+            errorMessage =
+                "Quantity cannot exceed 9,999 per line.";
+            return;
+        }
+
+        if (enteredLines
+            .Where(l => l.Reason == "Sold")
+            .Any(l => l.UnitPrice < 0))
+        {
+            errorMessage =
+                "Unit price cannot be negative.";
+            return;
+        }
+
+        foreach (var line in enteredLines)
+        {
+            if (!Guid.TryParse(
+                    line.ProductId,
+                    out var productId))
+            {
+                errorMessage =
+                    "One or more selected products are invalid.";
+                return;
+            }
+
+            var available =
+                stockOnHand.TryGetValue(
+                    productId,
+                    out var quantity)
+                    ? quantity
+                    : 0;
+
+            if (line.Quantity > available)
+            {
+                errorMessage =
+                    $"Cannot remove {line.Quantity:N0}. Only {available:N0} currently in stock for the selected product.";
+                return;
+            }
+        }
+
+        if (HasPaymentLine &&
+            status != "Paid" &&
+            status != "Pending")
+        {
+            errorMessage =
+                "Status must be Paid or Pending.";
+            return;
+        }
+
+        if (HasPaymentLine &&
+            paymentMethod != "Cash" &&
+            (string.IsNullOrWhiteSpace(bankName) ||
+             string.IsNullOrWhiteSpace(referenceNumber)))
+        {
+            errorMessage =
+                "Bank Name / Payment Source and Reference ID are required for non-cash payments.";
+            return;
+        }
+
+        isSaving = true;
+
+        try
+        {
+            var request =
+                new ProcessStockTransactionRequest
+                {
+                    BusinessId =
+                        businessId,
+
+                    Direction =
+                        "Out",
+
+                    MovementDate =
+                        movementDate,
+
+                    Notes =
+                        string.IsNullOrWhiteSpace(notes)
+                            ? null
+                            : notes.Trim(),
+
+                    Status =
+                        status,
+
+                    PaymentMethod =
+                        paymentMethod,
+
+                    PaymentSource =
+                        HasPaymentLine &&
+                        paymentMethod != "Cash"
+                            ? bankName?.Trim()
+                            : null,
+
+                    ReferenceNumber =
+                        HasPaymentLine &&
+                        paymentMethod != "Cash"
+                            ? referenceNumber?.Trim()
+                            : null,
+
+                    BankName =
+                        HasPaymentLine &&
+                        paymentMethod != "Cash"
+                            ? bankName?.Trim()
+                            : null,
+
+                    Lines =
+                        enteredLines.Select(l =>
+                            new StockTransactionLineRequest
+                            {
+                                Group =
+                                    l.Group,
+
+                                ProductId =
+                                    Guid.Parse(l.ProductId),
+
+                                Reason =
+                                    l.Reason,
+
+                                Quantity =
+                                    l.Quantity,
+
+                                UnitPrice =
+                                    l.UnitPrice,
+
+                                CustomerId =
+                                    Guid.TryParse(
+                                        l.CustomerId,
+                                        out var customerId)
+                                        ? customerId
+                                        : null
+                            }).ToList()
+                };
+
+            var error =
+                await StockApiService.ProcessAsync(
+                    request);
+
+            if (error is not null)
+            {
+                errorMessage = error;
+                return;
+            }
+
+            Navigation.NavigateTo("/eggs");
+        }
+        catch (Exception ex)
+        {
+            errorMessage =
+                $"Failed to complete transaction: {ex.Message}";
+        }
+        finally
+        {
+            isSaving = false;
+        }
     }
-    catch (Exception ex)
-    {
-        errorMessage =
-            $"Failed to complete transaction: {ex.Message}";
-    }
-    finally
-    {
-        isSaving = false;
-    }
-}
 }

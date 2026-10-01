@@ -291,27 +291,192 @@ body {
     transform: rotate(180deg);
 }
 
-/* Footer */
-.txn-row {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 1rem;
-    margin: 1rem 0;
+/* =========================================================
+   Transaction Pages
+   Shared by Add Stock, Remove Stock, New Purchase,
+   New Sale and Add Expense
+   ========================================================= */
+
+.txn-table {
+    width: 100%;
+    table-layout: auto;
+    vertical-align: middle;
 }
 
-    .txn-row > div {
-        flex: 1 1 0;
-        min-width: 160px;
+    .txn-table th {
+        white-space: nowrap;
+    }
+
+    .txn-table td {
+        vertical-align: middle;
+    }
+
+/* Compact quantity column - enough for values such as 9,999 */
+.txn-col-qty {
+    width: 90px;
+    min-width: 90px;
+    max-width: 90px;
+}
+
+    .txn-col-qty input {
+        min-width: 80px;
+    }
+
+/* Cost / Price */
+.txn-col-money {
+    width: 120px;
+    min-width: 110px;
+}
+
+/* Calculated total */
+.txn-col-total {
+    width: 110px;
+    min-width: 100px;
+    white-space: nowrap;
+}
+
+/* Remove button */
+.txn-col-action {
+    width: 90px;
+    min-width: 90px;
+    text-align: center;
+}
+
+/* Allow important dropdowns to use remaining space */
+.txn-col-group {
+    min-width: 105px;
+}
+
+.txn-col-product {
+    min-width: 190px;
+}
+
+.txn-col-reason {
+    min-width: 125px;
+}
+
+.txn-col-party {
+    min-width: 170px;
+}
+
+/* Stock quantity helper */
+.stock-hint {
+    margin-top: 0.25rem;
+    font-size: 0.8rem;
+    color: var(--egg-clay, #8B5E3C);
+    white-space: nowrap;
+}
+
+/* Transaction information row */
+.txn-row {
+    display: grid;
+    grid-template-columns: minmax(130px, 0.8fr) minmax(160px, 1fr) minmax(190px, 1.2fr) minmax(170px, 1fr) minmax(150px, 0.9fr);
+    gap: 0.75rem;
+    margin: 1rem 0;
+    align-items: end;
+}
+
+.txn-field {
+    min-width: 0;
+}
+
+    .txn-field label,
+    .txn-notes label {
+        display: block;
+        margin-bottom: 0.35rem;
+        font-weight: 500;
+    }
+
+/* Notes + buttons share one clean row */
+.txn-bottom-row {
+    display: grid;
+    grid-template-columns: minmax(280px, 1fr) auto;
+    gap: 1rem;
+    align-items: end;
+    margin-top: 1rem;
+}
+
+.txn-notes {
+    min-width: 0;
+}
+
+    .txn-notes textarea {
+        width: 100%;
+        min-height: 76px;
+        resize: vertical;
     }
 
 .txn-actions {
     display: flex;
+    align-items: stretch;
     justify-content: flex-end;
     gap: 0.75rem;
-    margin-top: 1rem;
+    margin: 0;
 }
 
-.stock-hint {
-    font-size: 0.8rem;
-    color: var(--egg-clay, #8B5E3C);
+    .txn-actions .btn {
+        min-width: 100px;
+        white-space: nowrap;
+    }
+
+    .txn-actions .btn-primary {
+        min-width: 180px;
+    }
+
+/* Transaction totals */
+.txn-total {
+    margin-top: 0.75rem;
+    margin-bottom: 1rem;
+}
+
+/* Keep controls visually consistent */
+.txn-row .form-control,
+.txn-row .form-select,
+.txn-table .form-control,
+.txn-table .form-select {
+    width: 100%;
+}
+
+    /* Disabled cash-only payment fields */
+    .txn-row .form-control:disabled,
+    .txn-row .form-select:disabled {
+        background-color: #f2ead9;
+        opacity: 0.75;
+    }
+
+/* Smaller screens */
+@media (max-width: 1100px) {
+    .txn-row {
+        grid-template-columns: repeat(2, minmax(180px, 1fr));
+    }
+
+    .txn-bottom-row {
+        grid-template-columns: 1fr;
+    }
+
+    .txn-actions {
+        justify-content: flex-end;
+    }
+}
+
+/* Mobile */
+@media (max-width: 576px) {
+    .txn-row {
+        grid-template-columns: 1fr;
+    }
+
+    .txn-bottom-row {
+        grid-template-columns: 1fr;
+    }
+
+    .txn-actions {
+        width: 100%;
+        flex-direction: column-reverse;
+    }
+
+        .txn-actions .btn,
+        .txn-actions .btn-primary {
+            width: 100%;
+            min-width: 0;
+        }
 }

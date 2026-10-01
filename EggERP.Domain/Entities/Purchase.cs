@@ -9,7 +9,7 @@ public class Purchase
     public Guid? SupplierId { get; set; }
 
     public DateTime PurchaseDateUtc { get; set; }
-
+    public string? Notes { get; set; }
     public decimal Subtotal { get; set; }
 
     public decimal TaxAmount { get; set; }

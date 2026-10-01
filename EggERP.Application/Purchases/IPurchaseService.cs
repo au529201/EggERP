@@ -25,7 +25,9 @@ public interface IPurchaseService
         string? paymentSource,
         string? referenceNumber,
         string? bankName,
-        string status);
+        string status,
+        DateTime? purchaseDate = null,
+        string? notes = null);
 
     Task<(bool Succeeded, string? Error)> MarkAsPaidAsync(
         Guid businessId,

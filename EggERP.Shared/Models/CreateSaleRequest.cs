@@ -15,5 +15,7 @@
         public string? PaymentSource { get; set; }
         public string? ReferenceNumber { get; set; }
         public string Status { get; set; } = "Paid";
+        public DateTime? SaleDate { get; set; }
+        public string? Notes { get; set; }
     }
 }

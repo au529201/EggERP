@@ -1,28 +1,60 @@
 ﻿using System.Net.Http.Json;
 using EggERP.Shared.Models;
+
 namespace EggERP.Shared.Services
 {
     public interface IExpenseApiService
     {
         Task<List<ExpenseDto>> GetExpensesAsync(Guid businessId);
-        Task CreateExpenseAsync(CreateExpenseRequest request);
+
+        Task CreateExpenseAsync(
+            CreateExpenseRequest request);
+
+        Task UpdateStatusAsync(
+            Guid id,
+            string status);
     }
+
     public class ExpenseApiService : IExpenseApiService
     {
         private readonly HttpClient _http;
+
         public ExpenseApiService(HttpClient http)
         {
             _http = http;
         }
-        public async Task<List<ExpenseDto>> GetExpensesAsync(Guid businessId)
+
+        public async Task<List<ExpenseDto>> GetExpensesAsync(
+            Guid businessId)
         {
-            var result = await _http.GetFromJsonAsync<List<ExpenseDto>>(
-                $"api/expenses/{businessId}");
+            var result =
+                await _http.GetFromJsonAsync<List<ExpenseDto>>(
+                    $"api/expenses/{businessId}");
+
             return result ?? new List<ExpenseDto>();
         }
-        public async Task CreateExpenseAsync(CreateExpenseRequest request)
+
+        public async Task CreateExpenseAsync(
+            CreateExpenseRequest request)
         {
-            var response = await _http.PostAsJsonAsync("api/expenses", request);
+            var response = await _http.PostAsJsonAsync(
+                "api/expenses",
+                request);
+
+            response.EnsureSuccessStatusCode();
+        }
+
+        public async Task UpdateStatusAsync(
+            Guid id,
+            string status)
+        {
+            var response = await _http.PutAsJsonAsync(
+                $"api/expenses/{id}/status",
+                new
+                {
+                    Status = status
+                });
+
             response.EnsureSuccessStatusCode();
         }
     }
