@@ -1,23 +1,43 @@
-﻿.app-footer {
+.app-footer {
     background-color: var(--egg-brown, #4A2E1F);
     color: #f0e6d6;
-    padding: 0.9rem 1.5rem;
+    padding: 0.9rem var(--app-content-padding, 1.5rem);
     font-size: 0.85rem;
     border-top: 3px solid var(--egg-gold, #C8862B);
     margin-top: auto;
     flex-shrink: 0;
     width: 100%;
-    position: relative;
-    z-index: 10;
-    opacity: 1;
+}
+
+.footer-content {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.5rem 1rem;
+}
+
+.footer-content span {
+    min-width: 0;
+    overflow-wrap: anywhere;
 }
 
 .footer-link {
-    color: var(--egg-gold, #C8862B);
+    color: #efbf78;
     text-decoration: none;
     font-weight: 700;
+    white-space: nowrap;
 }
 
-    .footer-link:hover {
-        text-decoration: underline;
+.footer-link:hover,
+.footer-link:focus-visible {
+    color: #fff;
+    text-decoration: underline;
+}
+
+@media (max-width: 991.98px) {
+    .footer-content {
+        justify-content: center;
+        text-align: center;
     }
+}
