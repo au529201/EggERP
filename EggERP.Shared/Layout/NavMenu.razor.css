@@ -1,15 +1,31 @@
 .nav-shell {
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    width: 100%;
+    height: 100%;
+    min-height: 0;
     color: #f0e6d6;
 }
 
+/* =========================
+   HEADER
+   ========================= */
+
 .nav-header {
+    position: relative;
+    z-index: 4;
     display: flex;
     align-items: center;
     justify-content: space-between;
     gap: 0.5rem;
+    flex: 0 0 var(--app-header-height);
+    width: 100%;
+    height: var(--app-header-height);
     min-height: var(--app-header-height);
+    box-sizing: border-box;
     padding: 0.5rem 0.75rem;
-    background: rgba(0, 0, 0, 0.2);
+    background: linear-gradient( 180deg, #4A2E1F 0%, #3A2418 100% );
 }
 
 .brand-link {
@@ -36,14 +52,16 @@
     white-space: nowrap;
 }
 
+/* =========================
+   BUTTONS
+   ========================= */
+
 .collapse-toggle,
 .mobile-menu-toggle {
     display: inline-flex;
     align-items: center;
     justify-content: center;
     flex-shrink: 0;
-    width: 2rem;
-    height: 2rem;
     padding: 0;
     color: white;
     background: rgba(255, 255, 255, 0.1);
@@ -54,6 +72,8 @@
 
 .collapse-toggle {
     display: none;
+    width: 2rem;
+    height: 2rem;
 }
 
 .mobile-menu-toggle {
@@ -62,10 +82,10 @@
     font-size: 1.25rem;
 }
 
-.collapse-toggle:hover,
-.mobile-menu-toggle:hover {
-    background: rgba(200, 134, 43, 0.4);
-}
+    .collapse-toggle:hover,
+    .mobile-menu-toggle:hover {
+        background: rgba(200, 134, 43, 0.4);
+    }
 
 .nav-shell ::deep a:focus-visible,
 .nav-shell button:focus-visible {
@@ -73,32 +93,56 @@
     outline-offset: -2px;
 }
 
+/* =========================
+   MOBILE MENU
+   ========================= */
+
 .nav-scrollable {
     display: none;
     position: fixed;
+    /*
+       Header occupies the first app-header-height.
+       Bottom navigation occupies the final
+       app-bottom-nav-height.
+    */
     top: var(--app-header-height);
-    bottom: calc(var(--app-bottom-nav-height) + env(safe-area-inset-bottom, 0px));
+    bottom: calc( var(--app-bottom-nav-height) + env(safe-area-inset-bottom, 0px) );
     left: 0;
-    width: min(22rem, 100%);
-    overflow-y: auto;
+    z-index: 32;
+    width: min(22rem, 100vw);
+    box-sizing: border-box;
     overflow-x: hidden;
+    overflow-y: auto;
     overscroll-behavior-y: contain;
+    -webkit-overflow-scrolling: touch;
     padding: 0.5rem;
-    background: linear-gradient(180deg, #4A2E1F 0%, #2E1B12 100%);
-    z-index: 2;
+    background: linear-gradient( 180deg, #4A2E1F 0%, #2E1B12 100% );
+    scrollbar-gutter: stable;
 }
 
 .is-menu-open .nav-scrollable {
     display: block;
 }
 
+/* =========================
+   MOBILE BACKDROP
+   ========================= */
+
 .menu-backdrop {
     position: fixed;
-    inset: var(--app-header-height) 0 calc(var(--app-bottom-nav-height) + env(safe-area-inset-bottom, 0px));
+    top: var(--app-header-height);
+    right: 0;
+    bottom: calc( var(--app-bottom-nav-height) + env(safe-area-inset-bottom, 0px) );
+    left: 0;
+    z-index: 31;
+    padding: 0;
     border: 0;
     background: rgba(25, 15, 10, 0.5);
-    z-index: 1;
 }
+
+/* =========================
+   NAVIGATION ITEMS
+   ========================= */
 
 .nav-item {
     min-width: 0;
@@ -106,47 +150,52 @@
     font-size: 0.9rem;
 }
 
-.nav-item form {
-    margin: 0;
-}
+    .nav-item form {
+        margin: 0;
+    }
 
-.nav-item ::deep .nav-link {
-    display: flex;
-    align-items: center;
-    gap: 0.75rem;
-    width: 100%;
-    min-width: 0;
-    min-height: 3rem;
-    padding: 0.65rem 0.75rem;
-    line-height: 1.4;
-    color: #eee4d8;
-    background: none;
-    border: 0;
-    border-radius: 6px;
-    text-decoration: none;
-    text-align: left;
-}
+    .nav-item ::deep .nav-link {
+        display: flex;
+        align-items: center;
+        gap: 0.75rem;
+        width: 100%;
+        min-width: 0;
+        min-height: 3rem;
+        box-sizing: border-box;
+        padding: 0.65rem 0.75rem;
+        color: #eee4d8;
+        line-height: 1.4;
+        background: none;
+        border: 0;
+        border-radius: 6px;
+        text-align: left;
+        text-decoration: none;
+    }
 
-.nav-item ::deep .nav-link > .bi:first-child {
-    flex: 0 0 1.25rem;
-    width: 1.25rem;
-    font-size: 1.1rem;
-    text-align: center;
-}
+        .nav-item ::deep .nav-link > .bi:first-child {
+            flex: 0 0 1.25rem;
+            width: 1.25rem;
+            font-size: 1.1rem;
+            text-align: center;
+        }
 
 .nav-text {
     min-width: 0;
 }
 
 .nav-item ::deep .nav-link:hover {
-    background: rgba(200, 134, 43, 0.25);
     color: white;
+    background: rgba(200, 134, 43, 0.25);
 }
 
 .nav-item ::deep a.active {
-    background: #C8862B;
     color: white;
+    background: #C8862B;
 }
+
+/* =========================
+   SETTINGS
+   ========================= */
 
 .settings-toggle {
     cursor: pointer;
@@ -166,57 +215,71 @@
     font-size: 0.85rem;
 }
 
+/* =========================
+   BOTTOM MOBILE NAV
+   ========================= */
+
 .bottom-nav {
     position: fixed;
+    right: 0;
     bottom: 0;
     left: 0;
-    right: 0;
+    z-index: 40;
     display: grid;
     grid-template-columns: repeat(4, minmax(0, 1fr));
-    height: calc(var(--app-bottom-nav-height) + env(safe-area-inset-bottom, 0px));
+    height: calc( var(--app-bottom-nav-height) + env(safe-area-inset-bottom, 0px) );
+    box-sizing: border-box;
     padding: 0 env(safe-area-inset-right, 0px) env(safe-area-inset-bottom, 0px) env(safe-area-inset-left, 0px);
     background: #2E1B12;
     border-top: 1px solid rgba(239, 191, 120, 0.4);
     box-shadow: 0 -4px 16px rgba(0, 0, 0, 0.2);
-    z-index: 3;
 }
 
-.bottom-nav ::deep .bottom-nav-link {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    justify-content: center;
-    gap: 0.2rem;
-    min-width: 0;
-    padding: 0.25rem;
-    color: #eee4d8;
-    background: transparent;
-    border: 0;
-    border-radius: 0;
-    font-size: 0.75rem;
-    text-decoration: none;
-    cursor: pointer;
-}
-
-.bottom-nav ::deep .bottom-nav-link .bi {
-    font-size: 1.25rem;
-}
-
-.bottom-nav ::deep .bottom-nav-link.active,
-.bottom-nav ::deep .bottom-nav-link:hover {
-    color: #ffcf88;
-    background: rgba(200, 134, 43, 0.18);
-}
-
-@media (min-width: 992px) {
-    .nav-shell {
+    .bottom-nav ::deep .bottom-nav-link {
         display: flex;
         flex-direction: column;
-        height: 100%;
+        align-items: center;
+        justify-content: center;
+        gap: 0.2rem;
+        min-width: 0;
+        padding: 0.25rem;
+        color: #eee4d8;
+        background: transparent;
+        border: 0;
+        border-radius: 0;
+        font-size: 0.75rem;
+        text-decoration: none;
+        cursor: pointer;
+    }
+
+        .bottom-nav ::deep .bottom-nav-link .bi {
+            font-size: 1.25rem;
+        }
+
+        .bottom-nav ::deep .bottom-nav-link.active,
+        .bottom-nav ::deep .bottom-nav-link:hover {
+            color: #ffcf88;
+            background: rgba(200, 134, 43, 0.18);
+        }
+
+/* =========================
+   DESKTOP SIDEBAR
+   ========================= */
+
+@media (min-width: 992px) {
+
+    .nav-shell {
+        height: 100vh;
+        height: 100dvh;
+        min-height: 0;
+        overflow: hidden;
     }
 
     .nav-header {
-        flex-shrink: 0;
+        position: relative;
+        flex: 0 0 var(--app-header-height);
+        height: var(--app-header-height);
+        min-height: var(--app-header-height);
     }
 
     .collapse-toggle {
@@ -229,17 +292,39 @@
         display: none;
     }
 
+    /*
+       THIS is the desktop fix.
+
+       Header takes its fixed height.
+       This element receives all remaining
+       sidebar height and scrolls independently.
+    */
     .nav-scrollable {
+        position: relative;
+        top: auto;
+        right: auto;
+        bottom: auto;
+        left: auto;
+        z-index: auto;
         display: block;
-        position: static;
-        flex: 1 1 auto;
-        min-height: 0;
+        flex: 1 1 0;
         width: 100%;
+        min-width: 0;
+        min-height: 0;
+        box-sizing: border-box;
+        overflow-x: hidden;
+        overflow-y: auto;
+        padding: 0.5rem;
         background: transparent;
+        overscroll-behavior-y: contain;
+        -webkit-overflow-scrolling: touch;
+        scrollbar-gutter: stable;
     }
 
     .is-collapsed .nav-header {
         flex-direction: column;
+        height: auto;
+        min-height: var(--app-header-height);
         padding: 0.5rem;
     }
 

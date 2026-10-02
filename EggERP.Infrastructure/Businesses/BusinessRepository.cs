@@ -2,25 +2,40 @@
 using EggERP.Domain.Entities;
 using EggERP.Infrastructure.Persistence;
 using Microsoft.EntityFrameworkCore;
+
 namespace EggERP.Infrastructure.Businesses;
+
 public class BusinessRepository : IBusinessRepository
 {
     private readonly EggERPDbContext _dbContext;
+
     public BusinessRepository(EggERPDbContext dbContext)
     {
         _dbContext = dbContext;
     }
+
     public Task<Business?> GetByIdAsync(Guid id)
     {
-        return _dbContext.Businesses.FirstOrDefaultAsync(b => b.Id == id);
+        return _dbContext.Businesses
+            .FirstOrDefaultAsync(b => b.Id == id);
     }
+
+    public async Task AddAsync(Business business)
+    {
+        await _dbContext.Businesses.AddAsync(business);
+        await _dbContext.SaveChangesAsync();
+    }
+
     public async Task<bool> UpdateAsync(Business business)
     {
-        var existing = await _dbContext.Businesses.FirstOrDefaultAsync(b => b.Id == business.Id);
+        var existing = await _dbContext.Businesses
+            .FirstOrDefaultAsync(b => b.Id == business.Id);
+
         if (existing is null)
         {
             return false;
         }
+
         existing.Name = business.Name;
         existing.LegalName = business.LegalName;
         existing.TaxIdentificationNumber = business.TaxIdentificationNumber;
@@ -35,7 +50,9 @@ public class BusinessRepository : IBusinessRepository
         existing.TaxStatus = business.TaxStatus;
         existing.PercentageTaxOption = business.PercentageTaxOption;
         existing.UpdatedAtUtc = DateTime.UtcNow;
+
         await _dbContext.SaveChangesAsync();
+
         return true;
     }
 }

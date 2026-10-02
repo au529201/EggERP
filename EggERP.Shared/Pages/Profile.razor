@@ -1,0 +1,380 @@
+﻿@page "/profile"
+@attribute [Authorize]
+@using EggERP.Shared.Models
+@using EggERP.Shared.Services
+@inject IProfileApiService ProfileApiService
+
+<PageTitle>My Profile - EzEggERP</PageTitle>
+
+<div class="profile-page">
+
+    <div class="profile-heading">
+        <div>
+            <h3 class="mb-1">My Profile</h3>
+            <p class="text-muted mb-0">
+                Manage your personal EzEggERP account information.
+            </p>
+        </div>
+    </div>
+
+    @if (isLoading)
+    {
+        <div class="profile-state">
+            <div class="spinner-border spinner-border-sm me-2"
+                 role="status"></div>
+            Loading profile...
+        </div>
+    }
+    else if (profile is null)
+    {
+        <div class="alert alert-danger">
+            Your profile could not be loaded.
+        </div>
+    }
+    else
+    {
+        <div class="profile-summary">
+            <div class="profile-avatar">
+                <i class="bi bi-person-fill"
+                   aria-hidden="true"></i>
+            </div>
+
+            <div class="profile-summary-info">
+                <h4>@profile.FullName</h4>
+                <div>@profile.Email</div>
+
+                <div class="profile-badges">
+                    <span class="badge profile-role">
+                        @profile.Role
+                    </span>
+
+                    @if (profile.IsActive)
+                    {
+                        <span class="badge profile-active">
+                            Active
+                        </span>
+                    }
+                    else
+                    {
+                        <span class="badge profile-inactive">
+                            Inactive
+                        </span>
+                    }
+                </div>
+            </div>
+        </div>
+
+        @if (!string.IsNullOrWhiteSpace(successMessage))
+        {
+            <div class="alert alert-success">
+                @successMessage
+            </div>
+        }
+
+        @if (!string.IsNullOrWhiteSpace(errorMessage))
+        {
+            <div class="alert alert-danger">
+                @errorMessage
+            </div>
+        }
+
+        <div class="profile-section">
+            <div class="profile-section-heading">
+                <div>
+                    <h5>Personal Information</h5>
+                    <p>
+                        Update your name and contact number.
+                    </p>
+                </div>
+            </div>
+
+            <EditForm Model="@editModel"
+                      OnValidSubmit="SaveProfile">
+
+                <div class="profile-form-grid">
+
+                    <div>
+                        <label class="form-label">
+                            Full Name
+                        </label>
+
+                        <InputText class="form-control"
+                                   maxlength="200"
+                                   @bind-Value="editModel.FullName" />
+                    </div>
+
+                    <div>
+                        <label class="form-label">
+                            Phone Number
+                        </label>
+
+                        <InputText class="form-control"
+                                   maxlength="50"
+                                   placeholder="e.g. 09171234567"
+                                   @bind-Value="editModel.PhoneNumber" />
+                    </div>
+
+                    <div>
+                        <label class="form-label">
+                            Email
+                        </label>
+
+                        <input class="form-control"
+                               value="@profile.Email"
+                               disabled />
+
+                        <small class="text-muted">
+                            Your login email cannot be changed here.
+                        </small>
+                    </div>
+
+                    <div>
+                        <label class="form-label">
+                            Role
+                        </label>
+
+                        <input class="form-control"
+                               value="@profile.Role"
+                               disabled />
+                    </div>
+
+                    <div>
+                        <label class="form-label">
+                            Business
+                        </label>
+
+                        <input class="form-control"
+                               value="@profile.BusinessName"
+                               disabled />
+                    </div>
+
+                    <div>
+                        <label class="form-label">
+                            Account Status
+                        </label>
+
+                        <input class="form-control"
+                               value="@(profile.IsActive ? "Active" : "Inactive")"
+                               disabled />
+                    </div>
+
+                </div>
+
+                <div class="profile-actions">
+                    <button type="submit"
+                            class="btn btn-primary"
+                            disabled="@isSavingProfile">
+
+                        @if (isSavingProfile)
+                        {
+                            <span class="spinner-border spinner-border-sm me-1">
+                            </span>
+                        }
+
+                        Save Changes
+                    </button>
+                </div>
+            </EditForm>
+        </div>
+
+        <div class="profile-section">
+            <div class="profile-section-heading">
+                <div>
+                    <h5>Change Password</h5>
+                    <p>
+                        Use your current password to create a new one.
+                    </p>
+                </div>
+            </div>
+
+            <EditForm Model="@passwordModel"
+                      OnValidSubmit="ChangePassword">
+
+                <div class="password-form">
+
+                    <div>
+                        <label class="form-label">
+                            Current Password
+                        </label>
+
+                        <InputText class="form-control"
+                                   type="password"
+                                   autocomplete="current-password"
+                                   @bind-Value="passwordModel.CurrentPassword" />
+                    </div>
+
+                    <div>
+                        <label class="form-label">
+                            New Password
+                        </label>
+
+                        <InputText class="form-control"
+                                   type="password"
+                                   autocomplete="new-password"
+                                   @bind-Value="passwordModel.NewPassword" />
+                    </div>
+
+                    <div>
+                        <label class="form-label">
+                            Confirm New Password
+                        </label>
+
+                        <InputText class="form-control"
+                                   type="password"
+                                   autocomplete="new-password"
+                                   @bind-Value="passwordModel.ConfirmPassword" />
+                    </div>
+
+                </div>
+
+                <div class="profile-actions">
+                    <button type="submit"
+                            class="btn btn-secondary"
+                            disabled="@isChangingPassword">
+
+                        @if (isChangingPassword)
+                        {
+                            <span class="spinner-border spinner-border-sm me-1">
+                            </span>
+                        }
+
+                        Change Password
+                    </button>
+                </div>
+            </EditForm>
+        </div>
+    }
+</div>
+
+@code {
+    private UserProfileDto? profile;
+
+    private UpdateMyProfileRequest editModel = new();
+    private ChangeMyPasswordRequest passwordModel = new();
+
+    private bool isLoading = true;
+    private bool isSavingProfile;
+    private bool isChangingPassword;
+
+    private string? successMessage;
+    private string? errorMessage;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadProfile();
+    }
+
+    private async Task LoadProfile()
+    {
+        isLoading = true;
+
+        try
+        {
+            profile = await ProfileApiService.GetProfileAsync();
+
+            if (profile is not null)
+            {
+                editModel = new UpdateMyProfileRequest
+                {
+                    FullName = profile.FullName,
+                    PhoneNumber = profile.PhoneNumber
+                };
+            }
+        }
+        finally
+        {
+            isLoading = false;
+        }
+    }
+
+    private async Task SaveProfile()
+    {
+        successMessage = null;
+        errorMessage = null;
+
+        if (string.IsNullOrWhiteSpace(editModel.FullName))
+        {
+            errorMessage = "Full name is required.";
+            return;
+        }
+
+        isSavingProfile = true;
+
+        try
+        {
+            var error =
+                await ProfileApiService.UpdateProfileAsync(
+                    editModel);
+
+            if (error is not null)
+            {
+                errorMessage = error;
+                return;
+            }
+
+            successMessage =
+                "Your profile has been updated.";
+
+            await LoadProfile();
+        }
+        finally
+        {
+            isSavingProfile = false;
+        }
+    }
+
+    private async Task ChangePassword()
+    {
+        successMessage = null;
+        errorMessage = null;
+
+        if (string.IsNullOrWhiteSpace(
+                passwordModel.CurrentPassword))
+        {
+            errorMessage =
+                "Enter your current password.";
+            return;
+        }
+
+        if (string.IsNullOrWhiteSpace(
+                passwordModel.NewPassword))
+        {
+            errorMessage =
+                "Enter your new password.";
+            return;
+        }
+
+        if (passwordModel.NewPassword !=
+            passwordModel.ConfirmPassword)
+        {
+            errorMessage =
+                "New password and confirmation do not match.";
+            return;
+        }
+
+        isChangingPassword = true;
+
+        try
+        {
+            var error =
+                await ProfileApiService.ChangePasswordAsync(
+                    passwordModel);
+
+            if (error is not null)
+            {
+                errorMessage = error;
+                return;
+            }
+
+            passwordModel =
+                new ChangeMyPasswordRequest();
+
+            successMessage =
+                "Your password has been changed successfully.";
+        }
+        finally
+        {
+            isChangingPassword = false;
+        }
+    }
+}

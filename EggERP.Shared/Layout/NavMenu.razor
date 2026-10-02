@@ -1,224 +1,354 @@
-@implements IDisposable
-@inject NavigationManager Navigation
+@using Microsoft.AspNetCore.Components
+@using Microsoft.AspNetCore.Components.Authorization
+@using Microsoft.AspNetCore.Components.Routing
 
-<div class="nav-shell @(IsCollapsed ? "is-collapsed" : null) @(mobileMenuOpen ? "is-menu-open" : null)"
-     @onkeydown="HandleMenuKey">
+<div class="nav-shell @(IsCollapsed ? "is-collapsed" : "") @(menuOpen ? "is-menu-open" : "")">
+
     <div class="nav-header">
-        <a class="brand-link" href="" aria-label="EzEggERP dashboard" @onclick="CloseMobileMenu">
-            <img src="_content/EggERP.Shared/images/logoEz.png" alt="" class="brand-logo" />
+        <a class="brand-link"
+           href="/"
+           @onclick="CloseMobileMenu">
+
+            <img class="brand-logo"
+                 src="/_content/EggERP.Shared/images/logo.png"
+                 alt="EzEggERP" />
+
             <span class="brand-text">EzEggERP</span>
         </a>
-        <button type="button" class="collapse-toggle" @onclick="ToggleSidebar"
-                title="@(IsCollapsed ? "Expand menu" : "Collapse menu")"
-                aria-label="@(IsCollapsed ? "Expand menu" : "Collapse menu")"
-                aria-expanded="@((!IsCollapsed).ToString().ToLowerInvariant())" aria-controls="primary-navigation">
-            <i class="bi @(IsCollapsed ? "bi-chevron-right" : "bi-chevron-left")" aria-hidden="true"></i>
+
+        <!-- Desktop collapse button -->
+        <button type="button"
+                class="collapse-toggle"
+                title="@(IsCollapsed ? "Expand sidebar" : "Collapse sidebar")"
+                aria-label="@(IsCollapsed ? "Expand sidebar" : "Collapse sidebar")"
+                @onclick="ToggleCollapse">
+
+            <i class="bi @(IsCollapsed
+                ? "bi-chevron-right"
+                : "bi-chevron-left")"
+               aria-hidden="true"></i>
         </button>
-        <button type="button" class="mobile-menu-toggle" @onclick="ToggleMobileMenu" @ref="mobileMenuButton"
-                aria-label="@(mobileMenuOpen ? "Close navigation menu" : "Open navigation menu")"
-                aria-expanded="@mobileMenuOpen.ToString().ToLowerInvariant()" aria-controls="primary-navigation">
-            <i class="bi @(mobileMenuOpen ? "bi-x-lg" : "bi-list")" aria-hidden="true"></i>
+
+        <!-- Mobile menu button -->
+        <button type="button"
+                class="mobile-menu-toggle"
+                title="Menu"
+                aria-label="@(menuOpen ? "Close menu" : "Open menu")"
+                aria-expanded="@menuOpen"
+                @onclick="ToggleMobileMenu">
+
+            <i class="bi @(menuOpen
+                ? "bi-x-lg"
+                : "bi-list")"
+               aria-hidden="true"></i>
         </button>
     </div>
 
-    @if (mobileMenuOpen)
+    <div class="nav-scrollable">
+
+        <div class="nav-item">
+            <NavLink class="nav-link"
+                     href="/"
+                     Match="NavLinkMatch.All"
+                     @onclick="CloseMobileMenu">
+
+                <i class="bi bi-house-door-fill"
+                   aria-hidden="true"></i>
+
+                <span class="nav-text">Dashboard</span>
+            </NavLink>
+        </div>
+
+        <div class="nav-item">
+            <NavLink class="nav-link"
+                     href="/products"
+                     @onclick="CloseMobileMenu">
+
+                <i class="bi bi-box-fill"
+                   aria-hidden="true"></i>
+
+                <span class="nav-text">Products</span>
+            </NavLink>
+        </div>
+
+        <div class="nav-item">
+            <NavLink class="nav-link"
+                     href="/inventory"
+                     @onclick="CloseMobileMenu">
+
+                <i class="bi bi-boxes"
+                   aria-hidden="true"></i>
+
+                <span class="nav-text">Inventory</span>
+            </NavLink>
+        </div>
+
+        <div class="nav-item">
+            <NavLink class="nav-link"
+                     href="/flocks"
+                     @onclick="CloseMobileMenu">
+
+                <i class="bi bi-signpost-split"
+                   aria-hidden="true"></i>
+
+                <span class="nav-text">Flocks</span>
+            </NavLink>
+        </div>
+
+        <div class="nav-item">
+            <NavLink class="nav-link"
+                     href="/eggs"
+                     @onclick="CloseMobileMenu">
+
+                <i class="bi bi-egg-fill"
+                   aria-hidden="true"></i>
+
+                <span class="nav-text">Eggs</span>
+            </NavLink>
+        </div>
+
+        <div class="nav-item">
+            <NavLink class="nav-link"
+                     href="/customers"
+                     @onclick="CloseMobileMenu">
+
+                <i class="bi bi-people-fill"
+                   aria-hidden="true"></i>
+
+                <span class="nav-text">Customers</span>
+            </NavLink>
+        </div>
+
+        <div class="nav-item">
+            <NavLink class="nav-link"
+                     href="/suppliers"
+                     @onclick="CloseMobileMenu">
+
+                <i class="bi bi-truck"
+                   aria-hidden="true"></i>
+
+                <span class="nav-text">Suppliers</span>
+            </NavLink>
+        </div>
+
+        <div class="nav-item">
+            <NavLink class="nav-link"
+                     href="/sales"
+                     @onclick="CloseMobileMenu">
+
+                <i class="bi bi-cart-check-fill"
+                   aria-hidden="true"></i>
+
+                <span class="nav-text">Sales</span>
+            </NavLink>
+        </div>
+
+        <div class="nav-item">
+            <NavLink class="nav-link"
+                     href="/purchases"
+                     @onclick="CloseMobileMenu">
+
+                <i class="bi bi-bag-plus-fill"
+                   aria-hidden="true"></i>
+
+                <span class="nav-text">Purchases</span>
+            </NavLink>
+        </div>
+
+        <div class="nav-item">
+            <NavLink class="nav-link"
+                     href="/expenses"
+                     @onclick="CloseMobileMenu">
+
+                <i class="bi bi-cash-stack"
+                   aria-hidden="true"></i>
+
+                <span class="nav-text">Expenses</span>
+            </NavLink>
+        </div>
+
+        <div class="nav-item">
+            <NavLink class="nav-link"
+                     href="/history"
+                     @onclick="CloseMobileMenu">
+
+                <i class="bi bi-clock-history"
+                   aria-hidden="true"></i>
+
+                <span class="nav-text">History</span>
+            </NavLink>
+        </div>
+
+        <AuthorizeView Roles="Admin">
+            <Authorized Context="adminContext">
+
+                <div class="nav-item">
+
+                    <button type="button"
+                            class="nav-link settings-toggle"
+                            aria-expanded="@settingsOpen"
+                            @onclick="ToggleSettings">
+
+                        <i class="bi bi-gear-fill"
+                           aria-hidden="true"></i>
+
+                        <span class="nav-text">Settings</span>
+
+                        <i class="bi @(settingsOpen
+                            ? "bi-chevron-up"
+                            : "bi-chevron-down") settings-caret"
+                           aria-hidden="true"></i>
+                    </button>
+
+                    @if (settingsOpen && !IsCollapsed)
+                    {
+                        <div class="nav-submenu">
+
+                            <div class="nav-item nav-item-sub">
+                                <NavLink class="nav-link"
+                                         href="/settings/users"
+                                         @onclick="CloseMobileMenu">
+
+                                    <i class="bi bi-person-gear"
+                                       aria-hidden="true"></i>
+
+                                    <span class="nav-text">
+                                        User Management
+                                    </span>
+                                </NavLink>
+                            </div>
+
+                            <div class="nav-item nav-item-sub">
+                                <NavLink class="nav-link"
+                                         href="/profile"
+                                         @onclick="CloseMobileMenu">
+
+                                    <i class="bi bi-person-circle"
+                                       aria-hidden="true"></i>
+
+                                    <span class="nav-text">
+                                        My Profile
+                                    </span>
+                                </NavLink>
+                            </div>
+
+                        </div>
+                    }
+
+                </div>
+
+            </Authorized>
+        </AuthorizeView>
+
+    </div>
+
+    @if (menuOpen)
     {
-        <button type="button" class="menu-backdrop" tabindex="-1" aria-label="Close navigation menu"
-                @onclick="CloseMobileMenu"></button>
+        <button type="button"
+                class="menu-backdrop"
+                aria-label="Close menu"
+                @onclick="CloseMobileMenu">
+        </button>
     }
 
-    <div id="primary-navigation" class="nav-scrollable">
-        <nav aria-label="Main navigation">
-            <div class="nav-item">
-                <NavLink @onclick="CloseMobileMenu" class="nav-link" href="" Match="NavLinkMatch.All" title="Dashboard" aria-label="Dashboard">
-                    <i class="bi bi-house-door-fill" aria-hidden="true"></i> <span class="nav-text">Dashboard</span>
-                </NavLink>
-            </div>
-            <div class="nav-item">
-                <NavLink @onclick="CloseMobileMenu" class="nav-link" href="products" title="Products" aria-label="Products">
-                    <i class="bi bi-box-seam-fill" aria-hidden="true"></i> <span class="nav-text">Products</span>
-                </NavLink>
-            </div>
-            <div class="nav-item">
-                <NavLink @onclick="CloseMobileMenu" class="nav-link" href="inventory" title="Inventory" aria-label="Inventory">
-                    <i class="bi bi-boxes" aria-hidden="true"></i> <span class="nav-text">Inventory</span>
-                </NavLink>
-            </div>
-            <div class="nav-item">
-                <NavLink @onclick="CloseMobileMenu" class="nav-link" href="flocks" title="Flocks" aria-label="Flocks">
-                    <i class="bi bi-feather2" aria-hidden="true"></i> <span class="nav-text">Flocks</span>
-                </NavLink>
-            </div>
-            <div class="nav-item">
-                <NavLink @onclick="CloseMobileMenu" class="nav-link" href="eggs" title="Eggs" aria-label="Eggs">
-                    <i class="bi bi-egg-fill" aria-hidden="true"></i> <span class="nav-text">Eggs</span>
-                </NavLink>
-            </div>
-            <div class="nav-item">
-                <NavLink @onclick="CloseMobileMenu" class="nav-link" href="customers" title="Customers" aria-label="Customers">
-                    <i class="bi bi-people-fill" aria-hidden="true"></i> <span class="nav-text">Customers</span>
-                </NavLink>
-            </div>
-            <div class="nav-item">
-                <NavLink @onclick="CloseMobileMenu" class="nav-link" href="suppliers" title="Suppliers" aria-label="Suppliers">
-                    <i class="bi bi-truck" aria-hidden="true"></i> <span class="nav-text">Suppliers</span>
-                </NavLink>
-            </div>
-            <div class="nav-item">
-                <NavLink @onclick="CloseMobileMenu" class="nav-link" href="sales" title="Sales" aria-label="Sales">
-                    <i class="bi bi-cart-check-fill" aria-hidden="true"></i> <span class="nav-text">Sales</span>
-                </NavLink>
-            </div>
-            <AuthorizeView Roles="Admin,Manager">
-                <Authorized>
-                    <div class="nav-item">
-                        <NavLink @onclick="CloseMobileMenu" class="nav-link" href="purchases" title="Purchases" aria-label="Purchases">
-                            <i class="bi bi-bag-plus-fill" aria-hidden="true"></i> <span class="nav-text">Purchases</span>
-                        </NavLink>
-                    </div>
-                    <div class="nav-item">
-                        <NavLink @onclick="CloseMobileMenu" class="nav-link" href="expenses" title="Expenses" aria-label="Expenses">
-                            <i class="bi bi-cash-stack" aria-hidden="true"></i> <span class="nav-text">Expenses</span>
-                        </NavLink>
-                    </div>
-                    <div class="nav-item">
-                        <NavLink @onclick="CloseMobileMenu" class="nav-link" href="history" title="History" aria-label="History">
-                            <i class="bi bi-clock-history" aria-hidden="true"></i> <span class="nav-text">History</span>
-                        </NavLink>
-                    </div>
-                </Authorized>
-            </AuthorizeView>
+    <!-- Phone bottom navigation -->
+    <nav class="bottom-nav"
+         aria-label="Mobile navigation">
 
-            <AuthorizeView>
-                <Authorized>
-                    <div class="nav-item">
-                        <button type="button" class="nav-link settings-toggle" @onclick="ToggleSettings"
-                                aria-expanded="@settingsOpen.ToString().ToLowerInvariant()"
-                                aria-controls="settings-submenu" aria-label="Settings" title="Settings">
-                            <i class="bi bi-gear-fill" aria-hidden="true"></i>
-                            <span class="nav-text">Settings</span>
-                            <i class="bi @(settingsOpen ? "bi-chevron-up" : "bi-chevron-down") settings-caret" aria-hidden="true"></i>
-                        </button>
-                        @if (settingsOpen)
-                        {
-                            <div id="settings-submenu" class="nav-submenu">
-                                <AuthorizeView Roles="Admin" Context="adminSettingsAuth">
-                                    <Authorized>
-                                        <div class="nav-item nav-item-sub">
-                                            <NavLink @onclick="CloseMobileMenu" class="nav-link" href="settings/business" title="Business Settings" aria-label="Business Settings">
-                                                <span class="nav-text">Business Settings</span>
-                                            </NavLink>
-                                        </div>
-                                        <div class="nav-item nav-item-sub">
-                                            <NavLink @onclick="CloseMobileMenu" class="nav-link" href="settings/users" title="Users" aria-label="Users">
-                                                <span class="nav-text">Users</span>
-                                            </NavLink>
-                                        </div>
-                                    </Authorized>
-                                </AuthorizeView>
-                                <div class="nav-item nav-item-sub">
-                                    <NavLink @onclick="CloseMobileMenu" class="nav-link" href="about" title="About EzEggERP" aria-label="About EzEggERP">
-                                        <span class="nav-text">About EzEggERP</span>
-                                    </NavLink>
-                                </div>
-                            </div>
-                        }
-                    </div>
-                </Authorized>
-            </AuthorizeView>
+        <NavLink class="bottom-nav-link"
+                 href="/"
+                 Match="NavLinkMatch.All"
+                 @onclick="CloseMobileMenu">
 
-            <AuthorizeView>
-                <Authorized>
-                    <div class="nav-item">
-                        <form method="post" action="/Account/Logout" onsubmit="return confirm('Are you sure you want to log out?');">
-                            <button type="submit" class="nav-link" title="Logout" aria-label="Logout">
-                                <i class="bi bi-box-arrow-right" aria-hidden="true"></i> <span class="nav-text">Logout</span>
-                            </button>
-                        </form>
-                    </div>
-                </Authorized>
-                <NotAuthorized>
-                    <div class="nav-item">
-                        <a class="nav-link" href="/Account/Login" title="Login" aria-label="Login">
-                            <i class="bi bi-box-arrow-in-right" aria-hidden="true"></i> <span class="nav-text">Login</span>
-                        </a>
-                    </div>
-                </NotAuthorized>
-            </AuthorizeView>
-        </nav>
-    </div>
+            <i class="bi bi-house-door-fill"
+               aria-hidden="true"></i>
 
-    <nav class="bottom-nav" aria-label="Quick navigation">
-        <NavLink class="bottom-nav-link" href="" Match="NavLinkMatch.All" @onclick="CloseMobileMenu">
-            <i class="bi bi-house-door-fill" aria-hidden="true"></i>
             <span>Home</span>
         </NavLink>
-        <NavLink class="bottom-nav-link" href="inventory" @onclick="CloseMobileMenu">
-            <i class="bi bi-boxes" aria-hidden="true"></i>
+
+        <NavLink class="bottom-nav-link"
+                 href="/inventory"
+                 @onclick="CloseMobileMenu">
+
+            <i class="bi bi-boxes"
+               aria-hidden="true"></i>
+
             <span>Inventory</span>
         </NavLink>
-        <NavLink class="bottom-nav-link" href="sales" @onclick="CloseMobileMenu">
-            <i class="bi bi-cart-check-fill" aria-hidden="true"></i>
+
+        <NavLink class="bottom-nav-link"
+                 href="/sales"
+                 @onclick="CloseMobileMenu">
+
+            <i class="bi bi-cart-check-fill"
+               aria-hidden="true"></i>
+
             <span>Sales</span>
         </NavLink>
-        <button type="button" class="bottom-nav-link @(mobileMenuOpen ? "active" : null)" @onclick="ToggleMobileMenu"
-                aria-expanded="@mobileMenuOpen.ToString().ToLowerInvariant()" aria-controls="primary-navigation">
-            <i class="bi bi-list" aria-hidden="true"></i>
+
+        <button type="button"
+                class="bottom-nav-link"
+                @onclick="ToggleMobileMenu">
+
+            <i class="bi bi-list"
+               aria-hidden="true"></i>
+
             <span>More</span>
         </button>
+
     </nav>
+
 </div>
 
 @code {
-    [Parameter] public bool IsCollapsed { get; set; }
-    [Parameter] public EventCallback<bool> IsCollapsedChanged { get; set; }
+    /*
+     * These two parameters are REQUIRED because MainLayout uses:
+     *
+     * <NavMenu @bind-IsCollapsed="sidebarCollapsed" />
+     *
+     * @bind-IsCollapsed requires:
+     * 1. IsCollapsed
+     * 2. IsCollapsedChanged
+     */
 
+    [Parameter]
+    public bool IsCollapsed { get; set; }
+
+    [Parameter]
+    public EventCallback<bool> IsCollapsedChanged { get; set; }
+
+
+    private bool menuOpen;
     private bool settingsOpen;
-    private bool mobileMenuOpen;
-    private ElementReference mobileMenuButton;
 
-    protected override void OnInitialized()
-    {
-        Navigation.LocationChanged += OnLocationChanged;
-    }
 
-    private async Task ToggleSidebar()
+    private async Task ToggleCollapse()
     {
-        settingsOpen = false;
-        await IsCollapsedChanged.InvokeAsync(!IsCollapsed);
-    }
+        IsCollapsed = !IsCollapsed;
 
-    private async Task ToggleSettings()
-    {
         if (IsCollapsed)
         {
-            await IsCollapsedChanged.InvokeAsync(false);
+            settingsOpen = false;
         }
 
+        await IsCollapsedChanged.InvokeAsync(IsCollapsed);
+    }
+
+
+    private void ToggleMobileMenu()
+    {
+        menuOpen = !menuOpen;
+    }
+
+
+    private void CloseMobileMenu()
+    {
+        menuOpen = false;
+    }
+
+
+    private void ToggleSettings()
+    {
         settingsOpen = !settingsOpen;
     }
-
-    private void ToggleMobileMenu() => mobileMenuOpen = !mobileMenuOpen;
-
-    private void CloseMobileMenu() => mobileMenuOpen = false;
-
-    private async Task HandleMenuKey(KeyboardEventArgs args)
-    {
-        if (args.Key == "Escape" && mobileMenuOpen)
-        {
-            CloseMobileMenu();
-            await mobileMenuButton.FocusAsync();
-        }
-    }
-
-    private void OnLocationChanged(object? sender, LocationChangedEventArgs args)
-    {
-        _ = InvokeAsync(() =>
-        {
-            CloseMobileMenu();
-            StateHasChanged();
-        });
-    }
-
-    public void Dispose() => Navigation.LocationChanged -= OnLocationChanged;
 }

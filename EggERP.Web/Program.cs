@@ -76,6 +76,9 @@ builder.Services.AddCascadingAuthenticationState();
 // Business services
 builder.Services.AddScoped<IBusinessRepository, BusinessRepository>();
 builder.Services.AddScoped<IBusinessService, BusinessService>();
+builder.Services.AddScoped<
+    IBusinessProvisioningService,
+    BusinessProvisioningService>();
 // Product services
 builder.Services.AddScoped<IProductRepository, ProductRepository>();
 builder.Services.AddScoped<IProductService, ProductService>();
@@ -208,7 +211,14 @@ builder.Services.AddHttpClient<IExpenseApiService, ExpenseApiService>(client =>
 builder.Services.AddHttpClient<IUserManagementApiService, UserManagementApiService>(client =>
 {
     client.BaseAddress = apiBaseUrl;
-}).AddHttpMessageHandler<CookieForwardingHandler>();
+})
+.AddHttpMessageHandler<CookieForwardingHandler>();
+
+builder.Services.AddHttpClient<IProfileApiService, ProfileApiService>(client =>
+{
+    client.BaseAddress = apiBaseUrl;
+})
+.AddHttpMessageHandler<CookieForwardingHandler>();
 
 var app = builder.Build();
 

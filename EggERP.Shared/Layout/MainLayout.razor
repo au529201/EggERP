@@ -9,9 +9,66 @@
         <AuthorizeView>
             <Authorized>
                 <header class="top-row">
-                    <div class="top-row-user">
-                        <i class="bi bi-person-circle" aria-hidden="true"></i>
-                        <span>@context.User.Identity?.Name</span>
+                    <div class="account-menu">
+                        <button type="button"
+                                class="top-row-user"
+                                title="Account menu"
+                                aria-label="Open account menu"
+                                aria-expanded="@accountMenuOpen"
+                                @onclick="ToggleAccountMenu">
+
+                            <i class="bi bi-person-circle"
+                               aria-hidden="true"></i>
+
+                            <span>@context.User.Identity?.Name</span>
+
+                            <i class="bi @(accountMenuOpen
+                                ? "bi-chevron-up"
+                                : "bi-chevron-down") account-caret"
+                               aria-hidden="true"></i>
+                        </button>
+
+                        @if (accountMenuOpen)
+                        {
+                            <div class="account-dropdown">
+
+                                <a class="account-dropdown-item"
+                                   href="/profile"
+                                   @onclick="CloseAccountMenu">
+                                    <i class="bi bi-person"
+                                       aria-hidden="true"></i>
+                                    <span>My Profile</span>
+                                </a>
+
+                                <a class="account-dropdown-item"
+                                   href="/profile#change-password"
+                                   @onclick="CloseAccountMenu">
+                                    <i class="bi bi-key"
+                                       aria-hidden="true"></i>
+                                    <span>Change Password</span>
+                                </a>
+
+                                <div class="account-dropdown-divider"></div>
+
+                                <form method="post"
+                                      action="/Account/Logout"
+                                      onsubmit="return confirm('Are you sure you want to log out?');">
+
+                                    <button type="submit"
+                                            class="account-dropdown-item account-logout">
+                                        <i class="bi bi-box-arrow-right"
+                                           aria-hidden="true"></i>
+                                        <span>Logout</span>
+                                    </button>
+                                </form>
+                            </div>
+
+                            <button type="button"
+                                    class="account-backdrop"
+                                    aria-label="Close account menu"
+                                    @onclick="CloseAccountMenu">
+                            </button>
+                        }
                     </div>
                 </header>
             </Authorized>
@@ -22,6 +79,7 @@
                 @Body
             </div>
         </article>
+
         <Footer />
     </main>
 </div>
@@ -34,4 +92,15 @@
 
 @code {
     private bool sidebarCollapsed;
+    private bool accountMenuOpen;
+
+    private void ToggleAccountMenu()
+    {
+        accountMenuOpen = !accountMenuOpen;
+    }
+
+    private void CloseAccountMenu()
+    {
+        accountMenuOpen = false;
+    }
 }
