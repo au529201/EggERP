@@ -277,3 +277,25 @@ main {
         right: 0.75rem;
         cursor: pointer;
     }
+
+
+/* =========================
+   MOBILE / TABLET: FIXED HEADER
+   ========================= */
+
+@media (max-width: 991.98px) {
+
+    .sidebar {
+        position: fixed;
+        top: 0;
+        right: 0;
+        left: 0;
+        z-index: 40;
+        width: 100%;
+        height: var(--app-header-height);
+    }
+
+    .page {
+        padding-top: var(--app-header-height);
+    }
+}

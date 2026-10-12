@@ -8,30 +8,25 @@
     color: #f0e6d6;
 }
 
-/* =========================
-   HEADER
-   ========================= */
-
 .nav-header {
     position: relative;
-    z-index: 4;
+    z-index: 50;
     display: flex;
     align-items: center;
     justify-content: space-between;
-    gap: 0.5rem;
+    gap: .5rem;
     flex: 0 0 var(--app-header-height);
     width: 100%;
-    height: var(--app-header-height);
     min-height: var(--app-header-height);
     box-sizing: border-box;
-    padding: 0.5rem 0.75rem;
-    background: linear-gradient( 180deg, #4A2E1F 0%, #3A2418 100% );
+    padding: .5rem .75rem;
+    background: linear-gradient(180deg, #4A2E1F 0%, #3A2418 100%);
 }
 
 .brand-link {
     display: flex;
     align-items: center;
-    gap: 0.5rem;
+    gap: .55rem;
     min-width: 0;
     color: #fff;
     font-size: 1.15rem;
@@ -40,9 +35,9 @@
 }
 
 .brand-logo {
-    width: 32px;
-    height: 32px;
-    flex-shrink: 0;
+    width: 34px;
+    height: 34px;
+    flex: 0 0 34px;
     object-fit: contain;
 }
 
@@ -52,10 +47,6 @@
     white-space: nowrap;
 }
 
-/* =========================
-   BUTTONS
-   ========================= */
-
 .collapse-toggle,
 .mobile-menu-toggle {
     display: inline-flex;
@@ -63,9 +54,9 @@
     justify-content: center;
     flex-shrink: 0;
     padding: 0;
-    color: white;
-    background: rgba(255, 255, 255, 0.1);
-    border: 1px solid rgba(255, 255, 255, 0.25);
+    color: #fff;
+    background: rgba(255,255,255,.1);
+    border: 1px solid rgba(255,255,255,.25);
     border-radius: 6px;
     cursor: pointer;
 }
@@ -84,85 +75,77 @@
 
     .collapse-toggle:hover,
     .mobile-menu-toggle:hover {
-        background: rgba(200, 134, 43, 0.4);
+        background: rgba(200,134,43,.4);
     }
 
-.nav-shell ::deep a:focus-visible,
-.nav-shell button:focus-visible {
-    outline: 2px solid #efbf78;
-    outline-offset: -2px;
-}
-
-/* =========================
-   MOBILE MENU
-   ========================= */
-
+/* Menu panel: a column with a scrolling body and a pinned footer */
 .nav-scrollable {
     display: none;
     position: fixed;
-    /*
-       Header occupies the first app-header-height.
-       Bottom navigation occupies the final
-       app-bottom-nav-height.
-    */
     top: var(--app-header-height);
-    bottom: calc( var(--app-bottom-nav-height) + env(safe-area-inset-bottom, 0px) );
+    bottom: calc(var(--app-bottom-nav-height) + env(safe-area-inset-bottom, 0px));
     left: 0;
-    z-index: 32;
+    z-index: 48;
     width: min(22rem, 100vw);
     box-sizing: border-box;
+    flex-direction: column;
+    overflow: hidden;
+    background: linear-gradient(180deg, #4A2E1F 0%, #2E1B12 100%);
+}
+
+.is-menu-open .nav-scrollable {
+    display: flex;
+}
+
+.nav-body {
+    flex: 1 1 auto;
+    min-height: 0;
     overflow-x: hidden;
     overflow-y: auto;
     overscroll-behavior-y: contain;
     -webkit-overflow-scrolling: touch;
-    padding: 0.5rem;
-    background: linear-gradient( 180deg, #4A2E1F 0%, #2E1B12 100% );
-    scrollbar-gutter: stable;
+    padding: .5rem .5rem .75rem;
 }
 
-.is-menu-open .nav-scrollable {
-    display: block;
+.nav-footer {
+    flex: 0 0 auto;
+    padding: .35rem .5rem .5rem;
+    border-top: 1px solid rgba(239,191,120,.25);
+    background: rgba(0,0,0,.18);
 }
-
-/* =========================
-   MOBILE BACKDROP
-   ========================= */
 
 .menu-backdrop {
     position: fixed;
     top: var(--app-header-height);
     right: 0;
-    bottom: calc( var(--app-bottom-nav-height) + env(safe-area-inset-bottom, 0px) );
+    bottom: calc(var(--app-bottom-nav-height) + env(safe-area-inset-bottom, 0px));
     left: 0;
-    z-index: 31;
+    z-index: 47;
     padding: 0;
     border: 0;
-    background: rgba(25, 15, 10, 0.5);
+    background: rgba(25,15,10,.5);
 }
-
-/* =========================
-   NAVIGATION ITEMS
-   ========================= */
 
 .nav-item {
     min-width: 0;
-    padding-bottom: 0.25rem;
-    font-size: 0.9rem;
+    padding-bottom: .25rem;
+    font-size: .9rem;
 }
 
     .nav-item form {
         margin: 0;
+        width: 100%;
     }
 
     .nav-item ::deep .nav-link {
         display: flex;
         align-items: center;
-        gap: 0.75rem;
+        gap: .75rem;
         width: 100%;
         min-width: 0;
         min-height: 3rem;
         box-sizing: border-box;
-        padding: 0.65rem 0.75rem;
+        padding: .65rem .75rem;
         color: #eee4d8;
         line-height: 1.4;
         background: none;
@@ -184,18 +167,14 @@
 }
 
 .nav-item ::deep .nav-link:hover {
-    color: white;
-    background: rgba(200, 134, 43, 0.25);
+    color: #fff;
+    background: rgba(200,134,43,.25);
 }
 
 .nav-item ::deep a.active {
-    color: white;
+    color: #fff;
     background: #C8862B;
 }
-
-/* =========================
-   SETTINGS
-   ========================= */
 
 .settings-toggle {
     cursor: pointer;
@@ -203,36 +182,40 @@
 
 .settings-caret {
     margin-left: auto;
-    font-size: 0.75rem;
+    font-size: .75rem;
 }
 
 .nav-submenu {
-    padding: 0.25rem 0 0 1rem;
+    padding: .2rem 0 .15rem 1rem;
 }
 
 .nav-item-sub ::deep .nav-link {
     min-height: 2.5rem;
-    font-size: 0.85rem;
+    font-size: .85rem;
 }
 
-/* =========================
-   BOTTOM MOBILE NAV
-   ========================= */
+.logout-link {
+    cursor: pointer;
+}
+
+.nav-logout-item {
+    padding-bottom: 0;
+}
 
 .bottom-nav {
     position: fixed;
     right: 0;
     bottom: 0;
     left: 0;
-    z-index: 40;
+    z-index: 52;
     display: grid;
-    grid-template-columns: repeat(4, minmax(0, 1fr));
-    height: calc( var(--app-bottom-nav-height) + env(safe-area-inset-bottom, 0px) );
+    grid-template-columns: repeat(4, minmax(0,1fr));
+    height: calc(var(--app-bottom-nav-height) + env(safe-area-inset-bottom,0px));
     box-sizing: border-box;
-    padding: 0 env(safe-area-inset-right, 0px) env(safe-area-inset-bottom, 0px) env(safe-area-inset-left, 0px);
+    padding: 0 env(safe-area-inset-right,0px) env(safe-area-inset-bottom,0px) env(safe-area-inset-left,0px);
     background: #2E1B12;
-    border-top: 1px solid rgba(239, 191, 120, 0.4);
-    box-shadow: 0 -4px 16px rgba(0, 0, 0, 0.2);
+    border-top: 1px solid rgba(239,191,120,.4);
+    box-shadow: 0 -4px 16px rgba(0,0,0,.2);
 }
 
     .bottom-nav ::deep .bottom-nav-link {
@@ -240,14 +223,14 @@
         flex-direction: column;
         align-items: center;
         justify-content: center;
-        gap: 0.2rem;
+        gap: .2rem;
         min-width: 0;
-        padding: 0.25rem;
+        padding: .25rem;
         color: #eee4d8;
         background: transparent;
         border: 0;
         border-radius: 0;
-        font-size: 0.75rem;
+        font-size: .75rem;
         text-decoration: none;
         cursor: pointer;
     }
@@ -259,15 +242,11 @@
         .bottom-nav ::deep .bottom-nav-link.active,
         .bottom-nav ::deep .bottom-nav-link:hover {
             color: #ffcf88;
-            background: rgba(200, 134, 43, 0.18);
+            background: rgba(200,134,43,.18);
         }
 
-/* =========================
-   DESKTOP SIDEBAR
-   ========================= */
-
+/* Desktop */
 @media (min-width: 992px) {
-
     .nav-shell {
         height: 100vh;
         height: 100dvh;
@@ -276,10 +255,7 @@
     }
 
     .nav-header {
-        position: relative;
         flex: 0 0 var(--app-header-height);
-        height: var(--app-header-height);
-        min-height: var(--app-header-height);
     }
 
     .collapse-toggle {
@@ -292,40 +268,17 @@
         display: none;
     }
 
-    /*
-       THIS is the desktop fix.
-
-       Header takes its fixed height.
-       This element receives all remaining
-       sidebar height and scrolls independently.
-    */
     .nav-scrollable {
-        position: relative;
-        top: auto;
-        right: auto;
-        bottom: auto;
-        left: auto;
-        z-index: auto;
-        display: block;
-        flex: 1 1 0;
+        display: flex;
+        position: static;
+        flex: 1 1 auto;
         width: 100%;
-        min-width: 0;
         min-height: 0;
-        box-sizing: border-box;
-        overflow-x: hidden;
-        overflow-y: auto;
-        padding: 0.5rem;
         background: transparent;
-        overscroll-behavior-y: contain;
-        -webkit-overflow-scrolling: touch;
-        scrollbar-gutter: stable;
     }
 
-    .is-collapsed .nav-header {
-        flex-direction: column;
-        height: auto;
-        min-height: var(--app-header-height);
-        padding: 0.5rem;
+    .nav-body {
+        scrollbar-gutter: stable;
     }
 
     .is-collapsed .brand-text,
@@ -335,9 +288,19 @@
         display: none;
     }
 
+    .is-collapsed .brand-link {
+        justify-content: center;
+    }
+
+    .is-collapsed .nav-header {
+        flex-direction: column;
+        height: auto;
+        padding: .5rem;
+    }
+
     .is-collapsed .nav-item ::deep .nav-link {
         justify-content: center;
         gap: 0;
-        padding: 0.65rem 0;
+        padding: .65rem 0;
     }
 }

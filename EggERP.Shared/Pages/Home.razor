@@ -21,42 +21,30 @@ else
 {
     <h3 class="mb-3">Dashboard</h3>
 
-    <div class="row g-3 mb-4">
-        <div class="col-6 col-md-4 col-lg-2">
-            <div class="dash-card">
-                <div class="dash-card-label">Total Sales</div>
-                <div class="dash-card-value">@totalSales.ToString("N0")</div>
-            </div>
+    <div class="dash-cards mb-4">
+        <div class="dash-card">
+            <div class="dash-card-label">Total Sales</div>
+            <div class="dash-card-value">@totalSales.ToString("N0")</div>
         </div>
-        <div class="col-6 col-md-4 col-lg-2">
-            <div class="dash-card">
-                <div class="dash-card-label">Total Purchases</div>
-                <div class="dash-card-value">@totalPurchases.ToString("N0")</div>
-            </div>
+        <div class="dash-card">
+            <div class="dash-card-label">Total Purchases</div>
+            <div class="dash-card-value">@totalPurchases.ToString("N0")</div>
         </div>
-        <div class="col-6 col-md-4 col-lg-2">
-            <div class="dash-card">
-                <div class="dash-card-label">Net Revenue</div>
-                <div class="dash-card-value">@netRevenue.ToString("N0")</div>
-            </div>
+        <div class="dash-card">
+            <div class="dash-card-label">Net Revenue</div>
+            <div class="dash-card-value">@netRevenue.ToString("N0")</div>
         </div>
-        <div class="col-6 col-md-4 col-lg-2">
-            <div class="dash-card">
-                <div class="dash-card-label">Eggs in Inventory</div>
-                <div class="dash-card-value">@totalEggs pcs</div>
-            </div>
+        <div class="dash-card">
+            <div class="dash-card-label">Eggs in Inventory</div>
+            <div class="dash-card-value">@totalEggs <span class="dash-unit">pcs</span></div>
         </div>
-        <div class="col-6 col-md-4 col-lg-2">
-            <div class="dash-card">
-                <div class="dash-card-label">Active Flocks</div>
-                <div class="dash-card-value">@totalFlocks birds</div>
-            </div>
+        <div class="dash-card">
+            <div class="dash-card-label">Active Flocks</div>
+            <div class="dash-card-value">@totalFlocks <span class="dash-unit">birds</span></div>
         </div>
-        <div class="col-6 col-md-4 col-lg-2">
-            <div class="dash-card">
-                <div class="dash-card-label">Low Stock</div>
-                <div class="dash-card-value @(lowStockCount > 0 ? "text-danger" : "")">@lowStockCount items</div>
-            </div>
+        <div class="dash-card">
+            <div class="dash-card-label">Low Stock</div>
+            <div class="dash-card-value @(lowStockCount > 0 ? "text-danger" : "")">@lowStockCount <span class="dash-unit">items</span></div>
         </div>
     </div>
 

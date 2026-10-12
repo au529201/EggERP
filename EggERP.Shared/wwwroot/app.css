@@ -158,7 +158,30 @@ body {
     color: var(--egg-brown);
 }
 
+.dash-cards {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 0.75rem;
+}
+
+@media (min-width: 576px) {
+    .dash-cards {
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+    }
+}
+
+@media (min-width: 1200px) {
+    .dash-cards {
+        grid-template-columns: repeat(6, minmax(0, 1fr));
+    }
+}
+
 .dash-card {
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    min-width: 0;
+    min-height: 112px;
     background: var(--egg-card);
     border: 1px solid #E5D9BE;
     border-radius: 10px;
@@ -166,16 +189,31 @@ body {
 }
 
 .dash-card-label {
+    min-height: 2.2em;
+    display: flex;
+    align-items: flex-end;
     font-size: 0.8rem;
+    line-height: 1.1;
     color: var(--egg-clay);
-    margin-bottom: 0.25rem;
+    margin-bottom: 0.35rem;
 }
 
 .dash-card-value {
     font-family: 'Fraunces', Georgia, serif;
-    font-size: 1.5rem;
+    font-size: clamp(1.1rem, 1.4vw, 1.4rem);
+    line-height: 1.15;
     font-weight: 600;
     color: var(--egg-brown);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.dash-unit {
+    font-family: 'Inter', sans-serif;
+    font-size: 0.75rem;
+    font-weight: 500;
+    color: var(--egg-clay);
 }
 
 .dash-panel {
@@ -622,8 +660,8 @@ article,
 html,
 body {
     max-width: 100%;
-    overflow-x: hidden;
-}
+    overflow-x: clip;
+}}
 
 /* Touch devices */
 @media (max-width: 768px) {
