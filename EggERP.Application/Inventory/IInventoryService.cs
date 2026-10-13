@@ -1,11 +1,26 @@
-﻿using EggERP.Domain.Entities;
+﻿
 namespace EggERP.Application.Inventory;
+
 public interface IInventoryService
 {
-    Task<List<EggERP.Domain.Entities.Inventory>> GetInventoryAsync(Guid businessId);
-    Task<EggERP.Domain.Entities.Inventory?> GetByProductIdAsync(Guid businessId, Guid productId);
-    Task<EggERP.Domain.Entities.Inventory> AdjustQuantityAsync(Guid businessId, Guid productId, decimal delta);
-    Task<List<InventoryBoardRowDto>> GetBoardAsOfDateAsync(Guid businessId, DateTime asOfDate);
+    Task<List<EggERP.Domain.Entities.Inventory>>
+        GetInventoryAsync(Guid businessId);
+
+    Task<EggERP.Domain.Entities.Inventory?>
+        GetByProductIdAsync(Guid businessId, Guid productId);
+
+    Task<EggERP.Domain.Entities.Inventory>
+        AdjustQuantityAsync(Guid businessId, Guid productId, decimal delta);
+
+    Task<EggERP.Domain.Entities.Inventory>
+        SetThresholdsAsync(
+            Guid businessId,
+            Guid productId,
+            decimal lowThreshold,
+            decimal? highThreshold);
+
+    Task<List<InventoryBoardRowDto>>
+        GetBoardAsOfDateAsync(Guid businessId, DateTime asOfDate);
 }
 
 public class InventoryBoardRowDto
@@ -15,9 +30,13 @@ public class InventoryBoardRowDto
     public string Description { get; set; } = string.Empty;
     public string Group { get; set; } = string.Empty;
     public string Unit { get; set; } = string.Empty;
+
     public decimal SellingPrice { get; set; }
+
     public int Available { get; set; }
     public int ReorderLevel { get; set; }
+    public decimal? HighStockThreshold { get; set; }
+
     public int BoughtAsOfDate { get; set; }
     public int SoldAsOfDate { get; set; }
 }

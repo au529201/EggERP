@@ -245,6 +245,22 @@ else
 }
 
 @code {
+
+private async Task RefreshStockAsync()
+{
+    var flockBoard = await FlockApiService.GetBoardAsync();
+    var eggBoard = await EggApiService.GetBoardAsync();
+
+    var updatedStock = new Dictionary<Guid, int>();
+
+    foreach (var row in flockBoard.Concat(eggBoard))
+    {
+        updatedStock[row.ProductId] = row.Available;
+    }
+
+    stockOnHand = updatedStock;
+}
+
     private void GoBackToSales()
     {
         Navigation.NavigateTo("/sales");
@@ -308,16 +324,7 @@ else
             customers =
                 await CustomerApiService.GetCustomersAsync(businessId);
 
-            var flockBoard =
-                await FlockApiService.GetBoardAsync();
-
-            var eggBoard =
-                await EggApiService.GetBoardAsync();
-
-            foreach (var row in flockBoard.Concat(eggBoard))
-            {
-                stockOnHand[row.ProductId] = row.Available;
-            }
+      await RefreshStockAsync();
 
             if (!string.IsNullOrWhiteSpace(QueryProductId) &&
                 Guid.TryParse(QueryProductId, out var productId) &&
@@ -534,18 +541,58 @@ else
 
         isSaving = true;
 
-        try
+
+try
+{
+    await SaleApiService.CreateSaleAsync(request);
+
+    Navigation.NavigateTo("/sales");
+}
+catch (Exception ex)
+{
+    errorMessage = $"Sale not completed: {ex.Message}";
+
+    try
+    {
+        await RefreshStockAsync();
+
+        var insufficientLines = enteredLines
+            .Where(line =>
+                line.Quantity > GetStock(line.ProductId))
+            .ToList();
+
+        if (insufficientLines.Count > 0)
         {
-            await SaleApiService.CreateSaleAsync(request);
-            Navigation.NavigateTo("/sales");
+            var details = insufficientLines.Select(line =>
+            {
+                var description =
+                    GetDescription(line.ProductId);
+
+                var available =
+                    GetStock(line.ProductId);
+
+                return $"{description}: " +
+                       $"only {available:N0} available, " +
+                       $"{line.Quantity:N0} requested";
+            });
+
+            errorMessage =
+                "Insufficient stock. " +
+                string.Join("; ", details) +
+                ". Please adjust the quantity and try again.";
         }
-        catch (Exception ex)
-        {
-            errorMessage = $"Failed to save sale: {ex.Message}";
-        }
-        finally
-        {
-            isSaving = false;
-        }
+    }
+    catch
+    {
+        errorMessage +=
+            " Stock quantities could not be refreshed. " +
+            "Please reload the page before retrying.";
+    }
+}
+finally
+{
+    isSaving = false;
+}
+
     }
 }

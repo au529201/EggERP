@@ -1,22 +1,28 @@
 ﻿using EggERP.Application.Inventory;
 using EggERP.Application.Suppliers;
 using EggERP.Domain.Entities;
+using EggERP.Application.Transactions;
 namespace EggERP.Application.Purchases;
 public class PurchaseService : IPurchaseService
 {
     private readonly IPurchaseRepository _purchaseRepository;
     private readonly IInventoryService _inventoryService;
     private readonly ISupplierRepository _supplierRepository;
+    private readonly ITransactionManager _transactionManager;
+
 
     public PurchaseService(
         IPurchaseRepository purchaseRepository,
         IInventoryService inventoryService,
-        ISupplierRepository supplierRepository)
+        ISupplierRepository supplierRepository,
+        ITransactionManager transactionManager)
     {
         _purchaseRepository = purchaseRepository;
         _inventoryService = inventoryService;
         _supplierRepository = supplierRepository;
+        _transactionManager = transactionManager;
     }
+
     public Task<List<Purchase>> GetPurchasesAsync(Guid businessId)
     {
         return _purchaseRepository.GetByBusinessIdAsync(businessId);
@@ -143,17 +149,23 @@ public class PurchaseService : IPurchaseService
             item.PurchaseId = purchase.Id;
         }
 
-        var createdPurchase = await _purchaseRepository.CreateAsync(purchase, purchaseItems);
 
-        // This alone is the Flock/Egg "In, Bought" record now — Inventory.QuantityOnHand
-        // for the purchased Product is the single source of truth, and the Flock/Egg
-        // board's "Bought" column is computed live from PurchaseItems, not a separate ledger.
-        foreach (var item in purchaseItems)
+        await _transactionManager.ExecuteAsync(async () =>
         {
-            await _inventoryService.AdjustQuantityAsync(businessId, item.ProductId, item.Quantity);
-        }
+            await _purchaseRepository.CreateAsync(
+                purchase,
+                purchaseItems);
 
-        return createdPurchase;
+            foreach (var item in purchaseItems)
+            {
+                await _inventoryService.AdjustQuantityAsync(
+                    businessId,
+                    item.ProductId,
+                    item.Quantity);
+            }
+        });
+
+        return purchase;
     }
 
     public async Task<(bool Succeeded, string? Error)> MarkAsPaidAsync(

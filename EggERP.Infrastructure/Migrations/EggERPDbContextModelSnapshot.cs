@@ -257,6 +257,9 @@ namespace EggERP.Infrastructure.Migrations
                     b.Property<DateTime>("CreatedAtUtc")
                         .HasColumnType("datetime2");
 
+                    b.Property<decimal?>("HighStockThreshold")
+                        .HasColumnType("decimal(18,2)");
+
                     b.Property<Guid>("ProductId")
                         .HasColumnType("uniqueidentifier");
 
@@ -270,6 +273,10 @@ namespace EggERP.Infrastructure.Migrations
                         .HasColumnType("datetime2");
 
                     b.HasKey("Id");
+
+                    b.HasIndex("BusinessId", "ProductId")
+                        .IsUnique()
+                        .HasDatabaseName("UX_Inventories_BusinessId_ProductId");
 
                     b.ToTable("Inventories");
                 });

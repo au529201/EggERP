@@ -30,5 +30,15 @@ public class EggERPDbContext : IdentityDbContext<ApplicationUser, IdentityRole<G
     protected override void OnModelCreating(ModelBuilder builder)
     {
         base.OnModelCreating(builder);
+
+        builder.Entity<EggERP.Domain.Entities.Inventory>()
+            .HasIndex(i => new
+            {
+                i.BusinessId,
+                i.ProductId
+            })
+            .IsUnique()
+            .HasDatabaseName(
+                "UX_Inventories_BusinessId_ProductId");
     }
 }

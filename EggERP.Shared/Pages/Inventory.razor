@@ -1,8 +1,13 @@
-﻿@page "/inventory"
+﻿
+@page "/inventory"
 @attribute [Authorize(Roles = "Admin,Manager,Staff")]
+
 @using EggERP.Shared.Models
 @using EggERP.Shared.Services
+@using Microsoft.AspNetCore.Components.Authorization
+
 @inject IInventoryApiService InventoryApiService
+@inject AuthenticationStateProvider AuthenticationStateProvider
 
 <h3>Inventory</h3>
 
@@ -34,9 +39,80 @@
 </div>
 
 <small class="form-text text-muted d-block mb-3">
-    Available always reflects current stock. Bought/Sold reflect purchases
-    and sales up to the selected date only.
+    Available shows current stock. Bought/Sold totals use the selected date.
+    Low/High thresholds are warnings and do not change stock quantities.
 </small>
+
+@if (!string.IsNullOrWhiteSpace(message))
+{
+    <div class="alert alert-success">@message</div>
+}
+
+@if (!string.IsNullOrWhiteSpace(error))
+{
+    <div class="alert alert-danger">@error</div>
+}
+
+@if (canEdit && editingProductId.HasValue)
+{
+    <div class="card mb-3">
+        <div class="card-body">
+            <h5 class="card-title">Edit Stock Thresholds</h5>
+            <p class="mb-3">@editingProductName</p>
+    <div class="row g-3">
+    <div class="col-12 col-md-6">
+        <label class="form-label">
+            Low Stock Threshold
+        </label>
+
+        <InputNumber TValue="decimal"
+                     class="form-control"
+                     min="0"
+                     step="1"
+                     @bind-Value="editLow" />
+
+        <small class="text-muted d-block mt-1">
+            Stock at or below this value is marked Low Stock.
+        </small>
+    </div>
+
+    <div class="col-12 col-md-6">
+        <label class="form-label">
+            High Stock Threshold (Optional)
+        </label>
+
+        <InputNumber TValue="decimal?"
+                     class="form-control"
+                     min="0"
+                     step="1"
+                     @bind-Value="editHigh" />
+
+        <small class="text-muted d-block mt-1">
+            Clear this field to disable High Stock alerts.
+            High must be greater than Low.
+        </small>
+    </div>
+</div>
+
+<div class="d-flex flex-wrap justify-content-end gap-2 mt-3">
+    <button type="button"
+            class="btn btn-outline-secondary"
+            disabled="@isSaving"
+            @onclick="CancelEditing">
+        Cancel
+    </button>
+
+    <button type="button"
+            class="btn btn-primary"
+            disabled="@isSaving"
+            @onclick="SaveThresholds">
+        @(isSaving ? "Saving..." : "Save Changes")
+    </button>
+</div>
+
+        </div>
+    </div>
+}
 
 @if (isLoading)
 {
@@ -60,7 +136,13 @@ else
                     <th>Price</th>
                     <th>Bought</th>
                     <th>Sold</th>
+                    <th>Low Limit</th>
+                    <th>High Limit</th>
                     <th>Status</th>
+                    @if (canEdit)
+                    {
+                        <th>Actions</th>
+                    }
                 </tr>
             </thead>
 
@@ -76,6 +158,10 @@ else
                         <td>@row.SellingPrice.ToString("N2")</td>
                         <td>@row.BoughtAsOfDate</td>
                         <td>@row.SoldAsOfDate</td>
+                        <td>@row.ReorderLevel</td>
+                        <td>
+                            @(row.HighStockThreshold?.ToString("N0") ?? "—")
+                        </td>
 
                         <td>
                             @if (row.Available <= row.ReorderLevel)
@@ -84,13 +170,30 @@ else
                                     Low Stock
                                 </span>
                             }
+                            else if (row.HighStockThreshold.HasValue &&
+                                     row.Available >= row.HighStockThreshold.Value)
+                            {
+                                <span class="badge bg-warning text-dark">
+                                    High Stock
+                                </span>
+                            }
                             else
                             {
                                 <span class="badge bg-success">
-                                    OK
+                                    Normal
                                 </span>
                             }
                         </td>
+
+                        @if (canEdit)
+                        {
+                            <td>
+                                <button class="btn btn-sm btn-outline-primary"
+                                        @onclick="() => BeginEditing(row)">
+                                    Edit Limits
+                                </button>
+                            </td>
+                        }
                     </tr>
                 }
             </tbody>
@@ -107,11 +210,22 @@ else
     private List<InventoryBoardRowDto> rows = new();
 
     private bool isLoading = true;
+    private bool isSaving;
+    private bool canEdit;
 
     private DateTime selectedDate = DateTime.Today;
 
     private string searchText = string.Empty;
     private string selectedGroup = string.Empty;
+
+    private string? message;
+    private string? error;
+
+    private Guid? editingProductId;
+    private string editingProductName = string.Empty;
+
+    private decimal editLow;
+    private decimal? editHigh;
 
     private int page = 1;
     private const int pageSize = 7;
@@ -138,6 +252,38 @@ else
             .Skip((page - 1) * pageSize)
             .Take(pageSize);
 
+    protected override async Task OnInitializedAsync()
+    {
+        var authState =
+            await AuthenticationStateProvider.GetAuthenticationStateAsync();
+
+        canEdit = authState.User.IsInRole("Admin") ||
+                  authState.User.IsInRole("Manager");
+
+        await LoadData();
+    }
+
+    private async Task LoadData()
+    {
+        isLoading = true;
+        error = null;
+
+        try
+        {
+            rows = await InventoryApiService
+                .GetBoardAsOfDateAsync(selectedDate);
+        }
+        catch
+        {
+            error = "Unable to load inventory.";
+            rows = new();
+        }
+        finally
+        {
+            isLoading = false;
+        }
+    }
+
     private void ResetPage()
     {
         page = 1;
@@ -148,19 +294,66 @@ else
         page = newPage;
     }
 
-    protected override async Task OnInitializedAsync()
+    private void BeginEditing(InventoryBoardRowDto row)
     {
-        await LoadData();
+        editingProductId = row.ProductId;
+        editingProductName = $"{row.Type} — {row.Description}";
+
+        editLow = row.ReorderLevel;
+        editHigh = row.HighStockThreshold;
+
+        message = null;
+        error = null;
     }
 
-    private async Task LoadData()
+    private void CancelEditing()
     {
-        isLoading = true;
-        page = 1;
+        editingProductId = null;
+        editingProductName = string.Empty;
+    }
 
-        rows = await InventoryApiService
-            .GetBoardAsOfDateAsync(selectedDate);
+    private async Task SaveThresholds()
+    {
+        if (!canEdit || !editingProductId.HasValue)
+            return;
 
-        isLoading = false;
+        message = null;
+        error = null;
+
+        if (editLow < 0)
+        {
+            error = "Low threshold cannot be negative.";
+            return;
+        }
+
+        if (editHigh.HasValue && editHigh.Value <= editLow)
+        {
+            error = "High threshold must be greater than low threshold.";
+            return;
+        }
+
+        isSaving = true;
+
+        try
+        {
+            await InventoryApiService.SetThresholdsAsync(
+                editingProductId.Value,
+                editLow,
+                editHigh);
+
+            CancelEditing();
+
+            await LoadData();
+
+            message = "Stock thresholds updated successfully.";
+        }
+catch (Exception ex)
+{
+    error = $"Unable to save thresholds: {ex.Message}";
+}
+        finally
+        {
+            isSaving = false;
+        }
     }
 }

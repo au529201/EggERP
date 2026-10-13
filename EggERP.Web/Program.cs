@@ -20,24 +20,20 @@ using EggERP.Infrastructure.Expenses;
 using EggERP.Infrastructure.Flocks;
 using EggERP.Infrastructure.Identity;
 using EggERP.Infrastructure.Inventory;
-using EggERP.Infrastructure.Persistence;
 using EggERP.Infrastructure.Products;
 using EggERP.Infrastructure.Purchases;
 using EggERP.Infrastructure.Sales;
 using EggERP.Infrastructure.Suppliers;
 using EggERP.Infrastructure.Users;
-using EggERP.Shared.Models;
 using EggERP.Shared.Services;
 using EggERP.Web.Components;
-using EggERP.Web.Controllers;
 using EggERP.Web.Data;
 using EggERP.Web.Services;
 using Microsoft.AspNetCore.Identity;
-using Microsoft.EntityFrameworkCore;
 using EggERP.Application.Transactions;
 using EggERP.Infrastructure.Transactions;
-
-
+using EggERP.Infrastructure.Persistence;
+using Microsoft.EntityFrameworkCore;
 var builder = WebApplication.CreateBuilder(args);
 
 // Database

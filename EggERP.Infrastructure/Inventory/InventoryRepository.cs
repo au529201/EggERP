@@ -1,5 +1,5 @@
-﻿using EggERP.Application.Inventory;
-using EggERP.Domain.Entities;
+﻿
+using EggERP.Application.Inventory;
 using EggERP.Infrastructure.Persistence;
 using Microsoft.EntityFrameworkCore;
 
@@ -23,20 +23,17 @@ public class InventoryRepository : IInventoryRepository
     }
 
     public Task<EggERP.Domain.Entities.Inventory?>
-        GetByProductIdAsync(
-            Guid businessId,
-            Guid productId)
+        GetByProductIdAsync(Guid businessId, Guid productId)
     {
         return _dbContext.Inventories
             .FirstOrDefaultAsync(i =>
                 i.BusinessId == businessId &&
                 i.ProductId == productId);
     }
-    public async Task<EggERP.Domain.Entities.Inventory>
-    AdjustQuantityAsync(
+
+    private async Task ValidateProductAsync(
         Guid businessId,
-        Guid productId,
-        decimal delta)
+        Guid productId)
     {
         if (businessId == Guid.Empty || productId == Guid.Empty)
         {
@@ -54,51 +51,127 @@ public class InventoryRepository : IInventoryRepository
             throw new InvalidOperationException(
                 "Product not found in this business.");
         }
+    }
 
-        var existing = await _dbContext.Inventories
-            .FirstOrDefaultAsync(i =>
-                i.BusinessId == businessId &&
-                i.ProductId == productId);
+    public async Task<EggERP.Domain.Entities.Inventory>
+        AdjustQuantityAsync(
+            Guid businessId,
+            Guid productId,
+            decimal delta)
+    {
+        await ValidateProductAsync(businessId, productId);
 
-        if (existing is null)
-        {
-            if (delta < 0)
-            {
-                throw new InvalidOperationException(
-                    "Cannot remove stock because no inventory record exists.");
-            }
-
-            var newRecord = new EggERP.Domain.Entities.Inventory
-            {
-                Id = Guid.NewGuid(),
-                BusinessId = businessId,
-                ProductId = productId,
-                QuantityOnHand = delta,
-                ReorderLevel = 0,
-                CreatedAtUtc = DateTime.UtcNow
-            };
-
-            _dbContext.Inventories.Add(newRecord);
-            await _dbContext.SaveChangesAsync();
-
-            return newRecord;
-        }
-
-        var newQuantity = existing.QuantityOnHand + delta;
-
-        if (newQuantity < 0)
+        if (delta == 0)
         {
             throw new InvalidOperationException(
-                $"Insufficient stock. Available: {existing.QuantityOnHand:N2}, " +
-                $"requested removal: {Math.Abs(delta):N2}.");
+                "Stock adjustment must not be zero.");
         }
 
-        existing.QuantityOnHand = newQuantity;
-        existing.UpdatedAtUtc = DateTime.UtcNow;
+        // Deduct stock atomically.
+        // SQL checks the available quantity and updates it
+        // in the same database operation.
+        if (delta < 0)
+        {
+            var affectedRows = await _dbContext.Inventories
+                .Where(i =>
+                    i.BusinessId == businessId &&
+                    i.ProductId == productId &&
+                    i.QuantityOnHand >= -delta)
+                .ExecuteUpdateAsync(setters => setters
+                    .SetProperty(
+                        i => i.QuantityOnHand,
+                        i => i.QuantityOnHand + delta)
+                    .SetProperty(
+                        i => i.UpdatedAtUtc,
+                        DateTime.UtcNow));
+
+            if (affectedRows == 0)
+            {
+                throw new InvalidOperationException(
+                    "Insufficient stock. Another transaction may " +
+                    "have changed the available quantity. " +
+                    "Refresh the inventory and try again.");
+            }
+
+            // ExecuteUpdateAsync bypasses EF Core change tracking.
+            // Refresh a previously tracked entity to avoid
+            // returning stale inventory values.
+            var trackedInventory = _dbContext.Inventories.Local
+                .FirstOrDefault(i =>
+                    i.BusinessId == businessId &&
+                    i.ProductId == productId);
+
+            if (trackedInventory is not null)
+            {
+                await _dbContext.Entry(trackedInventory)
+                    .ReloadAsync();
+
+                return trackedInventory;
+            }
+
+            return await GetByProductIdAsync(
+                businessId,
+                productId)
+                ?? throw new InvalidOperationException(
+                    "Inventory record not found after adjustment.");
+        }
+
+        // Add stock.
+        // For an existing row, use an atomic SQL update
+        // so concurrent additions do not overwrite each other.
+        var addedRows = await _dbContext.Inventories
+            .Where(i =>
+                i.BusinessId == businessId &&
+                i.ProductId == productId)
+            .ExecuteUpdateAsync(setters => setters
+                .SetProperty(
+                    i => i.QuantityOnHand,
+                    i => i.QuantityOnHand + delta)
+                .SetProperty(
+                    i => i.UpdatedAtUtc,
+                    DateTime.UtcNow));
+
+        if (addedRows > 0)
+        {
+            var trackedAddedInventory = _dbContext.Inventories.Local
+                .FirstOrDefault(i =>
+                    i.BusinessId == businessId &&
+                    i.ProductId == productId);
+
+            if (trackedAddedInventory is not null)
+            {
+                await _dbContext.Entry(trackedAddedInventory)
+                    .ReloadAsync();
+
+                return trackedAddedInventory;
+            }
+
+            return await GetByProductIdAsync(
+                businessId,
+                productId)
+                ?? throw new InvalidOperationException(
+                    "Inventory record not found after adding stock.");
+        }
+
+        // No inventory record exists yet.
+        // The unique database index being added separately
+        // will prevent duplicate business/product rows.
+        var newInventory = new EggERP.Domain.Entities.Inventory
+        {
+            Id = Guid.NewGuid(),
+            BusinessId = businessId,
+            ProductId = productId,
+            QuantityOnHand = delta,
+            ReorderLevel = 0,
+            HighStockThreshold = null,
+            CreatedAtUtc = DateTime.UtcNow
+        };
+
+        _dbContext.Inventories.Add(newInventory);
 
         await _dbContext.SaveChangesAsync();
 
-        return existing;
+        return newInventory;
     }
 
     public async Task<EggERP.Domain.Entities.Inventory>
@@ -107,36 +180,65 @@ public class InventoryRepository : IInventoryRepository
             Guid productId,
             decimal reorderLevel)
     {
-        if (reorderLevel < 0)
+        await ValidateProductAsync(businessId, productId);
+
+        var existing = await GetByProductIdAsync(
+            businessId,
+            productId);
+
+        return await SetThresholdsAsync(
+            businessId,
+            productId,
+            reorderLevel,
+            existing?.HighStockThreshold);
+    }
+
+    public async Task<EggERP.Domain.Entities.Inventory>
+        SetThresholdsAsync(
+            Guid businessId,
+            Guid productId,
+            decimal lowThreshold,
+            decimal? highThreshold)
+    {
+        await ValidateProductAsync(businessId, productId);
+
+        if (lowThreshold < 0)
         {
             throw new ArgumentOutOfRangeException(
-                nameof(reorderLevel),
-                "Reorder level cannot be negative.");
+                nameof(lowThreshold),
+                "Low threshold cannot be negative.");
         }
 
-        var existing = await _dbContext.Inventories
-            .FirstOrDefaultAsync(i =>
-                i.BusinessId == businessId &&
-                i.ProductId == productId);
+        if (highThreshold.HasValue &&
+            highThreshold.Value <= lowThreshold)
+        {
+            throw new ArgumentException(
+                "High threshold must be greater than low threshold.");
+        }
+
+        var existing = await GetByProductIdAsync(
+            businessId,
+            productId);
 
         if (existing is null)
         {
-            existing =
-                new EggERP.Domain.Entities.Inventory
-                {
-                    Id = Guid.NewGuid(),
-                    BusinessId = businessId,
-                    ProductId = productId,
-                    QuantityOnHand = 0,
-                    ReorderLevel = reorderLevel,
-                    CreatedAtUtc = DateTime.UtcNow
-                };
+            existing = new EggERP.Domain.Entities.Inventory
+            {
+                Id = Guid.NewGuid(),
+                BusinessId = businessId,
+                ProductId = productId,
+                QuantityOnHand = 0,
+                ReorderLevel = lowThreshold,
+                HighStockThreshold = highThreshold,
+                CreatedAtUtc = DateTime.UtcNow
+            };
 
             _dbContext.Inventories.Add(existing);
         }
         else
         {
-            existing.ReorderLevel = reorderLevel;
+            existing.ReorderLevel = lowThreshold;
+            existing.HighStockThreshold = highThreshold;
             existing.UpdatedAtUtc = DateTime.UtcNow;
         }
 
@@ -153,18 +255,16 @@ public class InventoryRepository : IInventoryRepository
         var endOfDay = asOfDate.Date.AddDays(1);
 
         var query =
-            from pi in _dbContext.PurchaseItems
-            join p in _dbContext.Purchases
-                on pi.PurchaseId equals p.Id
-            where
-                p.BusinessId == businessId &&
-                p.PurchaseDateUtc < endOfDay
-            group pi by pi.ProductId
-            into g
+            from purchaseItem in _dbContext.PurchaseItems
+            join purchase in _dbContext.Purchases
+                on purchaseItem.PurchaseId equals purchase.Id
+            where purchase.BusinessId == businessId &&
+                  purchase.PurchaseDateUtc < endOfDay
+            group purchaseItem by purchaseItem.ProductId into grouped
             select new
             {
-                ProductId = g.Key,
-                Total = g.Sum(x => x.Quantity)
+                ProductId = grouped.Key,
+                Total = grouped.Sum(x => x.Quantity)
             };
 
         return await query.ToDictionaryAsync(
@@ -180,18 +280,16 @@ public class InventoryRepository : IInventoryRepository
         var endOfDay = asOfDate.Date.AddDays(1);
 
         var query =
-            from si in _dbContext.SaleItems
-            join s in _dbContext.Sales
-                on si.SaleId equals s.Id
-            where
-                s.BusinessId == businessId &&
-                s.SaleDateUtc < endOfDay
-            group si by si.ProductId
-            into g
+            from saleItem in _dbContext.SaleItems
+            join sale in _dbContext.Sales
+                on saleItem.SaleId equals sale.Id
+            where sale.BusinessId == businessId &&
+                  sale.SaleDateUtc < endOfDay
+            group saleItem by saleItem.ProductId into grouped
             select new
             {
-                ProductId = g.Key,
-                Total = g.Sum(x => x.Quantity)
+                ProductId = grouped.Key,
+                Total = grouped.Sum(x => x.Quantity)
             };
 
         return await query.ToDictionaryAsync(
