@@ -34,6 +34,24 @@
     <div class="nav-scrollable">
 
         <div class="nav-body">
+            <AuthorizeView Roles="PlatformAdmin">
+    <Authorized>
+        <div class="nav-item">
+            <NavLink class="nav-link"
+                     href="/platform/businesses"
+                     @onclick="CloseMobileMenu">
+                <i class="bi bi-building"></i>
+                <span class="nav-text">Business Management</span>
+            </NavLink>
+        </div>
+    </Authorized>
+    <NotAuthorized>
+        @* Keep all existing business navigation items here:
+           Dashboard, Products, Inventory, Flocks, Eggs,
+           Customers, Suppliers, Sales, Purchases,
+           Expenses, History, Settings, About. *@
+    </NotAuthorized>
+</AuthorizeView>
 
             <div class="nav-item">
                 <NavLink class="nav-link" href="/" Match="NavLinkMatch.All" @onclick="CloseMobileMenu">

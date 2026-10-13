@@ -1,15 +1,24 @@
 ﻿using EggERP.Application.Inventory;
+using EggERP.Application.Transactions;
+using EggERP.Application.Customers;
 using EggERP.Domain.Entities;
 namespace EggERP.Application.Sales;
 public class SaleService : ISaleService
 {
     private readonly ISaleRepository _saleRepository;
+    private readonly ITransactionManager _transactionManager;
     private readonly IInventoryService _inventoryService;
-
-    public SaleService(ISaleRepository saleRepository, IInventoryService inventoryService)
+    private readonly ICustomerRepository _customerRepository;
+    public SaleService(
+        ISaleRepository saleRepository,
+        IInventoryService inventoryService,
+        ICustomerRepository customerRepository,
+        ITransactionManager transactionManager)
     {
         _saleRepository = saleRepository;
         _inventoryService = inventoryService;
+        _customerRepository = customerRepository;
+        _transactionManager = transactionManager;
     }
     public Task<List<Sale>> GetSalesAsync(Guid businessId)
     {
@@ -19,9 +28,13 @@ public class SaleService : ISaleService
     {
         return _saleRepository.GetByIdAsync(businessId, id);
     }
-    public Task<List<SaleItem>> GetSaleItemsAsync(Guid saleId)
+    public Task<List<SaleItem>> GetSaleItemsAsync(
+        Guid businessId,
+        Guid saleId)
     {
-        return _saleRepository.GetItemsBySaleIdAsync(saleId);
+        return _saleRepository.GetItemsBySaleIdAsync(
+            businessId,
+            saleId);
     }
     public async Task<Sale> CreateSaleAsync(
         Guid businessId,
@@ -35,27 +48,91 @@ public class SaleService : ISaleService
         string? notes = null)
     {
         PaymentValidation.EnsureValid(paymentMethod, referenceNumber, paymentSource);
+        if (customerId.HasValue)
+        {
+            var customer = await _customerRepository.GetByIdAsync(
+                businessId,
+                customerId.Value);
+
+            if (customer is null)
+            {
+                throw new InvalidOperationException(
+                    "The selected customer does not belong to this business.");
+            }
+        }
 
         if (items is null || items.Count == 0)
         {
             throw new InvalidOperationException("A sale must have at least one item.");
         }
 
+        if (businessId == Guid.Empty)
+        {
+            throw new InvalidOperationException(
+                "A valid Business ID is required.");
+        }
+
         if (status != "Paid" && status != "Pending")
         {
-            throw new InvalidOperationException("Status must be 'Paid' or 'Pending'.");
+            throw new InvalidOperationException(
+                "Status must be 'Paid' or 'Pending'.");
+        }
+
+        foreach (var item in items)
+        {
+            if (item.ProductId == Guid.Empty)
+            {
+                throw new InvalidOperationException(
+                    "Each sale item must have a valid product.");
+            }
+
+            if (item.Quantity <= 0)
+            {
+                throw new InvalidOperationException(
+                    "Sale item quantity must be greater than zero.");
+            }
+
+            if (item.UnitPrice < 0)
+            {
+                throw new InvalidOperationException(
+                    "Sale item price cannot be negative.");
+            }
+        }
+
+        var duplicateProduct = items
+            .GroupBy(i => i.ProductId)
+            .FirstOrDefault(g => g.Count() > 1);
+
+        if (duplicateProduct is not null)
+        {
+            throw new InvalidOperationException(
+                "The same product cannot appear more than once " +
+                "in a sale. Combine its quantities into one line.");
         }
 
         var stockErrors = new List<string>();
 
         foreach (var i in items)
         {
-            var inventory = await _inventoryService.GetByProductIdAsync(businessId, i.ProductId);
-            var available = inventory?.QuantityOnHand ?? 0;
+            var inventory = await _inventoryService
+                .GetByProductIdAsync(businessId, i.ProductId);
+
+            if (inventory is null)
+            {
+                stockErrors.Add(
+                    $"Product {i.ProductId} has no inventory record " +
+                    "for this business.");
+
+                continue;
+            }
+
+            var available = inventory.QuantityOnHand;
 
             if (i.Quantity > available)
             {
-                stockErrors.Add($"only {(int)available} in stock, but {(int)i.Quantity} requested");
+                stockErrors.Add(
+                    $"Product {i.ProductId}: only {available:N2} " +
+                    $"in stock, but {i.Quantity:N2} requested.");
             }
         }
 
@@ -108,16 +185,20 @@ public class SaleService : ISaleService
             item.SaleId = sale.Id;
         }
 
-        var createdSale = await _saleRepository.CreateAsync(sale, saleItems);
-
-        // This alone is the Flock/Egg "Out, Sold" record now — see PurchaseService for
-        // the matching note on the Bought side.
-        foreach (var item in saleItems)
+        await _transactionManager.ExecuteAsync(async () =>
         {
-            await _inventoryService.AdjustQuantityAsync(businessId, item.ProductId, -item.Quantity);
-        }
+            await _saleRepository.CreateAsync(sale, saleItems);
 
-        return createdSale;
+            foreach (var item in saleItems)
+            {
+                await _inventoryService.AdjustQuantityAsync(
+                    businessId,
+                    item.ProductId,
+                    -item.Quantity);
+            }
+        });
+
+        return sale;
     }
 
     public async Task<(bool Succeeded, string? Error)> MarkAsPaidAsync(

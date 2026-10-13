@@ -103,6 +103,7 @@ public class UserManagementController : ControllerBase
         return NoContent();
     }
 
+
     [HttpDelete("{id:guid}")]
     public async Task<IActionResult> DeactivateUser(Guid id)
     {
@@ -111,6 +112,27 @@ public class UserManagementController : ControllerBase
         if (currentUser is null)
         {
             return Unauthorized();
+        }
+
+        if (id == currentUser.Id)
+        {
+            return BadRequest(
+                "You cannot deactivate your own account.");
+        }
+
+        var targetUser = await _userManager.FindByIdAsync(
+            id.ToString());
+
+        if (targetUser is null ||
+            targetUser.BusinessId != currentUser.BusinessId)
+        {
+            return NotFound();
+        }
+
+        if (await _userManager.IsInRoleAsync(targetUser, "Admin"))
+        {
+            return BadRequest(
+                "Administrator accounts cannot be deactivated here.");
         }
 
         var (succeeded, error) =
@@ -124,11 +146,17 @@ public class UserManagementController : ControllerBase
         }
 
         await _activityLogService.LogAsync(
-            currentUser.BusinessId, currentUser.Id, currentUser.FullName,
-            "Deactivated User", "User", id, null);
+            currentUser.BusinessId,
+            currentUser.Id,
+            currentUser.FullName,
+            "Deactivated User",
+            "User",
+            id,
+            null);
 
         return NoContent();
     }
+
 
     [HttpPost("{id:guid}/activate")]
     public async Task<IActionResult> ActivateUser(Guid id)
@@ -156,4 +184,37 @@ public class UserManagementController : ControllerBase
 
         return NoContent();
     }
+
+    [HttpPost("{id:guid}/resend-invitation")]
+    public async Task<IActionResult> ResendInvitation(Guid id)
+    {
+        var currentUser = await _userManager.GetUserAsync(User);
+
+        if (currentUser is null || !currentUser.IsActive)
+        {
+            return Unauthorized();
+        }
+
+        var (succeeded, error) =
+            await _userManagementService.ResendInvitationAsync(
+                currentUser.BusinessId,
+                id);
+
+        if (!succeeded)
+        {
+            return BadRequest(error);
+        }
+
+        await _activityLogService.LogAsync(
+            currentUser.BusinessId,
+            currentUser.Id,
+            currentUser.FullName,
+            "Resent Employee Invitation",
+            "User",
+            id,
+            null);
+
+        return NoContent();
+    }
+
 }

@@ -30,10 +30,16 @@ public class SaleRepository : ISaleRepository
                      s.Id == id);
     }
 
-    public Task<List<SaleItem>> GetItemsBySaleIdAsync(Guid saleId)
+    public Task<List<SaleItem>> GetItemsBySaleIdAsync(
+        Guid businessId,
+        Guid saleId)
     {
         return _dbContext.SaleItems
-            .Where(si => si.SaleId == saleId)
+            .Where(si =>
+                si.SaleId == saleId &&
+                _dbContext.Sales.Any(s =>
+                    s.Id == si.SaleId &&
+                    s.BusinessId == businessId))
             .ToListAsync();
     }
 

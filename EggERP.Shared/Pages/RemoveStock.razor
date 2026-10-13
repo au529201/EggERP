@@ -9,10 +9,16 @@
 @inject IEggApiService EggApiService
 @inject IJSRuntime JsRuntime
 @inject NavigationManager Navigation
-
+@inject CurrentBusinessService CurrentBusinessService
 <h3>Remove Stock</h3>
 
-@if (products is null)
+@if (!string.IsNullOrWhiteSpace(loadError))
+{
+    <div class="alert alert-danger">
+        @loadError
+    </div>
+}
+else if (products is null)
 {
     <p>Loading...</p>
 }
@@ -303,8 +309,8 @@ else
     private DateTime movementDate = DateTime.Today;
     private bool isSaving;
 
-    private readonly Guid businessId =
-        Guid.Parse("11111111-1111-1111-1111-111111111111");
+private Guid businessId = Guid.Empty;
+private string? loadError;
 
     private bool HasPaymentLine =>
         lines.Any(l => l.Reason == "Sold");
@@ -314,29 +320,37 @@ else
             .Where(l => l.Reason == "Sold")
             .Sum(l => l.Quantity * l.UnitPrice);
 
-    protected override async Task OnInitializedAsync()
+   protected override async Task OnInitializedAsync()
+{
+    try
     {
-        products =
-            await ProductApiService.GetProductsAsync();
+        businessId = await CurrentBusinessService.GetBusinessIdAsync();
 
-        customers =
-            await CustomerApiService
-                .GetCustomersAsync(businessId);
+        if (businessId == Guid.Empty)
+        {
+            loadError = "Unable to identify the current business.";
+            return;
+        }
 
-        var flockBoard =
-            await FlockApiService.GetBoardAsync();
+        products = await ProductApiService.GetProductsAsync();
 
-        var eggBoard =
-            await EggApiService.GetBoardAsync();
+        customers = await CustomerApiService.GetCustomersAsync(businessId);
+
+        var flockBoard = await FlockApiService.GetBoardAsync();
+        var eggBoard = await EggApiService.GetBoardAsync();
 
         foreach (var row in flockBoard.Concat(eggBoard))
         {
-            stockOnHand[row.ProductId] =
-                row.Available;
+            stockOnHand[row.ProductId] = row.Available;
         }
 
         lines.Add(new Line());
     }
+    catch (Exception ex)
+    {
+        loadError = $"Failed to load Remove Stock: {ex.Message}";
+    }
+}
 
     private int GetStock(string productId)
     {
@@ -457,6 +471,11 @@ else
             return;
 
         errorMessage = null;
+if (businessId == Guid.Empty)
+{
+    errorMessage = "Unable to identify the current business.";
+    return;
+}
 
         var enteredLines =
             lines

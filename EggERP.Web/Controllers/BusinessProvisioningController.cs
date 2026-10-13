@@ -1,57 +1,43 @@
-﻿using EggERP.Application.Businesses;
-using EggERP.Infrastructure.Businesses;
+﻿
+using EggERP.Application.Businesses;
+using EggERP.Infrastructure.Identity;
 using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
 
 namespace EggERP.Web.Controllers;
 
 [ApiController]
 [Route("api/provisioning")]
-[AllowAnonymous]
+[Authorize(Roles = "PlatformAdmin")]
 public class BusinessProvisioningController : ControllerBase
 {
-    private readonly IBusinessProvisioningService
-        _businessProvisioningService;
-
-    private readonly IConfiguration _configuration;
+    private readonly IBusinessProvisioningService _service;
+    private readonly UserManager<ApplicationUser> _userManager;
 
     public BusinessProvisioningController(
-        IBusinessProvisioningService businessProvisioningService,
-        IConfiguration configuration)
+        IBusinessProvisioningService service,
+        UserManager<ApplicationUser> userManager)
     {
-        _businessProvisioningService =
-            businessProvisioningService;
-
-        _configuration = configuration;
+        _service = service;
+        _userManager = userManager;
     }
 
     [HttpPost("business")]
     public async Task<IActionResult> CreateBusiness(
-        CreateBusinessOwnerRequest request)
+        [FromBody] CreateBusinessOwnerRequest request)
     {
-        var configuredKey =
-            _configuration["Provisioning:Key"];
+        var currentUser = await _userManager.GetUserAsync(User);
 
-        if (string.IsNullOrWhiteSpace(configuredKey))
-        {
-            return StatusCode(
-                StatusCodes.Status503ServiceUnavailable,
-                "Business provisioning is not configured.");
-        }
-
-        if (!Request.Headers.TryGetValue(
-                "X-Provisioning-Key",
-                out var suppliedKey))
+        if (currentUser is null || !currentUser.IsActive)
         {
             return Unauthorized();
         }
 
-        if (!string.Equals(
-                suppliedKey.ToString(),
-                configuredKey,
-                StringComparison.Ordinal))
+        if (!await _userManager.IsInRoleAsync(
+            currentUser, "PlatformAdmin"))
         {
-            return Unauthorized();
+            return Forbid();
         }
 
         if (!ModelState.IsValid)
@@ -59,25 +45,22 @@ public class BusinessProvisioningController : ControllerBase
             return ValidationProblem(ModelState);
         }
 
-        var result =
-            await _businessProvisioningService
-                .CreateBusinessWithOwnerAsync(request);
+        var result = await _service
+            .CreateBusinessWithOwnerAsync(request);
 
         if (!result.Succeeded)
         {
             return BadRequest(new
             {
-                error = result.Error,
-                businessId = result.BusinessId
+                error = result.Error
             });
         }
 
         return Ok(new
         {
             message =
-                "Business created successfully. " +
-                "An activation email has been sent to the owner.",
-
+                "Business and owner account created. " +
+                "An invitation email has been requested.",
             businessId = result.BusinessId
         });
     }

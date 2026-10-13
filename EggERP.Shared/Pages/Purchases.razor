@@ -5,6 +5,7 @@
 @inject IPurchaseApiService PurchaseApiService
 @inject ISupplierApiService SupplierApiService
 @inject IJSRuntime JsRuntime
+@inject CurrentBusinessService CurrentBusiness
 
 <h3>Purchases</h3>
 
@@ -152,8 +153,7 @@ else
     private DateTime? startDate;
     private DateTime? endDate;
 
-    private readonly Guid businessId =
-        Guid.Parse("11111111-1111-1111-1111-111111111111");
+    private Guid businessId;
 
     private int page = 1;
     private const int pageSize = 7;
@@ -192,6 +192,8 @@ else
 
     protected override async Task OnInitializedAsync()
     {
+        businessId = await CurrentBusiness.GetBusinessIdAsync();
+
         purchases =
             await PurchaseApiService.GetPurchasesAsync(businessId);
 

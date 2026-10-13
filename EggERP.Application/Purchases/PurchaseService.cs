@@ -1,15 +1,21 @@
 ﻿using EggERP.Application.Inventory;
+using EggERP.Application.Suppliers;
 using EggERP.Domain.Entities;
 namespace EggERP.Application.Purchases;
 public class PurchaseService : IPurchaseService
 {
     private readonly IPurchaseRepository _purchaseRepository;
     private readonly IInventoryService _inventoryService;
+    private readonly ISupplierRepository _supplierRepository;
 
-    public PurchaseService(IPurchaseRepository purchaseRepository, IInventoryService inventoryService)
+    public PurchaseService(
+        IPurchaseRepository purchaseRepository,
+        IInventoryService inventoryService,
+        ISupplierRepository supplierRepository)
     {
         _purchaseRepository = purchaseRepository;
         _inventoryService = inventoryService;
+        _supplierRepository = supplierRepository;
     }
     public Task<List<Purchase>> GetPurchasesAsync(Guid businessId)
     {
@@ -36,15 +42,66 @@ public class PurchaseService : IPurchaseService
      string? notes = null)
     {
         PaymentValidation.EnsureValid(paymentMethod, referenceNumber, paymentSource);
+        if (supplierId.HasValue)
+        {
+            var supplier = await _supplierRepository.GetByIdAsync(
+                businessId,
+                supplierId.Value);
+
+            if (supplier is null)
+            {
+                throw new InvalidOperationException(
+                    "The selected supplier does not belong to this business.");
+            }
+        }
 
         if (items is null || items.Count == 0)
         {
             throw new InvalidOperationException("A purchase must have at least one item.");
         }
 
+        if (businessId == Guid.Empty)
+        {
+            throw new InvalidOperationException(
+                "A valid Business ID is required.");
+        }
+
         if (status != "Paid" && status != "Pending")
         {
-            throw new InvalidOperationException("Status must be 'Paid' or 'Pending'.");
+            throw new InvalidOperationException(
+                "Status must be 'Paid' or 'Pending'.");
+        }
+
+        foreach (var item in items)
+        {
+            if (item.ProductId == Guid.Empty)
+            {
+                throw new InvalidOperationException(
+                    "Each purchase item must have a valid product.");
+            }
+
+            if (item.Quantity <= 0)
+            {
+                throw new InvalidOperationException(
+                    "Purchase item quantity must be greater than zero.");
+            }
+
+            if (item.UnitCost < 0)
+            {
+                throw new InvalidOperationException(
+                    "Purchase item cost cannot be negative.");
+            }
+        }
+
+        var duplicateProduct = items
+            .GroupBy(i => i.ProductId)
+            .FirstOrDefault(g => g.Count() > 1);
+
+        if (duplicateProduct is not null)
+        {
+            throw new InvalidOperationException(
+                "The same product cannot appear more than once " +
+                "in a purchase. Combine its quantities into one line.");
         }
 
         var purchaseItems = items.Select(i => new PurchaseItem

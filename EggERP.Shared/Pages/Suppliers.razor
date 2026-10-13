@@ -3,6 +3,7 @@
 @using EggERP.Shared.Models
 @using EggERP.Shared.Services
 @inject ISupplierApiService SupplierApiService
+@inject CurrentBusinessService CurrentBusiness
 @inject IJSRuntime JsRuntime
 
 <h3>Suppliers</h3>
@@ -89,8 +90,7 @@ else
     private List<SupplierDto>? suppliers;
     private string searchText = string.Empty;
 
-    private readonly Guid businessId =
-        Guid.Parse("11111111-1111-1111-1111-111111111111");
+    private Guid businessId;
 
     private int page = 1;
     private const int pageSize = 7;
@@ -112,6 +112,7 @@ else
 
     protected override async Task OnInitializedAsync()
     {
+        businessId = await CurrentBusiness.GetBusinessIdAsync();
         suppliers = await SupplierApiService.GetSuppliersAsync(businessId);
     }
 

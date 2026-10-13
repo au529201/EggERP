@@ -4,7 +4,8 @@ public interface ISaleRepository
 {
     Task<List<Sale>> GetByBusinessIdAsync(Guid businessId);
     Task<Sale?> GetByIdAsync(Guid businessId, Guid id);
-    Task<List<SaleItem>> GetItemsBySaleIdAsync(Guid saleId);
-    Task<Sale> CreateAsync(Sale sale, List<SaleItem> items);
+    Task<List<SaleItem>> GetItemsBySaleIdAsync(
+        Guid businessId,
+        Guid saleId); Task<Sale> CreateAsync(Sale sale, List<SaleItem> items);
     Task UpdateAsync(Sale sale);
 }

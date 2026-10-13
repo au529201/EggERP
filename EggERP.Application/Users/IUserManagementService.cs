@@ -1,4 +1,5 @@
-﻿namespace EggERP.Application.Users;
+﻿
+namespace EggERP.Application.Users;
 
 public class BusinessUserDto
 {
@@ -7,6 +8,7 @@ public class BusinessUserDto
     public string FullName { get; set; } = string.Empty;
     public string Role { get; set; } = string.Empty;
     public bool IsActive { get; set; }
+    public bool EmailConfirmed { get; set; }
 }
 
 public class CreateBusinessUserRequest
@@ -14,7 +16,7 @@ public class CreateBusinessUserRequest
     public Guid BusinessId { get; set; }
     public string Email { get; set; } = string.Empty;
     public string FullName { get; set; } = string.Empty;
-    public string Role { get; set; } = string.Empty; // "Manager" or "Staff"
+    public string Role { get; set; } = string.Empty;
 }
 
 public class UpdateBusinessUserRequest
@@ -28,8 +30,19 @@ public class UpdateBusinessUserRequest
 public interface IUserManagementService
 {
     Task<List<BusinessUserDto>> GetUsersForBusinessAsync(Guid businessId);
-    Task<(bool Succeeded, string? Error)> CreateUserAsync(CreateBusinessUserRequest request);
-    Task<(bool Succeeded, string? Error)> UpdateUserAsync(UpdateBusinessUserRequest request);
-    Task<(bool Succeeded, string? Error)> DeactivateUserAsync(Guid businessId, Guid userId);
-    Task<(bool Succeeded, string? Error)> ActivateUserAsync(Guid businessId, Guid userId);
+
+    Task<(bool Succeeded, string? Error)> CreateUserAsync(
+        CreateBusinessUserRequest request);
+
+    Task<(bool Succeeded, string? Error)> UpdateUserAsync(
+        UpdateBusinessUserRequest request);
+
+    Task<(bool Succeeded, string? Error)> DeactivateUserAsync(
+        Guid businessId, Guid userId);
+
+    Task<(bool Succeeded, string? Error)> ActivateUserAsync(
+        Guid businessId, Guid userId);
+
+    Task<(bool Succeeded, string? Error)> ResendInvitationAsync(
+        Guid businessId, Guid userId);
 }

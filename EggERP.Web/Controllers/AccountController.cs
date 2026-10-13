@@ -321,6 +321,11 @@ public class AccountController : ControllerBase
             return Redirect("/Account/Login?error=Invalid login attempt.");
         }
 
+        if (await _userManager.IsInRoleAsync(user, "PlatformAdmin"))
+        {
+            return Redirect("/platform/businesses");
+        }
+
         return Redirect("/");
     }
 

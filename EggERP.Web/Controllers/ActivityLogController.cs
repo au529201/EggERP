@@ -1,4 +1,5 @@
-﻿using EggERP.Application.ActivityLogs;
+﻿
+using EggERP.Application.ActivityLogs;
 using EggERP.Infrastructure.Identity;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Identity;
@@ -14,7 +15,9 @@ public class ActivityLogController : ControllerBase
     private readonly IActivityLogService _activityLogService;
     private readonly UserManager<ApplicationUser> _userManager;
 
-    public ActivityLogController(IActivityLogService activityLogService, UserManager<ApplicationUser> userManager)
+    public ActivityLogController(
+        IActivityLogService activityLogService,
+        UserManager<ApplicationUser> userManager)
     {
         _activityLogService = activityLogService;
         _userManager = userManager;
@@ -28,9 +31,28 @@ public class ActivityLogController : ControllerBase
         [FromQuery] DateTime? endDate)
     {
         var currentUser = await _userManager.GetUserAsync(User);
+
         if (currentUser is null)
         {
             return Unauthorized();
+        }
+
+        if (!currentUser.IsActive)
+        {
+            return Forbid();
+        }
+
+        if (currentUser.BusinessId == Guid.Empty)
+        {
+            return Forbid();
+        }
+
+        if (startDate.HasValue &&
+            endDate.HasValue &&
+            startDate.Value.Date > endDate.Value.Date)
+        {
+            return BadRequest(
+                "The start date cannot be later than the end date.");
         }
 
         var filter = new ActivityLogFilter
@@ -43,6 +65,7 @@ public class ActivityLogController : ControllerBase
         };
 
         var logs = await _activityLogService.SearchAsync(filter);
+
         return Ok(logs);
     }
 }

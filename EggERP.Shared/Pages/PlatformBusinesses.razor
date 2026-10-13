@@ -1,0 +1,218 @@
+﻿
+@page "/platform/businesses"
+@attribute [Authorize(Roles = "PlatformAdmin")]
+@rendermode InteractiveServer
+
+@using System.Net.Http.Json
+@using EggERP.Shared.Services
+@inject IPlatformBusinessApiService PlatformApi
+
+<PageTitle>Platform Administration - EzEggERP</PageTitle>
+
+<div class="container-fluid py-3">
+    <div class="d-flex flex-wrap justify-content-between align-items-center mb-4">
+        <div>
+            <h2 class="mb-1">Platform Administration</h2>
+            <p class="text-muted mb-0">
+                Manage EzEggERP businesses and owner invitations.
+            </p>
+        </div>
+    </div>
+
+    @if (!string.IsNullOrEmpty(message))
+    {
+        <div class="alert @(isError ? "alert-danger" : "alert-success")"
+             role="alert">
+            @message
+        </div>
+    }
+
+    <div class="card mb-4">
+        <div class="card-header">
+            <strong>Invite New Business Owner</strong>
+        </div>
+        <div class="card-body">
+            <EditForm Model="@form" OnValidSubmit="InviteOwner">
+                <DataAnnotationsValidator />
+                <ValidationSummary />
+
+                <div class="row g-3">
+                    <div class="col-md-6">
+                        <label class="form-label">Business Name *</label>
+                        <InputText class="form-control"
+                                   @bind-Value="form.BusinessName" />
+                    </div>
+
+                    <div class="col-md-6">
+                        <label class="form-label">Owner Full Name *</label>
+                        <InputText class="form-control"
+                                   @bind-Value="form.OwnerFullName" />
+                    </div>
+
+                    <div class="col-md-6">
+                        <label class="form-label">Owner Email *</label>
+                        <InputText class="form-control"
+                                   type="email"
+                                   @bind-Value="form.OwnerEmail" />
+                    </div>
+
+                    <div class="col-md-6">
+                        <label class="form-label">Business Email</label>
+                        <InputText class="form-control"
+                                   type="email"
+                                   @bind-Value="form.BusinessEmail" />
+                    </div>
+
+                    <div class="col-md-6">
+                        <label class="form-label">Phone</label>
+                        <InputText class="form-control"
+                                   @bind-Value="form.Phone" />
+                    </div>
+
+                    <div class="col-md-6">
+                        <label class="form-label">City</label>
+                        <InputText class="form-control"
+                                   @bind-Value="form.City" />
+                    </div>
+
+                    <div class="col-12">
+                        <button type="submit"
+                                class="btn btn-primary"
+                                disabled="@submitting">
+                            @(submitting ? "Sending Invitation..." :
+                                "Create Business & Send Invitation")
+                        </button>
+                    </div>
+                </div>
+            </EditForm>
+        </div>
+    </div>
+
+    <div class="card">
+        <div class="card-header">
+            <strong>Registered Businesses</strong>
+        </div>
+        <div class="card-body">
+            @if (loading)
+            {
+                <p>Loading businesses...</p>
+            }
+            else if (businesses.Count == 0)
+            {
+                <p class="text-muted">
+                    No businesses found.
+                </p>
+            }
+            else
+            {
+                <div class="table-responsive">
+                    <table class="table table-striped align-middle">
+                        <thead>
+                            <tr>
+                                <th>Business</th>
+                                <th>Owner</th>
+                                <th>Email</th>
+                                <th>Invitation Status</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @foreach (var business in businesses)
+                            {
+                                <tr>
+                                    <td>@business.BusinessName</td>
+                                    <td>@business.OwnerName</td>
+                                    <td>@business.OwnerEmail</td>
+                                    <td>
+                                        @if (!business.OwnerEmailConfirmed)
+                                        {
+                                            <span class="badge bg-warning text-dark">
+                                                Pending Invitation
+                                            </span>
+                                        }
+                                        else
+                                        {
+                                            <span class="badge bg-success">
+                                                Active
+                                            </span>
+                                        }
+                                    </td>
+                                </tr>
+                            }
+                        </tbody>
+                    </table>
+                </div>
+            }
+        </div>
+    </div>
+</div>
+
+@code {
+    private CreatePlatformBusinessRequest form = new();
+    private List<PlatformBusinessDto> businesses = new();
+
+    private bool loading = true;
+    private bool submitting;
+    private bool isError;
+    private string? message;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadBusinesses();
+    }
+
+    private async Task LoadBusinesses()
+    {
+        loading = true;
+
+        try
+        {
+            businesses = await PlatformApi.GetBusinessesAsync();
+        }
+        catch (Exception)
+        {
+            isError = true;
+            message = "Unable to load businesses.";
+        }
+        finally
+        {
+            loading = false;
+        }
+    }
+
+    private async Task InviteOwner()
+    {
+        if (submitting)
+            return;
+
+        submitting = true;
+        message = null;
+
+        try
+        {
+            var error = await PlatformApi.CreateBusinessAsync(form);
+
+            if (error is null)
+            {
+                isError = false;
+                message = "Business created and invitation sent.";
+
+                form = new CreatePlatformBusinessRequest();
+                await LoadBusinesses();
+            }
+            else
+            {
+                isError = true;
+                message = error;
+            }
+        }
+        catch (Exception)
+        {
+            isError = true;
+            message = "Unable to complete the invitation request.";
+        }
+        finally
+        {
+            submitting = false;
+        }
+    }
+}

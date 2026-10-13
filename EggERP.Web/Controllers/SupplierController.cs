@@ -1,13 +1,16 @@
-﻿using EggERP.Application.ActivityLogs;
+﻿
+using EggERP.Application.ActivityLogs;
 using EggERP.Application.Suppliers;
 using EggERP.Domain.Entities;
 using EggERP.Infrastructure.Identity;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
 
 namespace EggERP.Web.Controllers;
 
 [ApiController]
+[Authorize(Roles = "Admin,Manager")]
 [Route("api/suppliers")]
 public class SupplierController : ControllerBase
 {
@@ -25,83 +28,164 @@ public class SupplierController : ControllerBase
         _activityLogService = activityLogService;
     }
 
+    private async Task<ApplicationUser?> GetActiveUserAsync()
+    {
+        var user = await _userManager.GetUserAsync(User);
+
+        if (user is null ||
+            !user.IsActive ||
+            user.BusinessId == Guid.Empty)
+        {
+            return null;
+        }
+
+        return user;
+    }
+
     [HttpGet("{businessId:guid}")]
     public async Task<IActionResult> GetSuppliers(Guid businessId)
     {
-        var suppliers = await _supplierService.GetSuppliersAsync(businessId);
+        var user = await GetActiveUserAsync();
+
+        if (user is null || user.BusinessId != businessId)
+            return Forbid();
+
+        var suppliers =
+            await _supplierService.GetSuppliersAsync(user.BusinessId);
+
         return Ok(suppliers);
     }
 
     [HttpGet("{businessId:guid}/{id:guid}")]
-    public async Task<IActionResult> GetSupplierById(Guid businessId, Guid id)
+    public async Task<IActionResult> GetSupplierById(
+        Guid businessId,
+        Guid id)
     {
-        var supplier = await _supplierService.GetSupplierByIdAsync(businessId, id);
+        var user = await GetActiveUserAsync();
+
+        if (user is null || user.BusinessId != businessId)
+            return Forbid();
+
+        var supplier =
+            await _supplierService.GetSupplierByIdAsync(
+                user.BusinessId,
+                id);
+
         if (supplier is null)
-        {
             return NotFound();
-        }
+
         return Ok(supplier);
     }
 
     [HttpPost]
-    public async Task<IActionResult> CreateSupplier(Supplier supplier)
+    public async Task<IActionResult> CreateSupplier(
+        [FromBody] Supplier supplier)
     {
-        var createdSupplier = await _supplierService.CreateSupplierAsync(supplier);
+        var user = await GetActiveUserAsync();
 
-        var currentUser = await _userManager.GetUserAsync(User);
-        if (currentUser is not null)
-        {
-            await _activityLogService.LogAsync(
-                createdSupplier.BusinessId, currentUser.Id, currentUser.FullName,
-                "Created Supplier", "Supplier", createdSupplier.Id, createdSupplier.Name);
-        }
+        if (user is null)
+            return Forbid();
+
+        if (string.IsNullOrWhiteSpace(supplier.Name))
+            return BadRequest("Supplier name is required.");
+
+        supplier.Id = Guid.NewGuid();
+        supplier.BusinessId = user.BusinessId;
+        supplier.Name = supplier.Name.Trim();
+
+        var createdSupplier =
+            await _supplierService.CreateSupplierAsync(supplier);
+
+        await _activityLogService.LogAsync(
+            user.BusinessId,
+            user.Id,
+            user.FullName,
+            "Created Supplier",
+            "Supplier",
+            createdSupplier.Id,
+            createdSupplier.Name);
 
         return CreatedAtAction(
-            nameof(GetSuppliers),
-            new { businessId = createdSupplier.BusinessId },
+            nameof(GetSupplierById),
+            new
+            {
+                businessId = user.BusinessId,
+                id = createdSupplier.Id
+            },
             createdSupplier);
     }
 
     [HttpPut("{id:guid}")]
-    public async Task<IActionResult> UpdateSupplier(Guid id, Supplier supplier)
+    public async Task<IActionResult> UpdateSupplier(
+        Guid id,
+        [FromBody] Supplier supplier)
     {
-        if (id != supplier.Id)
-        {
-            return BadRequest("Route id does not match supplier id in the request body.");
-        }
-        var updated = await _supplierService.UpdateSupplierAsync(supplier);
-        if (!updated)
-        {
-            return NotFound();
-        }
+        var user = await GetActiveUserAsync();
 
-        var currentUser = await _userManager.GetUserAsync(User);
-        if (currentUser is not null)
-        {
-            await _activityLogService.LogAsync(
-                supplier.BusinessId, currentUser.Id, currentUser.FullName,
-                "Updated Supplier", "Supplier", id, supplier.Name);
-        }
+        if (user is null)
+            return Forbid();
+
+        if (id != supplier.Id)
+            return BadRequest("Supplier ID mismatch.");
+
+        var existing =
+            await _supplierService.GetSupplierByIdAsync(
+                user.BusinessId,
+                id);
+
+        if (existing is null)
+            return NotFound();
+
+        if (string.IsNullOrWhiteSpace(supplier.Name))
+            return BadRequest("Supplier name is required.");
+
+        supplier.BusinessId = user.BusinessId;
+        supplier.Name = supplier.Name.Trim();
+
+        var updated =
+            await _supplierService.UpdateSupplierAsync(supplier);
+
+        if (!updated)
+            return NotFound();
+
+        await _activityLogService.LogAsync(
+            user.BusinessId,
+            user.Id,
+            user.FullName,
+            "Updated Supplier",
+            "Supplier",
+            id,
+            supplier.Name);
 
         return NoContent();
     }
 
     [HttpDelete("{businessId:guid}/{id:guid}")]
-    public async Task<IActionResult> DeactivateSupplier(Guid businessId, Guid id)
+    public async Task<IActionResult> DeactivateSupplier(
+        Guid businessId,
+        Guid id)
     {
-        var deactivated = await _supplierService.DeactivateSupplierAsync(businessId, id);
-        if (!deactivated)
-        {
-            return NotFound();
-        }
+        var user = await GetActiveUserAsync();
 
-        var currentUser = await _userManager.GetUserAsync(User);
-        if (currentUser is not null)
-        {
-            await _activityLogService.LogAsync(
-                businessId, currentUser.Id, currentUser.FullName,
-                "Deactivated Supplier", "Supplier", id, null);
-        }
+        if (user is null || user.BusinessId != businessId)
+            return Forbid();
+
+        var deactivated =
+            await _supplierService.DeactivateSupplierAsync(
+                user.BusinessId,
+                id);
+
+        if (!deactivated)
+            return NotFound();
+
+        await _activityLogService.LogAsync(
+            user.BusinessId,
+            user.Id,
+            user.FullName,
+            "Deactivated Supplier",
+            "Supplier",
+            id,
+            null);
 
         return NoContent();
     }

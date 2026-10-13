@@ -32,13 +32,29 @@ public class InventoryRepository : IInventoryRepository
                 i.BusinessId == businessId &&
                 i.ProductId == productId);
     }
-
     public async Task<EggERP.Domain.Entities.Inventory>
-        AdjustQuantityAsync(
-            Guid businessId,
-            Guid productId,
-            decimal delta)
+    AdjustQuantityAsync(
+        Guid businessId,
+        Guid productId,
+        decimal delta)
     {
+        if (businessId == Guid.Empty || productId == Guid.Empty)
+        {
+            throw new InvalidOperationException(
+                "A valid business and product are required.");
+        }
+
+        var productExists = await _dbContext.Products
+            .AnyAsync(p =>
+                p.Id == productId &&
+                p.BusinessId == businessId);
+
+        if (!productExists)
+        {
+            throw new InvalidOperationException(
+                "Product not found in this business.");
+        }
+
         var existing = await _dbContext.Inventories
             .FirstOrDefaultAsync(i =>
                 i.BusinessId == businessId &&
@@ -46,29 +62,38 @@ public class InventoryRepository : IInventoryRepository
 
         if (existing is null)
         {
-            var newRecord =
-                new EggERP.Domain.Entities.Inventory
-                {
-                    Id = Guid.NewGuid(),
-                    BusinessId = businessId,
-                    ProductId = productId,
-                    QuantityOnHand = Math.Max(0, delta),
-                    ReorderLevel = 0,
-                    CreatedAtUtc = DateTime.UtcNow
-                };
+            if (delta < 0)
+            {
+                throw new InvalidOperationException(
+                    "Cannot remove stock because no inventory record exists.");
+            }
+
+            var newRecord = new EggERP.Domain.Entities.Inventory
+            {
+                Id = Guid.NewGuid(),
+                BusinessId = businessId,
+                ProductId = productId,
+                QuantityOnHand = delta,
+                ReorderLevel = 0,
+                CreatedAtUtc = DateTime.UtcNow
+            };
 
             _dbContext.Inventories.Add(newRecord);
-
             await _dbContext.SaveChangesAsync();
 
             return newRecord;
         }
 
-        existing.QuantityOnHand =
-            Math.Max(
-                0,
-                existing.QuantityOnHand + delta);
+        var newQuantity = existing.QuantityOnHand + delta;
 
+        if (newQuantity < 0)
+        {
+            throw new InvalidOperationException(
+                $"Insufficient stock. Available: {existing.QuantityOnHand:N2}, " +
+                $"requested removal: {Math.Abs(delta):N2}.");
+        }
+
+        existing.QuantityOnHand = newQuantity;
         existing.UpdatedAtUtc = DateTime.UtcNow;
 
         await _dbContext.SaveChangesAsync();

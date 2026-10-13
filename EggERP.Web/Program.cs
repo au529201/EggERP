@@ -1,42 +1,41 @@
+using EggERP.Application.ActivityLogs;
 using EggERP.Application.Businesses;
 using EggERP.Application.Categories;
 using EggERP.Application.Customers;
+using EggERP.Application.Email;
 using EggERP.Application.Expenses;
+using EggERP.Application.Flocks;
 using EggERP.Application.Inventory;
 using EggERP.Application.Products;
 using EggERP.Application.Purchases;
 using EggERP.Application.Sales;
 using EggERP.Application.Suppliers;
+using EggERP.Application.Users;
+using EggERP.Infrastructure.ActivityLogs;
 using EggERP.Infrastructure.Businesses;
 using EggERP.Infrastructure.Categories;
 using EggERP.Infrastructure.Customers;
+using EggERP.Infrastructure.Email;
 using EggERP.Infrastructure.Expenses;
+using EggERP.Infrastructure.Flocks;
 using EggERP.Infrastructure.Identity;
 using EggERP.Infrastructure.Inventory;
 using EggERP.Infrastructure.Persistence;
 using EggERP.Infrastructure.Products;
 using EggERP.Infrastructure.Purchases;
 using EggERP.Infrastructure.Sales;
-using EggERP.Application.Users;
 using EggERP.Infrastructure.Suppliers;
 using EggERP.Infrastructure.Users;
 using EggERP.Shared.Models;
 using EggERP.Shared.Services;
 using EggERP.Web.Components;
+using EggERP.Web.Controllers;
 using EggERP.Web.Data;
 using EggERP.Web.Services;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
-using EggERP.Application.Email;
-using EggERP.Infrastructure.Email;
-using EggERP.Application.Flocks;
-using EggERP.Infrastructure.Flocks;
-using EggERP.Application.ActivityLogs;
-using EggERP.Infrastructure.ActivityLogs;
-using EggERP.Web.Controllers;
-
-
-
+using EggERP.Application.Transactions;
+using EggERP.Infrastructure.Transactions;
 
 
 var builder = WebApplication.CreateBuilder(args);
@@ -91,6 +90,9 @@ builder.Services.AddScoped<ICategoryService, CategoryService>();
 // Inventory services
 builder.Services.AddScoped<IInventoryRepository, InventoryRepository>();
 builder.Services.AddScoped<IInventoryService, InventoryService>();
+
+// Database transaction coordination
+builder.Services.AddScoped<ITransactionManager, EfTransactionManager>();
 // Customer services
 builder.Services.AddScoped<ICustomerRepository, CustomerRepository>();
 builder.Services.AddScoped<ICustomerService, CustomerService>();
@@ -113,6 +115,7 @@ builder.Services.AddScoped<IActivityLogRepository, ActivityLogRepository>();
 builder.Services.AddScoped<IActivityLogService, ActivityLogService>();
 // User management services
 builder.Services.AddScoped<IUserManagementService, UserManagementService>();
+
 
 // API Controllers
 builder.Services.AddControllers();
@@ -142,6 +145,11 @@ builder.Services.AddTransient<CookieForwardingHandler>();
 // deployment fails loudly via a bad host rather than silently via null.
 var apiBaseUrl = new Uri(builder.Configuration["ApiBaseUrl"] ?? "https://localhost:7062/");
 
+builder.Services.AddHttpClient<CurrentBusinessService>(client =>
+{
+    client.BaseAddress = apiBaseUrl;
+})
+.AddHttpMessageHandler<CookieForwardingHandler>();
 // Business API client (calls this same app's own API endpoints)
 builder.Services.AddHttpClient<IBusinessApiService, BusinessApiService>(client =>
 {
@@ -218,6 +226,15 @@ builder.Services.AddHttpClient<IProfileApiService, ProfileApiService>(client =>
 {
     client.BaseAddress = apiBaseUrl;
 })
+.AddHttpMessageHandler<CookieForwardingHandler>();
+
+// Platform Administration API client
+builder.Services.AddHttpClient<
+    IPlatformBusinessApiService,
+    PlatformBusinessApiService>(client =>
+    {
+        client.BaseAddress = apiBaseUrl;
+    })
 .AddHttpMessageHandler<CookieForwardingHandler>();
 
 var app = builder.Build();

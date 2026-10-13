@@ -29,19 +29,42 @@ public class PurchaseController : ControllerBase
     [HttpGet("{businessId:guid}")]
     public async Task<IActionResult> GetPurchases(Guid businessId)
     {
-        var purchases = await _purchaseService.GetPurchasesAsync(businessId);
+        var currentUser = await _userManager.GetUserAsync(User);
+
+        if (currentUser is null || !currentUser.IsActive)
+            return Unauthorized();
+
+        if (currentUser.BusinessId != businessId)
+            return Forbid();
+
+        var purchases = await _purchaseService.GetPurchasesAsync(
+            currentUser.BusinessId);
+
         return Ok(purchases);
     }
-
     [HttpGet("{businessId:guid}/{id:guid}")]
-    public async Task<IActionResult> GetPurchaseById(Guid businessId, Guid id)
+    public async Task<IActionResult> GetPurchaseById(
+        Guid businessId,
+        Guid id)
     {
-        var purchase = await _purchaseService.GetPurchaseByIdAsync(businessId, id);
+        var currentUser = await _userManager.GetUserAsync(User);
+
+        if (currentUser is null || !currentUser.IsActive)
+            return Unauthorized();
+
+        if (currentUser.BusinessId == Guid.Empty ||
+            currentUser.BusinessId != businessId)
+            return Forbid();
+
+        var purchase = await _purchaseService.GetPurchaseByIdAsync(
+            currentUser.BusinessId,
+            id);
+
         if (purchase is null)
-        {
             return NotFound();
-        }
+
         var items = await _purchaseService.GetPurchaseItemsAsync(id);
+
         return Ok(new { purchase, items });
     }
 
@@ -60,17 +83,25 @@ public class PurchaseController : ControllerBase
     }
 
     [HttpPost]
-    public async Task<IActionResult> CreatePurchase(CreatePurchaseRequest request)
+    public async Task<IActionResult> CreatePurchase(
+        CreatePurchaseRequest request)
     {
+        var currentUser = await _userManager.GetUserAsync(User);
+
+        if (currentUser is null || !currentUser.IsActive)
+            return Unauthorized();
+
+        if (currentUser.BusinessId == Guid.Empty ||
+            currentUser.BusinessId != request.BusinessId)
+            return Forbid();
+
         if (request.Items is null || request.Items.Count == 0)
-        {
             return BadRequest("A purchase must have at least one item.");
-        }
 
         try
         {
             var purchase = await _purchaseService.CreatePurchaseAsync(
-                request.BusinessId,
+                currentUser.BusinessId,
                 request.SupplierId,
                 request.Items,
                 request.PaymentMethod,
@@ -80,16 +111,21 @@ public class PurchaseController : ControllerBase
                 request.Status,
                 request.PurchaseDate,
                 request.Notes);
-            var currentUser = await _userManager.GetUserAsync(User);
-            if (currentUser is not null)
-            {
-                await _activityLogService.LogAsync(
-                    request.BusinessId, currentUser.Id, currentUser.FullName,
-                    "Created Purchase", "Purchase", purchase.Id,
-                    $"{request.Items.Count} item(s) — Total: {purchase.TotalAmount:N2} ({request.PaymentMethod})");
-            }
 
-            return CreatedAtAction(nameof(GetPurchases), new { businessId = purchase.BusinessId }, purchase);
+            await _activityLogService.LogAsync(
+                currentUser.BusinessId,
+                currentUser.Id,
+                currentUser.FullName,
+                "Created Purchase",
+                "Purchase",
+                purchase.Id,
+                $"{request.Items.Count} item(s) — Total: " +
+                $"{purchase.TotalAmount:N2} ({request.PaymentMethod})");
+
+            return CreatedAtAction(
+                nameof(GetPurchases),
+                new { businessId = currentUser.BusinessId },
+                purchase);
         }
         catch (InvalidOperationException ex)
         {
@@ -113,24 +149,25 @@ public class PurchaseController : ControllerBase
     {
         var currentUser = await _userManager.GetUserAsync(User);
 
-        if (currentUser is null)
+        if (currentUser is null || !currentUser.IsActive)
         {
             return Unauthorized();
         }
 
-        if (currentUser.BusinessId != businessId)
+        if (currentUser.BusinessId == Guid.Empty ||
+            currentUser.BusinessId != businessId)
         {
             return Forbid();
         }
 
         var (succeeded, error) =
-            await _purchaseService.MarkAsPaidAsync(
-                businessId,
-                id,
-                request.PaymentMethod,
-                request.PaymentSource,
-                request.ReferenceNumber,
-                request.BankName);
+await _purchaseService.MarkAsPaidAsync(
+    currentUser.BusinessId,
+    id,
+    request.PaymentMethod,
+    request.PaymentSource,
+    request.ReferenceNumber,
+    request.BankName);
 
         if (!succeeded)
         {

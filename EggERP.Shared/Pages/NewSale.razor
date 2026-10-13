@@ -1,11 +1,16 @@
-﻿@page "/sales/new"
+﻿
+@page "/sales/new"
+@attribute [Authorize(Roles = "Admin,Manager,Staff")]
+
 @using EggERP.Shared.Models
 @using EggERP.Shared.Services
+
 @inject ISaleApiService SaleApiService
 @inject IProductApiService ProductApiService
 @inject ICustomerApiService CustomerApiService
 @inject IFlockApiService FlockApiService
 @inject IEggApiService EggApiService
+@inject CurrentBusinessService CurrentBusinessService
 @inject NavigationManager Navigation
 @inject IJSRuntime JsRuntime
 
@@ -14,13 +19,27 @@
 @if (fromFlockOrEggRedirect)
 {
     <div class="alert alert-info">
-        Completing this sale will record the removal for the flock/egg stock you selected.
+        Completing this sale will record the removal for the
+        flock/egg stock you selected.
     </div>
 }
 
 @if (isLoading)
 {
     <p>Loading...</p>
+}
+else if (!string.IsNullOrWhiteSpace(loadError) ||
+         businessId == Guid.Empty)
+{
+    <div class="alert alert-danger">
+        @(loadError ?? "Unable to identify the current business.")
+    </div>
+
+    <button type="button"
+            class="btn btn-secondary"
+            @onclick="GoBackToSales">
+        Back to Sales
+    </button>
 }
 else
 {
@@ -30,6 +49,7 @@ else
         <select class="form-select"
                 @bind="selectedCustomerId"
                 disabled="@isSaving">
+
             <option value="">Walk-in (no customer)</option>
 
             @foreach (var customer in customers)
@@ -64,6 +84,7 @@ else
                                     @bind="line.ProductId"
                                     @bind:after="() => OnProductChanged(line)"
                                     disabled="@isSaving">
+
                                 <option value="">Select product</option>
 
                                 @foreach (var product in products)
@@ -224,6 +245,10 @@ else
 }
 
 @code {
+    private void GoBackToSales()
+    {
+        Navigation.NavigateTo("/sales");
+    }
     [SupplyParameterFromQuery(Name = "productId")]
     private string? QueryProductId { get; set; }
 
@@ -243,14 +268,17 @@ else
 
     private Dictionary<Guid, int> stockOnHand = new();
 
-    private string selectedCustomerId = string.Empty;
+    private Guid businessId = Guid.Empty;
 
+    private string selectedCustomerId = string.Empty;
     private string paymentMethod = "Cash";
     private string status = "Paid";
 
     private string? bankName;
     private string? referenceNumber;
     private string? notes;
+    private string? errorMessage;
+    private string? loadError;
 
     private DateTime transactionDate = DateTime.Today;
 
@@ -258,61 +286,68 @@ else
     private bool isSaving;
     private bool fromFlockOrEggRedirect;
 
-    private string? errorMessage;
-
-    private readonly Guid businessId =
-        Guid.Parse("11111111-1111-1111-1111-111111111111");
-
     private decimal TotalAmount =>
         lines.Sum(l => l.Quantity * l.UnitPrice);
 
     protected override async Task OnInitializedAsync()
     {
-        products =
-            await ProductApiService.GetProductsAsync();
-
-        customers =
-            await CustomerApiService.GetCustomersAsync(
-                businessId);
-
-        var flockBoard =
-            await FlockApiService.GetBoardAsync();
-
-        var eggBoard =
-            await EggApiService.GetBoardAsync();
-
-        foreach (var row in flockBoard.Concat(eggBoard))
+        try
         {
-            stockOnHand[row.ProductId] =
-                row.Available;
-        }
+            businessId =
+                await CurrentBusinessService.GetBusinessIdAsync();
 
-        if (!string.IsNullOrWhiteSpace(QueryProductId) &&
-            Guid.TryParse(QueryProductId, out var productId) &&
-            products.Any(p => p.Id == productId))
-        {
-            var line = new SaleLine
+            if (businessId == Guid.Empty)
             {
-                ProductId = QueryProductId,
+                loadError = "Unable to identify the current business.";
+                return;
+            }
 
-                Quantity =
-                    QueryQty is > 0
+            products =
+                await ProductApiService.GetProductsAsync();
+
+            customers =
+                await CustomerApiService.GetCustomersAsync(businessId);
+
+            var flockBoard =
+                await FlockApiService.GetBoardAsync();
+
+            var eggBoard =
+                await EggApiService.GetBoardAsync();
+
+            foreach (var row in flockBoard.Concat(eggBoard))
+            {
+                stockOnHand[row.ProductId] = row.Available;
+            }
+
+            if (!string.IsNullOrWhiteSpace(QueryProductId) &&
+                Guid.TryParse(QueryProductId, out var productId) &&
+                products.Any(p => p.Id == productId))
+            {
+                var line = new SaleLine
+                {
+                    ProductId = QueryProductId,
+                    Quantity = QueryQty is > 0
                         ? QueryQty.Value
                         : 1
-            };
+                };
 
-            OnProductChanged(line);
-
-            lines.Add(line);
-
-            fromFlockOrEggRedirect = true;
+                OnProductChanged(line);
+                lines.Add(line);
+                fromFlockOrEggRedirect = true;
+            }
+            else
+            {
+                lines.Add(new SaleLine());
+            }
         }
-        else
+        catch (Exception ex)
         {
-            lines.Add(new SaleLine());
+            loadError = $"Failed to load sale data: {ex.Message}";
         }
-
-        isLoading = false;
+        finally
+        {
+            isLoading = false;
+        }
     }
 
     private int GetStock(string productId)
@@ -327,36 +362,24 @@ else
 
     private string GetDescription(string productId)
     {
-        if (!Guid.TryParse(
-                productId,
-                out var id))
-        {
+        if (!Guid.TryParse(productId, out var id))
             return string.Empty;
-        }
 
         return products
             .FirstOrDefault(p => p.Id == id)
-            ?.Description
-            ?? string.Empty;
+            ?.Description ?? string.Empty;
     }
 
     private void OnProductChanged(SaleLine line)
     {
-        if (!Guid.TryParse(
-                line.ProductId,
-                out var productId))
-        {
+        if (!Guid.TryParse(line.ProductId, out var productId))
             return;
-        }
 
-        var product =
-            products.FirstOrDefault(
-                p => p.Id == productId);
+        var product = products.FirstOrDefault(p => p.Id == productId);
 
         if (product is not null)
         {
-            line.UnitPrice =
-                product.SellingPrice;
+            line.UnitPrice = product.SellingPrice;
         }
     }
 
@@ -395,10 +418,9 @@ else
         if (isSaving)
             return;
 
-        var confirmed =
-            await JsRuntime.InvokeAsync<bool>(
-                "confirm",
-                "Discard this sale and go back? Unsaved changes will be lost.");
+        var confirmed = await JsRuntime.InvokeAsync<bool>(
+            "confirm",
+            "Discard this sale and go back? Unsaved changes will be lost.");
 
         if (confirmed)
         {
@@ -413,48 +435,53 @@ else
 
         errorMessage = null;
 
-        var enteredLines =
-            lines.Where(l =>
-                    !string.IsNullOrWhiteSpace(
-                        l.ProductId))
-                .ToList();
+        if (businessId == Guid.Empty)
+        {
+            errorMessage = "Unable to identify the current business.";
+            return;
+        }
+
+        var enteredLines = lines
+            .Where(l => !string.IsNullOrWhiteSpace(l.ProductId))
+            .ToList();
 
         if (enteredLines.Count == 0)
         {
-            errorMessage =
-                "Add at least one valid sale line.";
+            errorMessage = "Add at least one valid sale line.";
+            return;
+        }
+
+        if (enteredLines.Any(l => l.Quantity <= 0 || l.Quantity > 9999))
+        {
+            errorMessage = "Quantity must be between 1 and 9,999.";
+            return;
+        }
+
+        if (enteredLines.Any(l => l.UnitPrice < 0))
+        {
+            errorMessage = "Unit price cannot be negative.";
             return;
         }
 
         if (enteredLines.Any(l =>
-                l.Quantity <= 0))
+                !Guid.TryParse(l.ProductId, out var productId) ||
+                !products.Any(p => p.Id == productId)))
         {
-            errorMessage =
-                "Quantity must be greater than zero.";
+            errorMessage = "One or more selected products are invalid.";
             return;
         }
 
-        if (enteredLines.Any(l =>
-                l.Quantity > 9999))
+        if (enteredLines
+            .GroupBy(l => l.ProductId)
+            .Any(g => g.Count() > 1))
         {
-            errorMessage =
-                "Quantity cannot exceed 9,999 per line.";
+            errorMessage = "A product cannot appear more than once in a sale.";
             return;
         }
 
-        if (enteredLines.Any(l =>
-                l.UnitPrice < 0))
+        if (status != "Paid" && status != "Pending")
         {
-            errorMessage =
-                "Unit price cannot be negative.";
-            return;
-        }
-
-        if (status != "Paid" &&
-            status != "Pending")
-        {
-            errorMessage =
-                "Status must be Paid or Pending.";
+            errorMessage = "Status must be Paid or Pending.";
             return;
         }
 
@@ -467,75 +494,57 @@ else
             return;
         }
 
-        Guid? customerId =
-            Guid.TryParse(
-                selectedCustomerId,
-                out var parsedCustomerId)
-                ? parsedCustomerId
-                : null;
+        Guid? customerId = null;
 
-        var request =
-            new CreateSaleRequest
+        if (!string.IsNullOrWhiteSpace(selectedCustomerId))
+        {
+            if (!Guid.TryParse(selectedCustomerId, out var parsedId) ||
+                !customers.Any(c => c.Id == parsedId))
             {
-                BusinessId =
-                    businessId,
+                errorMessage = "Invalid customer selected.";
+                return;
+            }
 
-                CustomerId =
-                    customerId,
+            customerId = parsedId;
+        }
 
-                Items =
-                    enteredLines.Select(l =>
-                        new CreateSaleItemInput
-                        {
-                            ProductId =
-                                Guid.Parse(l.ProductId),
-
-                            Quantity =
-                                l.Quantity,
-
-                            UnitPrice =
-                                l.UnitPrice
-                        }).ToList(),
-
-                PaymentMethod =
-                    paymentMethod,
-
-                PaymentSource =
-                    paymentMethod == "Cash"
-                        ? null
-                        : bankName?.Trim(),
-
-                ReferenceNumber =
-                    paymentMethod == "Cash"
-                        ? null
-                        : referenceNumber?.Trim(),
-
-                Status =
-                    status,
-
-                SaleDate =
-                    transactionDate,
-
-                Notes =
-                    string.IsNullOrWhiteSpace(notes)
-                        ? null
-                        : notes.Trim()
-            };
+        var request = new CreateSaleRequest
+        {
+            BusinessId = businessId,
+            CustomerId = customerId,
+            Items = enteredLines.Select(l => new CreateSaleItemInput
+            {
+                ProductId = Guid.Parse(l.ProductId),
+                Quantity = l.Quantity,
+                UnitPrice = l.UnitPrice
+            }).ToList(),
+            PaymentMethod = paymentMethod,
+            PaymentSource = paymentMethod == "Cash"
+                ? null
+                : bankName?.Trim(),
+            ReferenceNumber = paymentMethod == "Cash"
+                ? null
+                : referenceNumber?.Trim(),
+            Status = status,
+            SaleDate = transactionDate,
+            Notes = string.IsNullOrWhiteSpace(notes)
+                ? null
+                : notes.Trim()
+        };
 
         isSaving = true;
 
         try
         {
-            await SaleApiService
-                .CreateSaleAsync(request);
-
+            await SaleApiService.CreateSaleAsync(request);
             Navigation.NavigateTo("/sales");
         }
         catch (Exception ex)
         {
-            errorMessage =
-                $"Failed to save sale: {ex.Message}";
-
+            errorMessage = $"Failed to save sale: {ex.Message}";
+        }
+        finally
+        {
             isSaving = false;
         }
     }

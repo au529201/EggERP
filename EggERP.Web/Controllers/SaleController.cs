@@ -29,20 +29,18 @@ public class SaleController : ControllerBase
     [HttpGet("{businessId:guid}")]
     public async Task<IActionResult> GetSales(Guid businessId)
     {
-        var sales = await _saleService.GetSalesAsync(businessId);
-        return Ok(sales);
-    }
+        var currentUser = await _userManager.GetUserAsync(User);
 
-    [HttpGet("{businessId:guid}/{id:guid}")]
-    public async Task<IActionResult> GetSaleById(Guid businessId, Guid id)
-    {
-        var sale = await _saleService.GetSaleByIdAsync(businessId, id);
-        if (sale is null)
-        {
-            return NotFound();
-        }
-        var items = await _saleService.GetSaleItemsAsync(id);
-        return Ok(new { sale, items });
+        if (currentUser is null || !currentUser.IsActive)
+            return Unauthorized();
+
+        if (currentUser.BusinessId != businessId)
+            return Forbid();
+
+        var sales = await _saleService.GetSalesAsync(
+            currentUser.BusinessId);
+
+        return Ok(sales);
     }
 
     public class CreateSaleRequest
@@ -61,15 +59,24 @@ public class SaleController : ControllerBase
     [HttpPost]
     public async Task<IActionResult> CreateSale(CreateSaleRequest request)
     {
+        var currentUser = await _userManager.GetUserAsync(User);
+
+        if (currentUser is null || !currentUser.IsActive)
+            return Unauthorized();
+
+        if (currentUser.BusinessId == Guid.Empty)
+            return Forbid();
+
+        if (request.BusinessId != currentUser.BusinessId)
+            return Forbid();
+
         if (request.Items is null || request.Items.Count == 0)
-        {
             return BadRequest("A sale must have at least one item.");
-        }
 
         try
         {
             var sale = await _saleService.CreateSaleAsync(
-                request.BusinessId,
+                currentUser.BusinessId,
                 request.CustomerId,
                 request.Items,
                 request.PaymentMethod,
@@ -79,16 +86,19 @@ public class SaleController : ControllerBase
                 request.SaleDate,
                 request.Notes);
 
-            var currentUser = await _userManager.GetUserAsync(User);
-            if (currentUser is not null)
-            {
-                await _activityLogService.LogAsync(
-                    request.BusinessId, currentUser.Id, currentUser.FullName,
-                    "Created Sale", "Sale", sale.Id,
-                    $"{request.Items.Count} item(s) — Total: {sale.TotalAmount:N2} ({request.PaymentMethod})");
-            }
+            await _activityLogService.LogAsync(
+                currentUser.BusinessId,
+                currentUser.Id,
+                currentUser.FullName,
+                "Created Sale",
+                "Sale",
+                sale.Id,
+                $"{request.Items.Count} item(s) — Total: {sale.TotalAmount:N2} ({request.PaymentMethod})");
 
-            return CreatedAtAction(nameof(GetSales), new { businessId = sale.BusinessId }, sale);
+            return CreatedAtAction(
+                nameof(GetSales),
+                new { businessId = currentUser.BusinessId },
+                sale);
         }
         catch (InvalidOperationException ex)
         {
@@ -111,23 +121,24 @@ public class SaleController : ControllerBase
     {
         var currentUser = await _userManager.GetUserAsync(User);
 
-        if (currentUser is null)
+        if (currentUser is null || !currentUser.IsActive)
         {
             return Unauthorized();
         }
 
-        if (currentUser.BusinessId != businessId)
+        if (currentUser.BusinessId == Guid.Empty ||
+            currentUser.BusinessId != businessId)
         {
             return Forbid();
         }
 
         var (succeeded, error) =
-            await _saleService.MarkAsPaidAsync(
-                businessId,
-                id,
-                request.PaymentMethod,
-                request.PaymentSource,
-                request.ReferenceNumber);
+await _saleService.MarkAsPaidAsync(
+    currentUser.BusinessId,
+    id,
+    request.PaymentMethod,
+    request.PaymentSource,
+    request.ReferenceNumber);
 
         if (!succeeded)
         {

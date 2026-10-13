@@ -1,4 +1,5 @@
-﻿using EggERP.Application.ActivityLogs;
+﻿
+using EggERP.Application.ActivityLogs;
 using EggERP.Application.Businesses;
 using EggERP.Domain.Entities;
 using EggERP.Infrastructure.Identity;
@@ -30,34 +31,49 @@ public class BusinessController : ControllerBase
     [HttpGet("{id:guid}")]
     public async Task<IActionResult> GetBusiness(Guid id)
     {
-        var business = await _businessService.GetBusinessAsync(id);
-        if (business is null)
-        {
-            return NotFound();
-        }
-        return Ok(business);
+        var currentUser = await _userManager.GetUserAsync(User);
+
+        if (currentUser is null || !currentUser.IsActive)
+            return Unauthorized();
+
+        if (id != currentUser.BusinessId)
+            return Forbid();
+
+        var business = await _businessService.GetBusinessAsync(
+            currentUser.BusinessId);
+
+        return business is null ? NotFound() : Ok(business);
     }
 
     [HttpPut("{id:guid}")]
-    public async Task<IActionResult> UpdateBusiness(Guid id, Business business)
+    public async Task<IActionResult> UpdateBusiness(
+        Guid id,
+        Business business)
     {
-        if (id != business.Id)
-        {
-            return BadRequest("Route id does not match business id in the request body.");
-        }
-        var updated = await _businessService.UpdateBusinessAsync(business);
-        if (!updated)
-        {
-            return NotFound();
-        }
-
         var currentUser = await _userManager.GetUserAsync(User);
-        if (currentUser is not null)
-        {
-            await _activityLogService.LogAsync(
-                id, currentUser.Id, currentUser.FullName,
-                "Updated Business Settings", "Business", id, null);
-        }
+
+        if (currentUser is null || !currentUser.IsActive)
+            return Unauthorized();
+
+        if (id != currentUser.BusinessId)
+            return Forbid();
+
+        if (business is null || business.Id != currentUser.BusinessId)
+            return BadRequest("Invalid business identifier.");
+
+        var updated = await _businessService.UpdateBusinessAsync(business);
+
+        if (!updated)
+            return NotFound();
+
+        await _activityLogService.LogAsync(
+            currentUser.BusinessId,
+            currentUser.Id,
+            currentUser.FullName,
+            "Updated Business Settings",
+            "Business",
+            currentUser.BusinessId,
+            null);
 
         return NoContent();
     }

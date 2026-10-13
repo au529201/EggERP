@@ -27,10 +27,38 @@ namespace EggERP.Shared.Services
 
         public async Task<List<SaleDto>> GetSalesAsync(Guid businessId)
         {
-            var result = await _http.GetFromJsonAsync<List<SaleDto>>(
-                $"api/sales/{businessId}");
+            if (businessId == Guid.Empty)
+            {
+                throw new InvalidOperationException(
+                    "A valid Business ID is required to load sales.");
+            }
 
-            return result ?? new List<SaleDto>();
+            var response = await _http.GetAsync($"api/sales/{businessId}");
+
+            if (!response.IsSuccessStatusCode)
+            {
+                var content = await response.Content.ReadAsStringAsync();
+
+                throw new HttpRequestException(
+                    $"Sales API failed. " +
+                    $"HTTP {(int)response.StatusCode} ({response.StatusCode}). " +
+                    $"Requested BusinessId: {businessId}. " +
+                    $"Response: {content[..Math.Min(content.Length, 300)]}");
+            }
+
+            var mediaType = response.Content.Headers.ContentType?.MediaType;
+
+            if (mediaType is null ||
+                !mediaType.Contains("json", StringComparison.OrdinalIgnoreCase))
+            {
+                throw new InvalidOperationException(
+                    $"Sales API returned unexpected content type: " +
+                    $"{mediaType ?? "unknown"}. " +
+                    $"Requested BusinessId: {businessId}.");
+            }
+
+            return await response.Content.ReadFromJsonAsync<List<SaleDto>>()
+                   ?? new List<SaleDto>();
         }
 
         public async Task CreateSaleAsync(CreateSaleRequest request)

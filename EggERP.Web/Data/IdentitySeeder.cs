@@ -1,94 +1,158 @@
-﻿using EggERP.Infrastructure.Identity;
+﻿
+using EggERP.Infrastructure.Identity;
 using Microsoft.AspNetCore.Identity;
 
 namespace EggERP.Web.Data;
 
 public static class IdentitySeeder
 {
-    // Matches the existing seeded Business row.
-    private static readonly Guid DefaultBusinessId = Guid.Parse("11111111-1111-1111-1111-111111111111");
+    private static readonly Guid DefaultBusinessId =
+        Guid.Parse("11111111-1111-1111-1111-111111111111");
 
     public static async Task SeedAsync(IServiceProvider services)
     {
-        var roleManager = services.GetRequiredService<RoleManager<IdentityRole<Guid>>>();
-        var userManager = services.GetRequiredService<UserManager<ApplicationUser>>();
-        var configuration = services.GetRequiredService<IConfiguration>();
-        var logger = services.GetRequiredService<ILoggerFactory>().CreateLogger("IdentitySeeder");
+        var roleManager = services.GetRequiredService<
+            RoleManager<IdentityRole<Guid>>>();
 
-        string[] roles = { "Admin", "Manager", "Staff" };
+        var userManager = services.GetRequiredService<
+            UserManager<ApplicationUser>>();
+
+        var configuration = services.GetRequiredService<
+            IConfiguration>();
+
+        var logger = services.GetRequiredService<
+            ILoggerFactory>().CreateLogger("IdentitySeeder");
+
+        string[] roles =
+        {
+            "PlatformAdmin",
+            "Admin",
+            "Manager",
+            "Staff"
+        };
+
         foreach (var role in roles)
         {
             if (!await roleManager.RoleExistsAsync(role))
             {
-                var roleResult = await roleManager.CreateAsync(new IdentityRole<Guid>(role));
-                if (!roleResult.Succeeded)
+                var result = await roleManager.CreateAsync(
+                    new IdentityRole<Guid>(role));
+
+                if (!result.Succeeded)
                 {
-                    logger.LogError("Failed to create role '{Role}': {Errors}", role,
-                        string.Join("; ", roleResult.Errors.Select(e => e.Description)));
+                    logger.LogError(
+                        "Unable to create role {Role}: {Errors}",
+                        role,
+                        string.Join("; ",
+                            result.Errors.Select(e => e.Description)));
+
+                    throw new InvalidOperationException(
+                        $"Unable to initialize role {role}.");
                 }
             }
         }
 
-        var seedEmail = configuration["Seed:AdminEmail"];
-        var seedPassword = configuration["Seed:AdminPassword"];
-        var seedFullName = configuration["Seed:AdminFullName"];
+        // Existing default Business Admin.
+        await SeedAccountAsync(
+            userManager,
+            logger,
+            configuration["Seed:AdminEmail"],
+            configuration["Seed:AdminPassword"],
+            configuration["Seed:AdminFullName"],
+            "Admin",
+            DefaultBusinessId);
 
-        if (string.IsNullOrWhiteSpace(seedEmail) || string.IsNullOrWhiteSpace(seedPassword))
+        // Platform-level Administrator.
+        // This account is not assigned to a business.
+        await SeedAccountAsync(
+            userManager,
+            logger,
+            configuration["PlatformAdmin:Email"],
+            configuration["PlatformAdmin:Password"],
+            configuration["PlatformAdmin:FullName"],
+            "PlatformAdmin",
+            Guid.Empty);
+    }
+
+    private static async Task SeedAccountAsync(
+        UserManager<ApplicationUser> userManager,
+        ILogger logger,
+        string? email,
+        string? password,
+        string? fullName,
+        string role,
+        Guid businessId)
+    {
+        if (string.IsNullOrWhiteSpace(email) ||
+            string.IsNullOrWhiteSpace(password))
         {
-            logger.LogWarning(
-                "Seed:AdminEmail / Seed:AdminPassword not configured — skipping admin seed. " +
-                "Set these via user-secrets (local) or environment/appsettings.Production.json (production).");
+            logger.LogInformation(
+                "Seeding skipped for {Role}: credentials not configured.",
+                role);
             return;
         }
 
-        await EnsureUserAsync(
-            userManager,
-            logger,
-            seedEmail,
-            seedPassword,
-            "Admin",
-            businessId: DefaultBusinessId,
-            fullName: string.IsNullOrWhiteSpace(seedFullName) ? seedEmail : seedFullName);
-    }
+        email = email.Trim().ToLowerInvariant();
 
-    private static async Task EnsureUserAsync(
-        UserManager<ApplicationUser> userManager,
-        ILogger logger,
-        string email,
-        string password,
-        string role,
-        Guid businessId,
-        string fullName)
-    {
         var existing = await userManager.FindByEmailAsync(email);
+
         if (existing is not null)
         {
+            // Never silently grant PlatformAdmin to an
+            // existing business user.
+            if (!await userManager.IsInRoleAsync(existing, role))
+            {
+                logger.LogWarning(
+                    "Account {Email} exists but is not assigned {Role}. " +
+                    "No automatic role change was performed.",
+                    email, role);
+            }
+
             return;
         }
 
         var user = new ApplicationUser
         {
+            Id = Guid.NewGuid(),
             UserName = email,
             Email = email,
             EmailConfirmed = true,
             BusinessId = businessId,
-            FullName = fullName,
+            FullName = string.IsNullOrWhiteSpace(fullName)
+                ? email
+                : fullName.Trim(),
             IsActive = true
         };
 
         var result = await userManager.CreateAsync(user, password);
+
         if (!result.Succeeded)
         {
-            logger.LogError("Failed to create seed user '{Email}': {Errors}", email,
-                string.Join("; ", result.Errors.Select(e => e.Description)));
+            logger.LogError(
+                "Unable to seed {Role}: {Errors}",
+                role,
+                string.Join("; ",
+                    result.Errors.Select(e => e.Description)));
             return;
         }
 
         var roleResult = await userManager.AddToRoleAsync(user, role);
+
         if (!roleResult.Succeeded)
         {
-            logger.LogError("Failed to assign role '{Role}' to '{Email}': {Errors}", role, email,
-                string.Join("; ", roleResult.Errors.Select(e => e.Description)));
+            logger.LogError(
+                "Unable to assign {Role}: {Errors}",
+                role,
+                string.Join("; ",
+                    roleResult.Errors.Select(e => e.Description)));
+
+            var cleanup = await userManager.DeleteAsync(user);
+
+            if (!cleanup.Succeeded)
+            {
+                logger.LogError(
+                    "Unable to clean up account after role failure.");
+            }
         }
     }
 }

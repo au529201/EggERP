@@ -2,6 +2,7 @@
 @attribute [Authorize]
 @using EggERP.Shared.Models
 @using EggERP.Shared.Services
+@using System.Security.Claims
 @inject ISaleApiService SaleApiService
 @inject IPurchaseApiService PurchaseApiService
 @inject IExpenseApiService ExpenseApiService
@@ -10,12 +11,26 @@
 @inject IInventoryApiService InventoryApiService
 @inject ICustomerApiService CustomerApiService
 @inject ISupplierApiService SupplierApiService
+@inject AuthenticationStateProvider AuthenticationStateProvider
+@inject NavigationManager NavigationManager
+@inject CurrentBusinessService CurrentBusiness
+
 
 <PageTitle>EggERP Dashboard</PageTitle>
 
-@if (isLoading)
+@if (isPlatformAdmin)
+{
+    <p>Redirecting to Platform Administration...</p>
+}
+else if (isLoading)
 {
     <p>Loading...</p>
+}
+else if (!string.IsNullOrWhiteSpace(dashboardError))
+{
+    <div class="alert alert-warning" role="alert">
+        @dashboardError
+    </div>
 }
 else
 {
@@ -230,6 +245,15 @@ else
 }
 
 @code {
+    protected override void OnAfterRender(bool firstRender)
+    {
+        if (firstRender && isPlatformAdmin)
+        {
+            NavigationManager.NavigateTo(
+                "/platform/businesses",
+                forceLoad: true);
+        }
+    }
     private class DailyPoint
     {
         public string Label { get; set; } = string.Empty;
@@ -270,10 +294,36 @@ else
 
     private List<TransactionRow> recentTransactions = new();
 
-    private readonly Guid businessId = Guid.Parse("11111111-1111-1111-1111-111111111111");
+    private Guid businessId;
+    private string? dashboardError;
+
+    private bool isPlatformAdmin;
 
     protected override async Task OnInitializedAsync()
     {
+        var authState = await AuthenticationStateProvider
+            .GetAuthenticationStateAsync();
+
+        isPlatformAdmin = authState.User.IsInRole("PlatformAdmin");
+
+        if (isPlatformAdmin)
+        {
+            isLoading = false;
+            return;
+        }
+
+        // Get the authenticated user's business ID.
+        try
+        {
+            businessId = await CurrentBusiness.GetBusinessIdAsync();
+        }
+        catch (Exception ex)
+        {
+            dashboardError = $"Unable to load your business: {ex.Message}";
+            isLoading = false;
+            return;
+        }
+
         var sales = await SaleApiService.GetSalesAsync(businessId);
         var purchases = await PurchaseApiService.GetPurchasesAsync(businessId);
         var expenses = await ExpenseApiService.GetExpensesAsync(businessId);
