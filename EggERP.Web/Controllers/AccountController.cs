@@ -6,7 +6,8 @@ using Microsoft.AspNetCore.WebUtilities;
 using System.Text;
 using Microsoft.AspNetCore.Antiforgery;
 using System.Net;
-
+using EggERP.Infrastructure.Persistence;
+using Microsoft.EntityFrameworkCore;
 namespace EggERP.Web.Controllers;
 
 public class AccountController : ControllerBase
@@ -16,19 +17,21 @@ public class AccountController : ControllerBase
     private readonly IEmailSender _emailSender;
     private readonly IConfiguration _configuration;
     private readonly IAntiforgery _antiforgery;
-
+    private readonly EggERPDbContext _db;
     public AccountController(
         SignInManager<ApplicationUser> signInManager,
         UserManager<ApplicationUser> userManager,
         IEmailSender emailSender,
         IConfiguration configuration,
-        IAntiforgery antiforgery)
+        IAntiforgery antiforgery,
+        EggERPDbContext db)
     {
         _signInManager = signInManager;
         _userManager = userManager;
         _emailSender = emailSender;
         _configuration = configuration;
         _antiforgery = antiforgery;
+        _db = db;
     }
     private string GetAntiforgeryField()
     {
@@ -334,7 +337,30 @@ public class AccountController : ControllerBase
             return Redirect("/Account/Login?error=Please set your password using the link in your invitation email before logging in.");
         }
 
-        var result = await _signInManager.PasswordSignInAsync(user, password, isPersistent: true, lockoutOnFailure: true);
+        // PlatformAdmin is not restricted to an individual farm.
+        var isPlatformAdmin =
+            await _userManager.IsInRoleAsync(user, "PlatformAdmin");
+
+        if (!isPlatformAdmin)
+        {
+            var businessIsActive = await _db.Businesses
+                .AsNoTracking()
+                .AnyAsync(b =>
+                    b.Id == user.BusinessId &&
+                    b.IsActive);
+
+            if (!businessIsActive)
+            {
+                return Redirect(
+                    "/Account/Login?error=This business is currently unavailable. Please contact your platform administrator.");
+            }
+        }
+
+        var result = await _signInManager.PasswordSignInAsync(
+            user,
+            password,
+            isPersistent: true,
+            lockoutOnFailure: true);
         if (result.IsLockedOut)
         {
             return Redirect("/Account/Login?error=This account has been deactivated.");
@@ -346,7 +372,7 @@ public class AccountController : ControllerBase
 
         if (await _userManager.IsInRoleAsync(user, "PlatformAdmin"))
         {
-            return Redirect("/platform/businesses");
+            return Redirect("/platform");
         }
 
         return Redirect("/");

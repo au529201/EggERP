@@ -9,6 +9,7 @@ namespace EggERP.Web.Controllers;
 [ApiController]
 [Route("api/flocks")]
 [Authorize]
+[Authorize(Policy = "ActiveBusiness")]
 public class FlockController : ControllerBase
 {
     private const string Group = "Flock";

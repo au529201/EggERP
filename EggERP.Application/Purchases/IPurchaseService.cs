@@ -15,7 +15,9 @@ public interface IPurchaseService
 
     Task<Purchase?> GetPurchaseByIdAsync(Guid businessId, Guid id);
 
-    Task<List<PurchaseItem>> GetPurchaseItemsAsync(Guid purchaseId);
+    Task<List<PurchaseItem>> GetPurchaseItemsAsync(
+        Guid businessId,
+        Guid purchaseId);
 
     Task<Purchase> CreatePurchaseAsync(
         Guid businessId,

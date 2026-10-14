@@ -11,6 +11,7 @@ namespace EggERP.Web.Controllers;
 
 [ApiController]
 [Authorize(Roles = "Admin,Manager,Staff")]
+[Authorize(Policy = "ActiveBusiness")]
 [Route("api/customers")]
 public class CustomerController : ControllerBase
 {

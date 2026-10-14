@@ -10,6 +10,7 @@ namespace EggERP.Web.Controllers;
 [ApiController]
 [Route("api/sales")]
 [Authorize(Roles = "Admin,Manager,Staff")]
+[Authorize(Policy = "ActiveBusiness")]
 public class SaleController : ControllerBase
 {
     private readonly ISaleService _saleService;

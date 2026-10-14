@@ -55,9 +55,30 @@ public class SaleRepository : ISaleRepository
         return sale;
     }
 
-    public async Task UpdateAsync(Sale sale)
+
+    public async Task<bool> TryMarkAsPaidAsync(
+        Guid businessId,
+        Guid saleId,
+        string paymentMethod,
+        string? paymentSource,
+        string? referenceNumber)
     {
-        _dbContext.Sales.Update(sale);
-        await _dbContext.SaveChangesAsync();
+        if (businessId == Guid.Empty || saleId == Guid.Empty)
+            return false;
+
+        var affectedRows = await _dbContext.Sales
+            .Where(s =>
+                s.BusinessId == businessId &&
+                s.Id == saleId &&
+                s.Status == "Pending")
+            .ExecuteUpdateAsync(setters => setters
+                .SetProperty(s => s.Status, "Paid")
+                .SetProperty(s => s.PaymentMethod, paymentMethod)
+                .SetProperty(s => s.PaymentSource, paymentSource)
+                .SetProperty(s => s.ReferenceNumber, referenceNumber)
+                .SetProperty(s => s.UpdatedAtUtc, DateTime.UtcNow));
+
+        return affectedRows == 1;
     }
+
 }

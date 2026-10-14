@@ -1,4 +1,5 @@
-﻿using EggERP.Application.Purchases;
+﻿
+using EggERP.Application.Purchases;
 using EggERP.Domain.Entities;
 using EggERP.Infrastructure.Persistence;
 using Microsoft.EntityFrameworkCore;
@@ -25,16 +26,21 @@ public class PurchaseRepository : IPurchaseRepository
     public Task<Purchase?> GetByIdAsync(Guid businessId, Guid id)
     {
         return _dbContext.Purchases
-            .FirstOrDefaultAsync(
-                p => p.BusinessId == businessId &&
-                     p.Id == id);
+            .FirstOrDefaultAsync(p =>
+                p.BusinessId == businessId &&
+                p.Id == id);
     }
 
     public Task<List<PurchaseItem>> GetItemsByPurchaseIdAsync(
+        Guid businessId,
         Guid purchaseId)
     {
         return _dbContext.PurchaseItems
-            .Where(pi => pi.PurchaseId == purchaseId)
+            .Where(pi =>
+                pi.PurchaseId == purchaseId &&
+                _dbContext.Purchases.Any(p =>
+                    p.Id == pi.PurchaseId &&
+                    p.BusinessId == businessId))
             .ToListAsync();
     }
 
@@ -50,9 +56,30 @@ public class PurchaseRepository : IPurchaseRepository
         return purchase;
     }
 
-    public async Task UpdateAsync(Purchase purchase)
+    public async Task<bool> TryMarkAsPaidAsync(
+        Guid businessId,
+        Guid purchaseId,
+        string paymentMethod,
+        string? paymentSource,
+        string? referenceNumber,
+        string? bankName)
     {
-        _dbContext.Purchases.Update(purchase);
-        await _dbContext.SaveChangesAsync();
+        if (businessId == Guid.Empty || purchaseId == Guid.Empty)
+            return false;
+
+        var affectedRows = await _dbContext.Purchases
+            .Where(p =>
+                p.BusinessId == businessId &&
+                p.Id == purchaseId &&
+                p.Status == "Pending")
+            .ExecuteUpdateAsync(setters => setters
+                .SetProperty(p => p.Status, "Paid")
+                .SetProperty(p => p.PaymentMethod, paymentMethod)
+                .SetProperty(p => p.PaymentSource, paymentSource)
+                .SetProperty(p => p.ReferenceNumber, referenceNumber)
+                .SetProperty(p => p.BankName, bankName)
+                .SetProperty(p => p.UpdatedAtUtc, DateTime.UtcNow));
+
+        return affectedRows == 1;
     }
 }

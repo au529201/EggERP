@@ -3,18 +3,19 @@
 @attribute [Authorize(Roles = "PlatformAdmin")]
 @rendermode InteractiveServer
 
-@using System.Net.Http.Json
 @using EggERP.Shared.Services
 @inject IPlatformBusinessApiService PlatformApi
 
 <PageTitle>Platform Administration - EzEggERP</PageTitle>
 
 <div class="container-fluid py-3">
+
     <div class="d-flex flex-wrap justify-content-between align-items-center mb-4">
         <div>
             <h2 class="mb-1">Platform Administration</h2>
             <p class="text-muted mb-0">
-                Manage EzEggERP businesses and owner invitations.
+                Manage EzEggERP businesses, owner invitations,
+                and business access.
             </p>
         </div>
     </div>
@@ -31,12 +32,14 @@
         <div class="card-header">
             <strong>Invite New Business Owner</strong>
         </div>
+
         <div class="card-body">
             <EditForm Model="@form" OnValidSubmit="InviteOwner">
                 <DataAnnotationsValidator />
                 <ValidationSummary />
 
                 <div class="row g-3">
+
                     <div class="col-md-6">
                         <label class="form-label">Business Name *</label>
                         <InputText class="form-control"
@@ -79,19 +82,30 @@
                         <button type="submit"
                                 class="btn btn-primary"
                                 disabled="@submitting">
-                            @(submitting ? "Sending Invitation..." :
-                                "Create Business & Send Invitation")
+                            @(submitting
+                                ? "Sending Invitation..."
+                                : "Create Business & Send Invitation")
                         </button>
                     </div>
+
                 </div>
             </EditForm>
         </div>
     </div>
 
     <div class="card">
-        <div class="card-header">
+        <div class="card-header d-flex flex-wrap justify-content-between align-items-center gap-2">
             <strong>Registered Businesses</strong>
+
+            <button type="button"
+                    class="btn btn-sm btn-outline-secondary"
+                    disabled="@loading"
+                    @onclick="RefreshBusinesses">
+                <i class="bi bi-arrow-clockwise"></i>
+                Refresh
+            </button>
         </div>
+
         <div class="card-body">
             @if (loading)
             {
@@ -99,7 +113,7 @@
             }
             else if (businesses.Count == 0)
             {
-                <p class="text-muted">
+                <p class="text-muted mb-0">
                     No businesses found.
                 </p>
             }
@@ -113,27 +127,84 @@
                                 <th>Owner</th>
                                 <th>Email</th>
                                 <th>Invitation Status</th>
+                                <th>Business Status</th>
+                                <th>Actions</th>
                             </tr>
                         </thead>
+
                         <tbody>
                             @foreach (var business in businesses)
                             {
                                 <tr>
                                     <td>@business.BusinessName</td>
+
                                     <td>@business.OwnerName</td>
+
                                     <td>@business.OwnerEmail</td>
+
                                     <td>
-                                        @if (!business.OwnerEmailConfirmed)
+                                        @if (business.OwnerEmailConfirmed)
+                                        {
+                                            <span class="badge bg-success">
+                                                Activated
+                                            </span>
+                                        }
+                                        else
                                         {
                                             <span class="badge bg-warning text-dark">
                                                 Pending Invitation
                                             </span>
                                         }
-                                        else
+                                    </td>
+
+                                    <td>
+                                        @if (business.IsActive)
                                         {
                                             <span class="badge bg-success">
                                                 Active
                                             </span>
+                                        }
+                                        else
+                                        {
+                                            <span class="badge bg-danger">
+                                                Suspended
+                                            </span>
+                                        }
+                                    </td>
+
+                                    <td>
+                                        @if (pendingBusinessId == business.BusinessId)
+                                        {
+                                            <div class="d-flex flex-wrap gap-2 align-items-center">
+                                                <span class="small">
+                                                    @(business.IsActive
+                                                        ? "Suspend this business?"
+                                                        : "Reactivate this business?")
+                                                </span>
+
+                                                <button type="button"
+                                                        class="btn btn-sm @(business.IsActive ? "btn-danger" : "btn-success")"
+                                                        disabled="@updatingStatus"
+                                                        @onclick="() => ConfirmStatusChange(business)">
+                                                    @(updatingStatus ? "Saving..." : "Confirm")
+                                                </button>
+
+                                                <button type="button"
+                                                        class="btn btn-sm btn-outline-secondary"
+                                                        disabled="@updatingStatus"
+                                                        @onclick="CancelStatusChange">
+                                                    Cancel
+                                                </button>
+                                            </div>
+                                        }
+                                        else
+                                        {
+                                            <button type="button"
+                                                    class="btn btn-sm @(business.IsActive ? "btn-outline-danger" : "btn-outline-success")"
+                                                    disabled="@updatingStatus"
+                                                    @onclick="() => RequestStatusChange(business)">
+                                                @(business.IsActive ? "Suspend" : "Reactivate")
+                                            </button>
                                         }
                                     </td>
                                 </tr>
@@ -152,7 +223,10 @@
 
     private bool loading = true;
     private bool submitting;
+    private bool updatingStatus;
     private bool isError;
+
+    private Guid? pendingBusinessId;
     private string? message;
 
     protected override async Task OnInitializedAsync()
@@ -168,20 +242,29 @@
         {
             businesses = await PlatformApi.GetBusinessesAsync();
         }
-        catch (Exception)
-        {
-            isError = true;
-            message = "Unable to load businesses.";
-        }
+            catch (Exception ex)
+            {
+                businesses = new();
+                isError = true;
+                message = ex.Message;
+            }
         finally
         {
             loading = false;
         }
     }
 
+    private async Task RefreshBusinesses()
+    {
+        message = null;
+        pendingBusinessId = null;
+
+        await LoadBusinesses();
+    }
+
     private async Task InviteOwner()
     {
-        if (submitting)
+        if (submitting || updatingStatus)
             return;
 
         submitting = true;
@@ -197,6 +280,7 @@
                 message = "Business created and invitation sent.";
 
                 form = new CreatePlatformBusinessRequest();
+
                 await LoadBusinesses();
             }
             else
@@ -205,7 +289,7 @@
                 message = error;
             }
         }
-        catch (Exception)
+        catch
         {
             isError = true;
             message = "Unable to complete the invitation request.";
@@ -213,6 +297,71 @@
         finally
         {
             submitting = false;
+        }
+    }
+
+    private void RequestStatusChange(PlatformBusinessDto business)
+    {
+        if (updatingStatus)
+            return;
+
+        pendingBusinessId = business.BusinessId;
+        message = null;
+    }
+
+    private void CancelStatusChange()
+    {
+        if (updatingStatus)
+            return;
+
+        pendingBusinessId = null;
+    }
+
+    private async Task ConfirmStatusChange(
+        PlatformBusinessDto business)
+    {
+        if (updatingStatus ||
+            pendingBusinessId != business.BusinessId)
+        {
+            return;
+        }
+
+        updatingStatus = true;
+        message = null;
+
+        try
+        {
+            bool targetStatus = !business.IsActive;
+
+            var error = await PlatformApi.ChangeBusinessStatusAsync(
+                business.BusinessId,
+                targetStatus);
+
+            if (error is not null)
+            {
+                isError = true;
+                message = error;
+                return;
+            }
+
+            isError = false;
+
+            message = targetStatus
+                ? $"Business '{business.BusinessName}' reactivated successfully."
+                : $"Business '{business.BusinessName}' suspended successfully.";
+
+            pendingBusinessId = null;
+
+            await LoadBusinesses();
+        }
+        catch
+        {
+            isError = true;
+            message = "Unable to change business status.";
+        }
+        finally
+        {
+            updatingStatus = false;
         }
     }
 }

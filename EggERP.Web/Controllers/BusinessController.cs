@@ -12,6 +12,7 @@ namespace EggERP.Web.Controllers;
 [ApiController]
 [Route("api/business")]
 [Authorize(Roles = "Admin")]
+[Authorize(Policy = "ActiveBusiness")]
 public class BusinessController : ControllerBase
 {
     private readonly IBusinessService _businessService;

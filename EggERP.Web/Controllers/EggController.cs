@@ -9,6 +9,7 @@ namespace EggERP.Web.Controllers;
 [ApiController]
 [Route("api/eggs")]
 [Authorize]
+[Authorize(Policy = "ActiveBusiness")]
 public class EggController : ControllerBase
 {
     private const string Group = "Egg";

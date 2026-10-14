@@ -1,0 +1,160 @@
+﻿
+@page "/platform"
+@attribute [Authorize(Roles = "PlatformAdmin")]
+@rendermode InteractiveServer
+
+@using EggERP.Shared.Services
+@inject IPlatformBusinessApiService PlatformApi
+
+<PageTitle>Platform Dashboard - EzEggERP</PageTitle>
+
+<div class="container-fluid py-3">
+
+    <div class="mb-4">
+        <h2 class="mb-1">Platform Dashboard</h2>
+        <p class="text-muted">
+            Overview of registered EzEggERP businesses
+            and business owner invitations.
+        </p>
+    </div>
+
+    @if (loading)
+    {
+        <p>Loading platform information...</p>
+    }
+    else if (!string.IsNullOrEmpty(error))
+    {
+        <div class="alert alert-danger">
+            @error
+        </div>
+    }
+    else
+    {
+        <div class="row g-3 mb-4">
+
+            <div class="col-12 col-md-4">
+                <div class="card h-100">
+                    <div class="card-body">
+                        <div class="text-muted">
+                            Registered Businesses
+                        </div>
+                        <h2 class="mt-2 mb-0">
+                            @businesses.Count
+                        </h2>
+                    </div>
+                </div>
+            </div>
+
+            <div class="col-12 col-md-4">
+                <div class="card h-100">
+                    <div class="card-body">
+                        <div class="text-muted">
+                            Activated Owner Accounts
+                        </div>
+                        <h2 class="mt-2 mb-0">
+                            @businesses.Count(
+                                b => b.OwnerEmailConfirmed)
+                        </h2>
+                    </div>
+                </div>
+            </div>
+
+            <div class="col-12 col-md-4">
+                <div class="card h-100">
+                    <div class="card-body">
+                        <div class="text-muted">
+                            Pending Owner Invitations
+                        </div>
+                        <h2 class="mt-2 mb-0">
+                            @businesses.Count(
+                                b => !b.OwnerEmailConfirmed)
+                        </h2>
+                    </div>
+                </div>
+            </div>
+
+        </div>
+
+        <div class="card">
+            <div class="card-header d-flex flex-wrap
+                        justify-content-between align-items-center gap-2">
+                <strong>Registered Businesses</strong>
+
+                <a class="btn btn-primary btn-sm"
+                   href="/platform/businesses">
+                    Manage Businesses
+                </a>
+            </div>
+
+            <div class="card-body">
+                @if (businesses.Count == 0)
+                {
+                    <p class="text-muted mb-0">
+                        No businesses registered yet.
+                    </p>
+                }
+                else
+                {
+                    <div class="table-responsive">
+                        <table class="table table-striped align-middle">
+                            <thead>
+                                <tr>
+                                    <th>Business</th>
+                                    <th>Owner</th>
+                                    <th>Email</th>
+                                    <th>Invitation</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                @foreach (var business in businesses)
+                                {
+                                    <tr>
+                                        <td>@business.BusinessName</td>
+                                        <td>@business.OwnerName</td>
+                                        <td>@business.OwnerEmail</td>
+                                        <td>
+                                            @if (business.OwnerEmailConfirmed)
+                                            {
+                                                <span class="badge bg-success">
+                                                    Activated
+                                                </span>
+                                            }
+                                            else
+                                            {
+                                                <span class="badge bg-warning text-dark">
+                                                    Pending
+                                                </span>
+                                            }
+                                        </td>
+                                    </tr>
+                                }
+                            </tbody>
+                        </table>
+                    </div>
+                }
+            </div>
+        </div>
+    }
+</div>
+
+@code {
+    private List<PlatformBusinessDto> businesses = new();
+    private bool loading = true;
+    private string? error;
+
+    protected override async Task OnInitializedAsync()
+    {
+        try
+        {
+            businesses = await PlatformApi.GetBusinessesAsync();
+        }
+        catch
+        {
+            error = "Unable to load platform information.";
+        }
+        finally
+        {
+            loading = false;
+        }
+    }
+}

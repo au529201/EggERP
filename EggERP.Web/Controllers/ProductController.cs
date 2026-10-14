@@ -1,9 +1,12 @@
-﻿using EggERP.Application.ActivityLogs;
+﻿
+using EggERP.Application.ActivityLogs;
+using EggERP.Application.Categories;
 using EggERP.Application.Inventory;
 using EggERP.Application.Products;
 using EggERP.Domain.Entities;
 using EggERP.Infrastructure.Identity;
 using EggERP.Shared.Models;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
 
@@ -11,20 +14,25 @@ namespace EggERP.Web.Controllers;
 
 [ApiController]
 [Route("api/products")]
+[Authorize(Policy = "ActiveBusiness")]
+[Authorize(Roles = "Admin,Manager,Staff")]
 public class ProductController : ControllerBase
 {
     private readonly IProductService _productService;
+    private readonly ICategoryService _categoryService;
     private readonly IInventoryRepository _inventoryRepository;
     private readonly UserManager<ApplicationUser> _userManager;
     private readonly IActivityLogService _activityLogService;
 
     public ProductController(
         IProductService productService,
+        ICategoryService categoryService,
         IInventoryRepository inventoryRepository,
         UserManager<ApplicationUser> userManager,
         IActivityLogService activityLogService)
     {
         _productService = productService;
+        _categoryService = categoryService;
         _inventoryRepository = inventoryRepository;
         _userManager = userManager;
         _activityLogService = activityLogService;
@@ -33,26 +41,20 @@ public class ProductController : ControllerBase
     [HttpGet]
     public async Task<IActionResult> GetProducts()
     {
-        var currentUser =
-            await _userManager.GetUserAsync(User);
+        var user = await _userManager.GetUserAsync(User);
 
-        if (currentUser is null)
-        {
+        if (user is null)
             return Unauthorized();
-        }
 
-        var products =
-            await _productService.GetProductsAsync(
-                currentUser.BusinessId);
+        var products = await _productService
+            .GetProductsAsync(user.BusinessId);
 
-        var inventory =
-            await _inventoryRepository.GetByBusinessIdAsync(
-                currentUser.BusinessId);
+        var inventory = await _inventoryRepository
+            .GetByBusinessIdAsync(user.BusinessId);
 
-        var inventoryByProduct =
-            inventory.ToDictionary(
-                i => i.ProductId,
-                i => i);
+        var inventoryByProduct = inventory.ToDictionary(
+            i => i.ProductId,
+            i => i);
 
         var result = products.Select(product =>
         {
@@ -71,8 +73,7 @@ public class ProductController : ControllerBase
                 Unit = product.Unit,
                 CostPrice = product.CostPrice,
                 SellingPrice = product.SellingPrice,
-                ReorderLevel =
-                    inventoryRecord?.ReorderLevel ?? 0,
+                ReorderLevel = inventoryRecord?.ReorderLevel ?? 0,
                 IsActive = product.IsActive
             };
         });
@@ -83,28 +84,19 @@ public class ProductController : ControllerBase
     [HttpGet("{id:guid}")]
     public async Task<IActionResult> GetProductById(Guid id)
     {
-        var currentUser =
-            await _userManager.GetUserAsync(User);
+        var user = await _userManager.GetUserAsync(User);
 
-        if (currentUser is null)
-        {
+        if (user is null)
             return Unauthorized();
-        }
 
-        var product =
-            await _productService.GetProductByIdAsync(
-                currentUser.BusinessId,
-                id);
+        var product = await _productService
+            .GetProductByIdAsync(user.BusinessId, id);
 
         if (product is null)
-        {
             return NotFound();
-        }
 
-        var inventory =
-            await _inventoryRepository.GetByProductIdAsync(
-                currentUser.BusinessId,
-                id);
+        var inventory = await _inventoryRepository
+            .GetByProductIdAsync(user.BusinessId, id);
 
         var result = new ProductDetailDto
         {
@@ -126,49 +118,67 @@ public class ProductController : ControllerBase
     }
 
     [HttpPost]
-    public async Task<IActionResult> CreateProduct(Product product)
+    [Authorize(Roles = "Admin,Manager")]
+    public async Task<IActionResult> CreateProduct(
+        [FromBody] Product product)
     {
-        var currentUser =
-            await _userManager.GetUserAsync(User);
+        var user = await _userManager.GetUserAsync(User);
 
-        if (currentUser is null)
-        {
+        if (user is null)
             return Unauthorized();
+
+        if (product is null)
+            return BadRequest("Product details are required.");
+
+        if (product.CategoryId.HasValue &&
+            product.CategoryId.Value != Guid.Empty)
+        {
+            var category = await _categoryService
+                .GetCategoryByIdAsync(
+                    user.BusinessId,
+                    product.CategoryId.Value);
+
+            if (category is null)
+            {
+                return BadRequest(
+                    "The selected category does not belong to your business.");
+            }
         }
 
-        // Never trust BusinessId sent by the client.
-        product.BusinessId = currentUser.BusinessId;
+        // Never trust the BusinessId provided by the client.
+        product.BusinessId = user.BusinessId;
 
-        var createdProduct =
-            await _productService.CreateProductAsync(product);
+        var created = await _productService
+            .CreateProductAsync(product);
 
         await _activityLogService.LogAsync(
-            currentUser.BusinessId,
-            currentUser.Id,
-            currentUser.FullName,
+            user.BusinessId,
+            user.Id,
+            user.FullName,
             "Created Product",
             "Product",
-            createdProduct.Id,
-            createdProduct.Name);
+            created.Id,
+            created.Name);
 
         return CreatedAtAction(
             nameof(GetProductById),
-            new { id = createdProduct.Id },
-            createdProduct);
+            new { id = created.Id },
+            created);
     }
 
     [HttpPut("{id:guid}")]
+    [Authorize(Roles = "Admin,Manager")]
     public async Task<IActionResult> UpdateProduct(
         Guid id,
-        UpdateProductRequest request)
+        [FromBody] UpdateProductRequest request)
     {
-        var currentUser =
-            await _userManager.GetUserAsync(User);
+        var user = await _userManager.GetUserAsync(User);
 
-        if (currentUser is null)
-        {
+        if (user is null)
             return Unauthorized();
-        }
+
+        if (request is null)
+            return BadRequest("Product details are required.");
 
         if (id != request.Id)
         {
@@ -182,20 +192,31 @@ public class ProductController : ControllerBase
                 "Low stock warning cannot be negative.");
         }
 
-        var existingProduct =
-            await _productService.GetProductByIdAsync(
-                currentUser.BusinessId,
-                id);
+        var existing = await _productService
+            .GetProductByIdAsync(user.BusinessId, id);
 
-        if (existingProduct is null)
-        {
+        if (existing is null)
             return NotFound();
+
+        if (request.CategoryId.HasValue &&
+            request.CategoryId.Value != Guid.Empty)
+        {
+            var category = await _categoryService
+                .GetCategoryByIdAsync(
+                    user.BusinessId,
+                    request.CategoryId.Value);
+
+            if (category is null)
+            {
+                return BadRequest(
+                    "The selected category does not belong to your business.");
+            }
         }
 
         var product = new Product
         {
             Id = request.Id,
-            BusinessId = currentUser.BusinessId,
+            BusinessId = user.BusinessId,
             CategoryId = request.CategoryId,
             Group = request.Group,
             Type = request.Type,
@@ -203,26 +224,24 @@ public class ProductController : ControllerBase
             CostPrice = request.CostPrice,
             SellingPrice = request.SellingPrice,
             Unit = request.Unit,
-            IsActive = existingProduct.IsActive
+            IsActive = existing.IsActive
         };
 
-        var updated =
-            await _productService.UpdateProductAsync(product);
+        var updated = await _productService
+            .UpdateProductAsync(product);
 
         if (!updated)
-        {
             return NotFound();
-        }
 
         await _inventoryRepository.SetReorderLevelAsync(
-            currentUser.BusinessId,
+            user.BusinessId,
             id,
             request.ReorderLevel);
 
         await _activityLogService.LogAsync(
-            currentUser.BusinessId,
-            currentUser.Id,
-            currentUser.FullName,
+            user.BusinessId,
+            user.Id,
+            user.FullName,
             "Updated Product",
             "Product",
             id,
@@ -232,30 +251,24 @@ public class ProductController : ControllerBase
     }
 
     [HttpDelete("{id:guid}")]
+    [Authorize(Roles = "Admin,Manager")]
     public async Task<IActionResult> DeactivateProduct(Guid id)
     {
-        var currentUser =
-            await _userManager.GetUserAsync(User);
+        var user = await _userManager.GetUserAsync(User);
 
-        if (currentUser is null)
-        {
+        if (user is null)
             return Unauthorized();
-        }
 
-        var deactivated =
-            await _productService.DeactivateProductAsync(
-                currentUser.BusinessId,
-                id);
+        var deactivated = await _productService
+            .DeactivateProductAsync(user.BusinessId, id);
 
         if (!deactivated)
-        {
             return NotFound();
-        }
 
         await _activityLogService.LogAsync(
-            currentUser.BusinessId,
-            currentUser.Id,
-            currentUser.FullName,
+            user.BusinessId,
+            user.Id,
+            user.FullName,
             "Deactivated Product",
             "Product",
             id,

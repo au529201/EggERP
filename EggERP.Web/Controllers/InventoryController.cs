@@ -11,6 +11,7 @@ namespace EggERP.Web.Controllers;
 [ApiController]
 [Route("api/inventory")]
 [Authorize(Roles = "Admin,Manager,Staff")]
+[Authorize(Policy = "ActiveBusiness")]
 public class InventoryController : ControllerBase
 {
     private readonly IInventoryService _inventoryService;

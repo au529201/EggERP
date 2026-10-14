@@ -10,6 +10,7 @@ namespace EggERP.Web.Controllers;
 [ApiController]
 [Route("api/users")]
 [Authorize(Roles = "Admin")]
+[Authorize(Policy = "ActiveBusiness")]
 public class UserManagementController : ControllerBase
 {
     private readonly IUserManagementService _userManagementService;

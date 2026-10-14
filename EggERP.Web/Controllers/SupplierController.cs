@@ -11,6 +11,7 @@ namespace EggERP.Web.Controllers;
 
 [ApiController]
 [Authorize(Roles = "Admin,Manager")]
+[Authorize(Policy = "ActiveBusiness")]
 [Route("api/suppliers")]
 public class SupplierController : ControllerBase
 {

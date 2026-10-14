@@ -1,36 +1,72 @@
-﻿using EggERP.Application.ActivityLogs;
+﻿
+using EggERP.Application.ActivityLogs;
 using EggERP.Application.Flocks;
 using EggERP.Infrastructure.Identity;
+using EggERP.Infrastructure.Persistence;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.EntityFrameworkCore;
+
 namespace EggERP.Web.Controllers;
 
 [ApiController]
 [Route("api/stock")]
 [Authorize(Roles = "Admin,Manager")]
+[Authorize(Policy = "ActiveBusiness")]
 public class StockController : ControllerBase
 {
     private readonly IFlockService _flockService;
     private readonly UserManager<ApplicationUser> _userManager;
     private readonly IActivityLogService _activityLogService;
+    private readonly EggERPDbContext _db;
 
     public StockController(
         IFlockService flockService,
         UserManager<ApplicationUser> userManager,
-        IActivityLogService activityLogService)
+        IActivityLogService activityLogService,
+        EggERPDbContext db)
     {
         _flockService = flockService;
         _userManager = userManager;
         _activityLogService = activityLogService;
+        _db = db;
     }
 
     [HttpPost("process")]
-    public async Task<IActionResult> Process(ProcessStockTransactionRequest request)
+    public async Task<IActionResult> Process(
+        [FromBody] ProcessStockTransactionRequest request)
     {
         var currentUser = await _userManager.GetUserAsync(User);
-        if (currentUser is null) return Unauthorized();
 
+        if (currentUser is null)
+            return Unauthorized();
+
+        if (!currentUser.IsActive)
+        {
+            return StatusCode(403, new
+            {
+                message = "Your account has been deactivated."
+            });
+        }
+
+        var businessIsActive = await _db.Businesses
+            .AsNoTracking()
+            .AnyAsync(b =>
+                b.Id == currentUser.BusinessId &&
+                b.IsActive);
+
+        if (!businessIsActive)
+        {
+            return StatusCode(403, new
+            {
+                message = "This business is suspended. " +
+                          "Stock transactions are not permitted."
+            });
+        }
+
+        // Always use the authenticated user's business.
+        // Never trust a BusinessId submitted by the client.
         request.BusinessId = currentUser.BusinessId;
 
         var (succeeded, error) =

@@ -10,6 +10,7 @@ namespace EggERP.Web.Controllers;
 [ApiController]
 [Route("api/purchases")]
 [Authorize(Roles = "Admin,Manager")]
+[Authorize(Policy = "ActiveBusiness")]
 public class PurchaseController : ControllerBase
 {
     private readonly IPurchaseService _purchaseService;
@@ -63,8 +64,9 @@ public class PurchaseController : ControllerBase
         if (purchase is null)
             return NotFound();
 
-        var items = await _purchaseService.GetPurchaseItemsAsync(id);
-
+        var items = await _purchaseService.GetPurchaseItemsAsync(
+            currentUser.BusinessId,
+            id);
         return Ok(new { purchase, items });
     }
 

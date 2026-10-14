@@ -9,6 +9,7 @@ namespace EggERP.Web.Controllers;
 [ApiController]
 [Route("api/current-business")]
 [Authorize(Roles = "Admin,Manager,Staff")]
+[Authorize(Policy = "ActiveBusiness")]
 public class CurrentBusinessController : ControllerBase
 {
     private readonly UserManager<ApplicationUser> _userManager;

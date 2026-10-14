@@ -1,4 +1,5 @@
-﻿using EggERP.Application.ActivityLogs;
+﻿
+using EggERP.Application.ActivityLogs;
 using EggERP.Application.Expenses;
 using EggERP.Domain.Entities;
 using EggERP.Infrastructure.Identity;
@@ -11,6 +12,7 @@ namespace EggERP.Web.Controllers;
 [ApiController]
 [Route("api/expenses")]
 [Authorize(Roles = "Admin,Manager")]
+[Authorize(Policy = "ActiveBusiness")]
 public class ExpenseController : ControllerBase
 {
     private readonly IExpenseService _expenseService;
@@ -33,9 +35,10 @@ public class ExpenseController : ControllerBase
         var currentUser = await _userManager.GetUserAsync(User);
 
         if (currentUser is null)
-        {
             return Unauthorized();
-        }
+
+        if (businessId != currentUser.BusinessId)
+            return Forbid();
 
         var expenses = await _expenseService
             .GetExpensesAsync(currentUser.BusinessId);
@@ -51,33 +54,34 @@ public class ExpenseController : ControllerBase
         var currentUser = await _userManager.GetUserAsync(User);
 
         if (currentUser is null)
-        {
             return Unauthorized();
-        }
+
+        if (businessId != currentUser.BusinessId)
+            return Forbid();
 
         var expense = await _expenseService.GetExpenseByIdAsync(
             currentUser.BusinessId,
             id);
 
         if (expense is null)
-        {
             return NotFound();
-        }
 
         return Ok(expense);
     }
 
     [HttpPost]
-    public async Task<IActionResult> CreateExpense(Expense expense)
+    public async Task<IActionResult> CreateExpense(
+        [FromBody] Expense expense)
     {
         var currentUser = await _userManager.GetUserAsync(User);
 
         if (currentUser is null)
-        {
             return Unauthorized();
-        }
 
-        // Never trust BusinessId supplied by the client.
+        if (expense is null)
+            return BadRequest("Expense details are required.");
+
+        // Always use the authenticated user's business.
         expense.BusinessId = currentUser.BusinessId;
 
         try
@@ -106,21 +110,24 @@ public class ExpenseController : ControllerBase
             return BadRequest(ex.Message);
         }
     }
+
     public class UpdateExpenseStatusRequest
     {
         public string Status { get; set; } = string.Empty;
     }
+
     [HttpPut("{id:guid}/status")]
     public async Task<IActionResult> UpdateStatus(
-    Guid id,
-    UpdateExpenseStatusRequest request)
+        Guid id,
+        [FromBody] UpdateExpenseStatusRequest request)
     {
         var currentUser = await _userManager.GetUserAsync(User);
 
         if (currentUser is null)
-        {
             return Unauthorized();
-        }
+
+        if (request is null)
+            return BadRequest("Expense status is required.");
 
         if (request.Status != "Paid" &&
             request.Status != "Pending")
@@ -134,16 +141,12 @@ public class ExpenseController : ControllerBase
             id);
 
         if (expense is null)
-        {
             return NotFound();
-        }
 
         var oldStatus = expense.Status;
 
         if (oldStatus == request.Status)
-        {
             return NoContent();
-        }
 
         try
         {
@@ -153,9 +156,7 @@ public class ExpenseController : ControllerBase
                 request.Status);
 
             if (!updated)
-            {
                 return NotFound();
-            }
 
             await _activityLogService.LogAsync(
                 currentUser.BusinessId,

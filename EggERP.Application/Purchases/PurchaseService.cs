@@ -31,9 +31,13 @@ public class PurchaseService : IPurchaseService
     {
         return _purchaseRepository.GetByIdAsync(businessId, id);
     }
-    public Task<List<PurchaseItem>> GetPurchaseItemsAsync(Guid purchaseId)
+    public Task<List<PurchaseItem>> GetPurchaseItemsAsync(
+        Guid businessId,
+        Guid purchaseId)
     {
-        return _purchaseRepository.GetItemsByPurchaseIdAsync(purchaseId);
+        return _purchaseRepository.GetItemsByPurchaseIdAsync(
+            businessId,
+            purchaseId);
     }
     public async Task<Purchase> CreatePurchaseAsync(
      Guid businessId,
@@ -168,6 +172,7 @@ public class PurchaseService : IPurchaseService
         return purchase;
     }
 
+
     public async Task<(bool Succeeded, string? Error)> MarkAsPaidAsync(
         Guid businessId,
         Guid purchaseId,
@@ -176,6 +181,11 @@ public class PurchaseService : IPurchaseService
         string? referenceNumber,
         string? bankName)
     {
+        if (businessId == Guid.Empty || purchaseId == Guid.Empty)
+        {
+            return (false, "A valid business and purchase are required.");
+        }
+
         var purchase = await _purchaseRepository.GetByIdAsync(
             businessId,
             purchaseId);
@@ -207,15 +217,23 @@ public class PurchaseService : IPurchaseService
             return (false, ex.Message);
         }
 
-        purchase.Status = "Paid";
-        purchase.PaymentMethod = paymentMethod;
-        purchase.PaymentSource = paymentSource;
-        purchase.ReferenceNumber = referenceNumber;
-        purchase.BankName = bankName;
-        purchase.UpdatedAtUtc = DateTime.UtcNow;
+        var updated = await _purchaseRepository.TryMarkAsPaidAsync(
+            businessId,
+            purchaseId,
+            paymentMethod,
+            paymentSource,
+            referenceNumber,
+            bankName);
 
-        await _purchaseRepository.UpdateAsync(purchase);
+        if (!updated)
+        {
+            return (
+                false,
+                "The purchase was already updated or is no longer pending. " +
+                "Refresh the purchases list and try again.");
+        }
 
         return (true, null);
     }
+
 }

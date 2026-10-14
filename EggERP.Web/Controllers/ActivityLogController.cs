@@ -10,6 +10,7 @@ namespace EggERP.Web.Controllers;
 [ApiController]
 [Route("api/activitylogs")]
 [Authorize(Roles = "Admin,Manager")]
+[Authorize(Policy = "ActiveBusiness")]
 public class ActivityLogController : ControllerBase
 {
     private readonly IActivityLogService _activityLogService;

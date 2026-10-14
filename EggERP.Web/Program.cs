@@ -10,6 +10,7 @@ using EggERP.Application.Products;
 using EggERP.Application.Purchases;
 using EggERP.Application.Sales;
 using EggERP.Application.Suppliers;
+using EggERP.Application.Transactions;
 using EggERP.Application.Users;
 using EggERP.Infrastructure.ActivityLogs;
 using EggERP.Infrastructure.Businesses;
@@ -20,20 +21,24 @@ using EggERP.Infrastructure.Expenses;
 using EggERP.Infrastructure.Flocks;
 using EggERP.Infrastructure.Identity;
 using EggERP.Infrastructure.Inventory;
+using EggERP.Infrastructure.Persistence;
 using EggERP.Infrastructure.Products;
 using EggERP.Infrastructure.Purchases;
 using EggERP.Infrastructure.Sales;
 using EggERP.Infrastructure.Suppliers;
+using EggERP.Infrastructure.Transactions;
 using EggERP.Infrastructure.Users;
 using EggERP.Shared.Services;
 using EggERP.Web.Components;
 using EggERP.Web.Data;
 using EggERP.Web.Services;
+using Microsoft.AspNetCore.Authentication;
+using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Components.Authorization;
 using Microsoft.AspNetCore.Identity;
-using EggERP.Application.Transactions;
-using EggERP.Infrastructure.Transactions;
-using EggERP.Infrastructure.Persistence;
 using Microsoft.EntityFrameworkCore;
+
+
 var builder = WebApplication.CreateBuilder(args);
 
 // Database
@@ -56,17 +61,73 @@ builder.Services.AddIdentity<ApplicationUser, IdentityRole<Guid>>(options =>
     .AddEntityFrameworkStores<EggERPDbContext>()
     .AddDefaultTokenProviders();
 
+
 builder.Services.ConfigureApplicationCookie(options =>
 {
     options.LoginPath = "/Account/Login";
     options.AccessDeniedPath = "/Account/Login";
     options.ExpireTimeSpan = TimeSpan.FromDays(7);
     options.SlidingExpiration = true;
+
+    options.Events.OnValidatePrincipal = async context =>
+    {
+        var userManager = context.HttpContext.RequestServices
+            .GetRequiredService<UserManager<ApplicationUser>>();
+
+        var db = context.HttpContext.RequestServices
+            .GetRequiredService<EggERPDbContext>();
+
+        var user = await userManager.GetUserAsync(context.Principal!);
+
+        if (user is null || !user.IsActive)
+        {
+            context.RejectPrincipal();
+            await context.HttpContext.SignOutAsync(
+                IdentityConstants.ApplicationScheme);
+            return;
+        }
+
+        var isPlatformAdmin =
+            await userManager.IsInRoleAsync(user, "PlatformAdmin");
+
+        if (isPlatformAdmin)
+            return;
+
+        var businessActive = await db.Businesses
+            .AsNoTracking()
+            .AnyAsync(b =>
+                b.Id == user.BusinessId &&
+                b.IsActive);
+
+        if (!businessActive)
+        {
+            context.RejectPrincipal();
+            await context.HttpContext.SignOutAsync(
+                IdentityConstants.ApplicationScheme);
+        }
+    };
 });
 
 // Enable [Authorize] support inside Blazor components
-builder.Services.AddAuthorizationCore();
+builder.Services.AddAuthorization(options =>
+{
+    options.AddPolicy("ActiveBusiness", policy =>
+    {
+        policy.RequireAuthenticatedUser();
+        policy.AddRequirements(new ActiveBusinessRequirement());
+    });
+});
+
 builder.Services.AddCascadingAuthenticationState();
+
+builder.Services.AddScoped<
+    IAuthorizationHandler,
+    ActiveBusinessAuthorizationHandler>();
+
+// Revalidate active Blazor Server sessions for suspended businesses.
+builder.Services.AddScoped<
+    AuthenticationStateProvider,
+    BusinessRevalidatingAuthenticationStateProvider>();
 
 // Business services
 builder.Services.AddScoped<IBusinessRepository, BusinessRepository>();

@@ -1,3 +1,4 @@
+
 @using Microsoft.AspNetCore.Components
 @using Microsoft.AspNetCore.Components.Authorization
 @using Microsoft.AspNetCore.Components.Routing
@@ -5,10 +6,12 @@
 <div class="nav-shell @(IsCollapsed ? "is-collapsed" : "") @(menuOpen ? "is-menu-open" : "")">
 
     <div class="nav-header">
-        <a class="brand-link" href="/" @onclick="CloseMobileMenu">
+        <a class="brand-link"
+           href="/"
+           @onclick="CloseMobileMenu">
             <img class="brand-logo"
                  src="/_content/EggERP.Shared/images/logoEz.png"
-                 alt=""
+                 alt="EzEggERP"
                  onerror="this.style.display='none'" />
             <span class="brand-text">EzEggERP</span>
         </a>
@@ -32,151 +35,207 @@
     </div>
 
     <div class="nav-scrollable">
-
         <div class="nav-body">
+
+            @* PLATFORM ADMINISTRATION *@
             <AuthorizeView Roles="PlatformAdmin">
-    <Authorized>
-        <div class="nav-item">
-            <NavLink class="nav-link"
-                     href="/platform/businesses"
-                     @onclick="CloseMobileMenu">
-                <i class="bi bi-building"></i>
-                <span class="nav-text">Business Management</span>
-            </NavLink>
-        </div>
-    </Authorized>
-    <NotAuthorized>
-        @* Keep all existing business navigation items here:
-           Dashboard, Products, Inventory, Flocks, Eggs,
-           Customers, Suppliers, Sales, Purchases,
-           Expenses, History, Settings, About. *@
-    </NotAuthorized>
-</AuthorizeView>
-
-            <div class="nav-item">
-                <NavLink class="nav-link" href="/" Match="NavLinkMatch.All" @onclick="CloseMobileMenu">
-                    <i class="bi bi-house-door-fill"></i>
-                    <span class="nav-text">Dashboard</span>
-                </NavLink>
-            </div>
-
-            <div class="nav-item">
-                <NavLink class="nav-link" href="/products" @onclick="CloseMobileMenu">
-                    <i class="bi bi-box-fill"></i>
-                    <span class="nav-text">Products</span>
-                </NavLink>
-            </div>
-
-            <div class="nav-item">
-                <NavLink class="nav-link" href="/inventory" @onclick="CloseMobileMenu">
-                    <i class="bi bi-boxes"></i>
-                    <span class="nav-text">Inventory</span>
-                </NavLink>
-            </div>
-
-            <div class="nav-item">
-                <NavLink class="nav-link" href="/flocks" @onclick="CloseMobileMenu">
-                    <i class="bi bi-feather"></i>
-                    <span class="nav-text">Flocks</span>
-                </NavLink>
-            </div>
-
-            <div class="nav-item">
-                <NavLink class="nav-link" href="/eggs" @onclick="CloseMobileMenu">
-                    <i class="bi bi-egg-fill"></i>
-                    <span class="nav-text">Eggs</span>
-                </NavLink>
-            </div>
-
-            <div class="nav-item">
-                <NavLink class="nav-link" href="/customers" @onclick="CloseMobileMenu">
-                    <i class="bi bi-people-fill"></i>
-                    <span class="nav-text">Customers</span>
-                </NavLink>
-            </div>
-
-            <div class="nav-item">
-                <NavLink class="nav-link" href="/suppliers" @onclick="CloseMobileMenu">
-                    <i class="bi bi-truck"></i>
-                    <span class="nav-text">Suppliers</span>
-                </NavLink>
-            </div>
-
-            <div class="nav-item">
-                <NavLink class="nav-link" href="/sales" @onclick="CloseMobileMenu">
-                    <i class="bi bi-cart-check-fill"></i>
-                    <span class="nav-text">Sales</span>
-                </NavLink>
-            </div>
-
-            <div class="nav-item">
-                <NavLink class="nav-link" href="/purchases" @onclick="CloseMobileMenu">
-                    <i class="bi bi-bag-plus-fill"></i>
-                    <span class="nav-text">Purchases</span>
-                </NavLink>
-            </div>
-
-            <div class="nav-item">
-                <NavLink class="nav-link" href="/expenses" @onclick="CloseMobileMenu">
-                    <i class="bi bi-cash-stack"></i>
-                    <span class="nav-text">Expenses</span>
-                </NavLink>
-            </div>
-
-            <div class="nav-item">
-                <NavLink class="nav-link" href="/history" @onclick="CloseMobileMenu">
-                    <i class="bi bi-clock-history"></i>
-                    <span class="nav-text">History</span>
-                </NavLink>
-            </div>
-
-            <AuthorizeView Roles="Admin">
-                <Authorized>
+                <Authorized>          
                     <div class="nav-item">
-                        <button type="button"
-                                class="nav-link settings-toggle"
-                                aria-expanded="@settingsOpen"
-                                @onclick="ToggleSettings">
-                            <i class="bi bi-gear-fill"></i>
-                            <span class="nav-text">Settings</span>
-                            <i class="bi @(settingsOpen ? "bi-chevron-up" : "bi-chevron-down") settings-caret"></i>
-                        </button>
+                        <NavLink class="nav-link"
+                                 href="/platform"
+                                 Match="NavLinkMatch.All"
+                                 @onclick="CloseMobileMenu">
+                            <i class="bi bi-speedometer2"></i>
+                            <span class="nav-text">Platform Dashboard</span>
+                        </NavLink>
+                    </div>
+                    <div class="nav-item">
+                        <NavLink class="nav-link"
+                                 href="/platform/businesses"
+                                 @onclick="CloseMobileMenu">
+                            <i class="bi bi-building"></i>
+                            <span class="nav-text">Business Management</span>
+                        </NavLink>
+                    </div>
 
-                        @if (settingsOpen && !IsCollapsed)
-                        {
-                            <div class="nav-submenu">
-                                <div class="nav-item nav-item-sub">
-                                    <NavLink class="nav-link" href="/business-settings" @onclick="CloseMobileMenu">
-                                        <i class="bi bi-building-gear"></i>
-                                        <span class="nav-text">Business Settings</span>
-                                    </NavLink>
-                                </div>
+                    <div class="nav-item">
+                        <NavLink class="nav-link"
+                                 href="/profile"
+                                 @onclick="CloseMobileMenu">
+                            <i class="bi bi-person-circle"></i>
+                            <span class="nav-text">My Profile</span>
+                        </NavLink>
+                    </div>
 
-                                <div class="nav-item nav-item-sub">
-                                    <NavLink class="nav-link" href="/settings/users" @onclick="CloseMobileMenu">
-                                        <i class="bi bi-person-gear"></i>
-                                        <span class="nav-text">User Management</span>
-                                    </NavLink>
-                                </div>
-
-                                <div class="nav-item nav-item-sub">
-                                    <NavLink class="nav-link" href="/profile" @onclick="CloseMobileMenu">
-                                        <i class="bi bi-person-circle"></i>
-                                        <span class="nav-text">My Profile</span>
-                                    </NavLink>
-                                </div>
-                            </div>
-                        }
+                    <div class="nav-item">
+                        <NavLink class="nav-link"
+                                 href="/about"
+                                 @onclick="CloseMobileMenu">
+                            <i class="bi bi-info-circle-fill"></i>
+                            <span class="nav-text">About EzEggERP</span>
+                        </NavLink>
                     </div>
                 </Authorized>
-            </AuthorizeView>
 
-            <div class="nav-item">
-                <NavLink class="nav-link" href="/about" @onclick="CloseMobileMenu">
-                    <i class="bi bi-info-circle-fill"></i>
-                    <span class="nav-text">About EzEggERP</span>
-                </NavLink>
-            </div>
+                <NotAuthorized>
+                    @* BUSINESS / FARM NAVIGATION *@
+                    <div class="nav-item">
+                        <NavLink class="nav-link"
+                                 href="/"
+                                 Match="NavLinkMatch.All"
+                                 @onclick="CloseMobileMenu">
+                            <i class="bi bi-house-door-fill"></i>
+                            <span class="nav-text">Dashboard</span>
+                        </NavLink>
+                    </div>
+
+                    <div class="nav-item">
+                        <NavLink class="nav-link"
+                                 href="/products"
+                                 @onclick="CloseMobileMenu">
+                            <i class="bi bi-box-fill"></i>
+                            <span class="nav-text">Products</span>
+                        </NavLink>
+                    </div>
+
+                    <div class="nav-item">
+                        <NavLink class="nav-link"
+                                 href="/inventory"
+                                 @onclick="CloseMobileMenu">
+                            <i class="bi bi-boxes"></i>
+                            <span class="nav-text">Inventory</span>
+                        </NavLink>
+                    </div>
+
+                    <div class="nav-item">
+                        <NavLink class="nav-link"
+                                 href="/flocks"
+                                 @onclick="CloseMobileMenu">
+                            <i class="bi bi-feather"></i>
+                            <span class="nav-text">Flocks</span>
+                        </NavLink>
+                    </div>
+
+                    <div class="nav-item">
+                        <NavLink class="nav-link"
+                                 href="/eggs"
+                                 @onclick="CloseMobileMenu">
+                            <i class="bi bi-egg-fill"></i>
+                            <span class="nav-text">Eggs</span>
+                        </NavLink>
+                    </div>
+
+                    <div class="nav-item">
+                        <NavLink class="nav-link"
+                                 href="/customers"
+                                 @onclick="CloseMobileMenu">
+                            <i class="bi bi-people-fill"></i>
+                            <span class="nav-text">Customers</span>
+                        </NavLink>
+                    </div>
+
+                    <div class="nav-item">
+                        <NavLink class="nav-link"
+                                 href="/suppliers"
+                                 @onclick="CloseMobileMenu">
+                            <i class="bi bi-truck"></i>
+                            <span class="nav-text">Suppliers</span>
+                        </NavLink>
+                    </div>
+
+                    <div class="nav-item">
+                        <NavLink class="nav-link"
+                                 href="/sales"
+                                 @onclick="CloseMobileMenu">
+                            <i class="bi bi-cart-check-fill"></i>
+                            <span class="nav-text">Sales</span>
+                        </NavLink>
+                    </div>
+
+                    <div class="nav-item">
+                        <NavLink class="nav-link"
+                                 href="/purchases"
+                                 @onclick="CloseMobileMenu">
+                            <i class="bi bi-bag-plus-fill"></i>
+                            <span class="nav-text">Purchases</span>
+                        </NavLink>
+                    </div>
+
+                    <div class="nav-item">
+                        <NavLink class="nav-link"
+                                 href="/expenses"
+                                 @onclick="CloseMobileMenu">
+                            <i class="bi bi-cash-stack"></i>
+                            <span class="nav-text">Expenses</span>
+                        </NavLink>
+                    </div>
+
+                    <div class="nav-item">
+                        <NavLink class="nav-link"
+                                 href="/history"
+                                 @onclick="CloseMobileMenu">
+                            <i class="bi bi-clock-history"></i>
+                            <span class="nav-text">History</span>
+                        </NavLink>
+                    </div>
+
+                    <AuthorizeView Roles="Admin" Context="farmAdmin">
+                        <Authorized>
+                            <div class="nav-item">
+                                <button type="button"
+                                        class="nav-link settings-toggle"
+                                        aria-expanded="@settingsOpen"
+                                        @onclick="ToggleSettings">
+                                    <i class="bi bi-gear-fill"></i>
+                                    <span class="nav-text">Settings</span>
+                                    <i class="bi @(settingsOpen ? "bi-chevron-up" : "bi-chevron-down") settings-caret"></i>
+                                </button>
+
+                                @if (settingsOpen && !IsCollapsed)
+                                {
+                                    <div class="nav-submenu">
+                                        <div class="nav-item nav-item-sub">
+                                            <NavLink class="nav-link"
+                                                     href="/business-settings"
+                                                     @onclick="CloseMobileMenu">
+                                                <i class="bi bi-building-gear"></i>
+                                                <span class="nav-text">Business Settings</span>
+                                            </NavLink>
+                                        </div>
+
+                                        <div class="nav-item nav-item-sub">
+                                            <NavLink class="nav-link"
+                                                     href="/settings/users"
+                                                     @onclick="CloseMobileMenu">
+                                                <i class="bi bi-person-gear"></i>
+                                                <span class="nav-text">User Management</span>
+                                            </NavLink>
+                                        </div>
+
+                                        <div class="nav-item nav-item-sub">
+                                            <NavLink class="nav-link"
+                                                     href="/profile"
+                                                     @onclick="CloseMobileMenu">
+                                                <i class="bi bi-person-circle"></i>
+                                                <span class="nav-text">My Profile</span>
+                                            </NavLink>
+                                        </div>
+                                    </div>
+                                }
+                            </div>
+                        </Authorized>
+                    </AuthorizeView>
+
+                    <div class="nav-item">
+                        <NavLink class="nav-link"
+                                 href="/about"
+                                 @onclick="CloseMobileMenu">
+                            <i class="bi bi-info-circle-fill"></i>
+                            <span class="nav-text">About EzEggERP</span>
+                        </NavLink>
+                    </div>
+                </NotAuthorized>
+            </AuthorizeView>
 
         </div>
 
@@ -184,17 +243,18 @@
             <AuthorizeView>
                 <Authorized>
                     <div class="nav-item nav-logout-item">
-<form method="post"
-      action="/Account/Logout"
-      onsubmit="return confirm('Are you sure you want to log out?');">
+                        <form method="post"
+                              action="/Account/Logout"
+                              onsubmit="return confirm('Are you sure you want to log out?');">
 
-    <Microsoft.AspNetCore.Components.Forms.AntiforgeryToken />
+                            <Microsoft.AspNetCore.Components.Forms.AntiforgeryToken />
 
-    <button type="submit" class="nav-link logout-link">
-        <i class="bi bi-box-arrow-right"></i>
-        <span class="nav-text">Logout</span>
-    </button>
-</form>
+                            <button type="submit"
+                                    class="nav-link logout-link">
+                                <i class="bi bi-box-arrow-right"></i>
+                                <span class="nav-text">Logout</span>
+                            </button>
+                        </form>
                     </div>
                 </Authorized>
 
@@ -220,22 +280,58 @@
     }
 
     <nav class="bottom-nav" aria-label="Mobile navigation">
-        <NavLink class="bottom-nav-link" href="/" Match="NavLinkMatch.All" @onclick="CloseMobileMenu">
-            <i class="bi bi-house-door-fill"></i>
-            <span>Home</span>
-        </NavLink>
+        <AuthorizeView Roles="PlatformAdmin">
+            <Authorized>     
+                <NavLink class="bottom-nav-link"
+                         href="/platform"
+                         Match="NavLinkMatch.All"
+                         @onclick="CloseMobileMenu">
+                    <i class="bi bi-speedometer2"></i>
+                    <span>Dashboard</span>
+                </NavLink>
+                <NavLink class="bottom-nav-link"
+                         href="/platform/businesses"
+                         @onclick="CloseMobileMenu">
+                    <i class="bi bi-building"></i>
+                    <span>Businesses</span>
+                </NavLink>
 
-        <NavLink class="bottom-nav-link" href="/inventory" @onclick="CloseMobileMenu">
-            <i class="bi bi-boxes"></i>
-            <span>Inventory</span>
-        </NavLink>
+                <NavLink class="bottom-nav-link"
+                         href="/profile"
+                         @onclick="CloseMobileMenu">
+                    <i class="bi bi-person-circle"></i>
+                    <span>Profile</span>
+                </NavLink>
+            </Authorized>
 
-        <NavLink class="bottom-nav-link" href="/sales" @onclick="CloseMobileMenu">
-            <i class="bi bi-cart-check-fill"></i>
-            <span>Sales</span>
-        </NavLink>
+            <NotAuthorized>
+                <NavLink class="bottom-nav-link"
+                         href="/"
+                         Match="NavLinkMatch.All"
+                         @onclick="CloseMobileMenu">
+                    <i class="bi bi-house-door-fill"></i>
+                    <span>Home</span>
+                </NavLink>
 
-        <button type="button" class="bottom-nav-link" @onclick="ToggleMobileMenu">
+                <NavLink class="bottom-nav-link"
+                         href="/inventory"
+                         @onclick="CloseMobileMenu">
+                    <i class="bi bi-boxes"></i>
+                    <span>Inventory</span>
+                </NavLink>
+
+                <NavLink class="bottom-nav-link"
+                         href="/sales"
+                         @onclick="CloseMobileMenu">
+                    <i class="bi bi-cart-check-fill"></i>
+                    <span>Sales</span>
+                </NavLink>
+            </NotAuthorized>
+        </AuthorizeView>
+
+        <button type="button"
+                class="bottom-nav-link"
+                @onclick="ToggleMobileMenu">
             <i class="bi @(menuOpen ? "bi-x-lg" : "bi-list")"></i>
             <span>More</span>
         </button>
@@ -262,9 +358,18 @@
         await IsCollapsedChanged.InvokeAsync(IsCollapsed);
     }
 
-    private void ToggleMobileMenu() => menuOpen = !menuOpen;
+    private void ToggleMobileMenu()
+    {
+        menuOpen = !menuOpen;
+    }
 
-    private void CloseMobileMenu() => menuOpen = false;
+    private void CloseMobileMenu()
+    {
+        menuOpen = false;
+    }
 
-    private void ToggleSettings() => settingsOpen = !settingsOpen;
+    private void ToggleSettings()
+    {
+        settingsOpen = !settingsOpen;
+    }
 }

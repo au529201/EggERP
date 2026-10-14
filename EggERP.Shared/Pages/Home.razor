@@ -546,9 +546,7 @@ else
     {
         if (firstRender && isPlatformAdmin)
         {
-            NavigationManager.NavigateTo(
-                "/platform/businesses",
-                forceLoad: true);
+            NavigationManager.NavigateTo("/platform", replace: true);
         }
     }
 
