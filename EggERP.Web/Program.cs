@@ -114,8 +114,7 @@ builder.Services.AddScoped<IUserManagementService, UserManagementService>();
 
 
 // API Controllers
-builder.Services.AddControllers();
-
+builder.Services.AddControllersWithViews();
 // Swagger
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();

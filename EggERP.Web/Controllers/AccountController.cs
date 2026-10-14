@@ -4,6 +4,8 @@ using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.WebUtilities;
 using System.Text;
+using Microsoft.AspNetCore.Antiforgery;
+using System.Net;
 
 namespace EggERP.Web.Controllers;
 
@@ -13,17 +15,36 @@ public class AccountController : ControllerBase
     private readonly UserManager<ApplicationUser> _userManager;
     private readonly IEmailSender _emailSender;
     private readonly IConfiguration _configuration;
+    private readonly IAntiforgery _antiforgery;
 
     public AccountController(
         SignInManager<ApplicationUser> signInManager,
         UserManager<ApplicationUser> userManager,
         IEmailSender emailSender,
-        IConfiguration configuration)
+        IConfiguration configuration,
+        IAntiforgery antiforgery)
     {
         _signInManager = signInManager;
         _userManager = userManager;
         _emailSender = emailSender;
         _configuration = configuration;
+        _antiforgery = antiforgery;
+    }
+    private string GetAntiforgeryField()
+    {
+        var tokens = _antiforgery.GetAndStoreTokens(HttpContext);
+
+        var fieldName = WebUtility.HtmlEncode(
+            tokens.FormFieldName);
+
+        var token = WebUtility.HtmlEncode(
+            tokens.RequestToken ?? string.Empty);
+
+        return $"""
+        <input type="hidden"
+               name="{fieldName}"
+               value="{token}" />
+        """;
     }
 
     // Small inline eye / eye-off icons used by the show/hide password toggle.
@@ -276,14 +297,15 @@ public class AccountController : ControllerBase
     [HttpGet("/Account/Login")]
     public ContentResult LoginPage(string? error = null, string? message = null)
     {
-        var errorHtml = string.IsNullOrEmpty(error) ? "" : $"<div class='auth-alert auth-alert-error'>{error}</div>";
-        var messageHtml = string.IsNullOrEmpty(message) ? "" : $"<div class='auth-alert auth-alert-success'>{message}</div>";
+        var errorHtml = string.IsNullOrEmpty(error) ? "" : $"<div class='auth-alert auth-alert-error'>{WebUtility.HtmlEncode(error)}</div>";
+        var messageHtml = string.IsNullOrEmpty(message) ? "" : $"<div class='auth-alert auth-alert-success'>{WebUtility.HtmlEncode(message)}</div>";
         var body = $@"
             <h3>Welcome Back</h3>
             <p class='auth-subtitle'>Sign in to your EzEggERP account</p>
             {errorHtml}
             {messageHtml}
             <form method='post' action='/Account/Login'>
+                {GetAntiforgeryField()}
                 <div class='mb-3'>
                     <label>Email</label>
                     <input type='email' name='email' class='form-control' required />
@@ -298,6 +320,7 @@ public class AccountController : ControllerBase
     }
 
     [HttpPost("/Account/Login")]
+    [ValidateAntiForgeryToken]
     public async Task<IActionResult> Login(string email, string password)
     {
         var user = await _userManager.FindByEmailAsync(email);
@@ -330,6 +353,7 @@ public class AccountController : ControllerBase
     }
 
     [HttpPost("/Account/Logout")]
+    [ValidateAntiForgeryToken]
     public async Task<IActionResult> Logout()
     {
         await _signInManager.SignOutAsync();
@@ -339,14 +363,15 @@ public class AccountController : ControllerBase
     [HttpGet("/Account/SetPassword")]
     public ContentResult SetPasswordPage(string email, string token, string? error = null)
     {
-        var errorHtml = string.IsNullOrEmpty(error) ? "" : $"<div class='auth-alert auth-alert-error'>{error}</div>";
+        var errorHtml = string.IsNullOrEmpty(error) ? "" : $"<div class='auth-alert auth-alert-error'>{WebUtility.HtmlEncode(error)}</div>";
         var body = $@"
             <h3>Set Your Password</h3>
             <p class='auth-subtitle'>Choose a password to activate your EzEggERP account</p>
             {errorHtml}
             <form method='post' action='/Account/SetPassword'>
-                <input type='hidden' name='email' value='{email}' />
-                <input type='hidden' name='token' value='{token}' />
+                {GetAntiforgeryField()}
+                <input type='hidden' name='email' value='{WebUtility.HtmlEncode(email)}' />
+                <input type='hidden' name='token' value='{WebUtility.HtmlEncode(token)}' />
                 {PasswordField("New Password", "newPassword", "password")}
                 <small class='form-text' style='color: rgba(255,255,255,0.7); display:block; margin-top:-12px; margin-bottom:16px;'>At least 8 characters, including an uppercase letter, a lowercase letter, and a number.</small>
                 {PasswordField("Confirm Password", "confirmPasswordField", "confirmPassword")}
@@ -356,6 +381,7 @@ public class AccountController : ControllerBase
     }
 
     [HttpPost("/Account/SetPassword")]
+    [ValidateAntiForgeryToken]
     public async Task<IActionResult> SetPassword(string email, string token, string password, string confirmPassword)
     {
         if (password != confirmPassword)
@@ -395,12 +421,13 @@ public class AccountController : ControllerBase
     [HttpGet("/Account/ForgotPassword")]
     public ContentResult ForgotPasswordPage(string? message = null)
     {
-        var messageHtml = string.IsNullOrEmpty(message) ? "" : $"<div class='auth-alert auth-alert-success'>{message}</div>";
+        var messageHtml = string.IsNullOrEmpty(message) ? "" : $"<div class='auth-alert auth-alert-success'>{WebUtility.HtmlEncode(message)}</div>";
         var body = $@"
             <h3>Forgot Password</h3>
             <p class='auth-subtitle'>Enter your email and we'll send you a link to reset your password</p>
             {messageHtml}
             <form method='post' action='/Account/ForgotPassword'>
+                {GetAntiforgeryField()}
                 <div class='mb-3'>
                     <label>Email</label>
                     <input type='email' name='email' class='form-control' required />
@@ -414,6 +441,7 @@ public class AccountController : ControllerBase
     }
 
     [HttpPost("/Account/ForgotPassword")]
+    [ValidateAntiForgeryToken]
     public async Task<IActionResult> ForgotPassword(string email)
     {
         var user = await _userManager.FindByEmailAsync(email);
@@ -433,7 +461,7 @@ public class AccountController : ControllerBase
 
             var subject = "Reset your EzEggERP password";
             var html = $@"
-                <p>Hi {user.FullName},</p>
+                <p>Hi {WebUtility.HtmlEncode(user.FullName)},</p>
                 <p>We received a request to reset your EzEggERP password. Click the link below to choose a new one:</p>
                 <p><a href='{resetUrl}'>Reset your password</a></p>
                 <p>If you didn't request this, you can ignore this email.</p>";

@@ -8,11 +8,8 @@ public interface IInventoryApiService
 {
     Task<List<InventoryDto>> GetInventoryAsync(Guid businessId);
 
-    Task<InventoryDto> AdjustQuantityAsync(
-        Guid businessId, Guid productId, decimal delta);
-
-    Task<List<InventoryBoardRowDto>>
-        GetBoardAsOfDateAsync(DateTime asOfDate);
+    Task<List<InventoryBoardRowDto>> GetBoardAsOfDateAsync(
+        DateTime asOfDate);
 
     Task SetThresholdsAsync(
         Guid productId,
@@ -29,34 +26,20 @@ public class InventoryApiService : IInventoryApiService
         _http = http;
     }
 
-    public async Task<List<InventoryDto>>
-        GetInventoryAsync(Guid businessId)
+    public async Task<List<InventoryDto>> GetInventoryAsync(
+        Guid businessId)
     {
         return await _http.GetFromJsonAsync<List<InventoryDto>>(
             $"api/inventory/{businessId}") ?? new();
     }
 
-    public async Task<InventoryDto> AdjustQuantityAsync(
-        Guid businessId, Guid productId, decimal delta)
-    {
-        var response = await _http.PostAsJsonAsync(
-            $"api/inventory/{businessId}/product/{productId}/adjust",
-            new { delta });
-
-        response.EnsureSuccessStatusCode();
-
-        return (await response.Content
-            .ReadFromJsonAsync<InventoryDto>())!;
-    }
-
-    public async Task<List<InventoryBoardRowDto>>
-        GetBoardAsOfDateAsync(DateTime asOfDate)
+    public async Task<List<InventoryBoardRowDto>> GetBoardAsOfDateAsync(
+        DateTime asOfDate)
     {
         var date = asOfDate.ToString("yyyy-MM-dd");
 
-        return await _http
-            .GetFromJsonAsync<List<InventoryBoardRowDto>>(
-                $"api/inventory/board?asOfDate={date}") ?? new();
+        return await _http.GetFromJsonAsync<List<InventoryBoardRowDto>>(
+            $"api/inventory/board?asOfDate={date}") ?? new();
     }
 
     public async Task SetThresholdsAsync(

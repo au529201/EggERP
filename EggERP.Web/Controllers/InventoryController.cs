@@ -72,51 +72,6 @@ public class InventoryController : ControllerBase
         return record is null ? NotFound() : Ok(record);
     }
 
-    public class AdjustQuantityRequest
-    {
-        public decimal Delta { get; set; }
-    }
-
-    [HttpPost("{businessId:guid}/product/{productId:guid}/adjust")]
-    [Authorize(Roles = "Admin,Manager")]
-    public async Task<IActionResult> AdjustQuantity(
-        Guid businessId,
-        Guid productId,
-        [FromBody] AdjustQuantityRequest request)
-    {
-        var user = await CurrentUserAsync();
-
-        if (user is null)
-            return Unauthorized();
-
-        if (user.BusinessId != businessId)
-            return Forbid();
-
-        if (request is null)
-            return BadRequest("Adjustment details are required.");
-
-        try
-        {
-            var updated = await _inventoryService.AdjustQuantityAsync(
-                user.BusinessId, productId, request.Delta);
-
-            await _activityLogService.LogAsync(
-                user.BusinessId,
-                user.Id,
-                user.FullName,
-                "Adjusted Inventory",
-                "Inventory",
-                productId,
-                $"Delta: {request.Delta:+0.##;-0.##;0} — " +
-                $"New quantity: {updated.QuantityOnHand}");
-
-            return Ok(updated);
-        }
-        catch (InvalidOperationException ex)
-        {
-            return BadRequest(new { message = ex.Message });
-        }
-    }
 
     [HttpGet("board")]
     public async Task<IActionResult> GetBoard(

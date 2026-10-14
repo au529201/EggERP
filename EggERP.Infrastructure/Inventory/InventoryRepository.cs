@@ -1,4 +1,4 @@
-﻿
+﻿using Microsoft.Data.SqlClient;
 using EggERP.Application.Inventory;
 using EggERP.Infrastructure.Persistence;
 using Microsoft.EntityFrameworkCore;
@@ -169,9 +169,42 @@ public class InventoryRepository : IInventoryRepository
 
         _dbContext.Inventories.Add(newInventory);
 
-        await _dbContext.SaveChangesAsync();
+        try
+        {
+            await _dbContext.SaveChangesAsync();
+            return newInventory;
+        }
+        catch (DbUpdateException ex)
+            when (ex.InnerException is SqlException sqlEx &&
+                  (sqlEx.Number == 2601 || sqlEx.Number == 2627))
+        {
+            // Another request inserted the inventory row first.
+            // Remove our failed insert from EF change tracking.
+            _dbContext.Entry(newInventory).State = EntityState.Detached;
 
-        return newInventory;
+            // Atomically add our quantity to the existing row.
+            var updatedRows = await _dbContext.Inventories
+                .Where(i =>
+                    i.BusinessId == businessId &&
+                    i.ProductId == productId)
+                .ExecuteUpdateAsync(setters => setters
+                    .SetProperty(
+                        i => i.QuantityOnHand,
+                        i => i.QuantityOnHand + delta)
+                    .SetProperty(
+                        i => i.UpdatedAtUtc,
+                        DateTime.UtcNow));
+
+            if (updatedRows != 1)
+            {
+                throw new InvalidOperationException(
+                    "Inventory changed during the transaction. Please retry.");
+            }
+
+            return await GetByProductIdAsync(businessId, productId)
+                ?? throw new InvalidOperationException(
+                    "Inventory record not found after concurrent addition.");
+        }
     }
 
     public async Task<EggERP.Domain.Entities.Inventory>

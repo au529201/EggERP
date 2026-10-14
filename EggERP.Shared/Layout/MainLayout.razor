@@ -41,18 +41,19 @@
                                 </a>
 
                                 <div class="account-dropdown-divider"></div>
+<form method="post"
+      action="/Account/Logout"
+      onsubmit="return confirm('Are you sure you want to log out?');">
 
-                                <form method="post"
-                                      action="/Account/Logout"
-                                      onsubmit="return confirm('Are you sure you want to log out?');">
+    <Microsoft.AspNetCore.Components.Forms.AntiforgeryToken />
 
-                                    <button type="submit"
-                                            class="account-dropdown-item account-logout">
-                                        <i class="bi bi-box-arrow-right"
-                                           aria-hidden="true"></i>
-                                        <span>Logout</span>
-                                    </button>
-                                </form>
+    <button type="submit"
+            class="account-dropdown-item account-logout">
+        <i class="bi bi-box-arrow-right"
+           aria-hidden="true"></i>
+        <span>Logout</span>
+    </button>
+</form>
                             </div>
 
                             <button type="button"
