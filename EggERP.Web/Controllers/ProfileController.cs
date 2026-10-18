@@ -82,10 +82,9 @@ public class ProfileController : ControllerBase
             IsActive = user.IsActive
         });
     }
-
     [HttpPut]
     public async Task<IActionResult> UpdateProfile(
-        [FromBody] UpdateMyProfileRequest request)
+              [FromBody] UpdateMyProfileRequest request)
     {
         var user = await GetAuthorizedUserAsync();
 

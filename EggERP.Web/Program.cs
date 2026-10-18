@@ -60,12 +60,19 @@ builder.Services.AddIdentity<ApplicationUser, IdentityRole<Guid>>(options =>
 })
     .AddEntityFrameworkStores<EggERPDbContext>()
     .AddDefaultTokenProviders();
-
-
 builder.Services.ConfigureApplicationCookie(options =>
 {
     options.LoginPath = "/Account/Login";
     options.AccessDeniedPath = "/Account/Login";
+
+    // Authentication cookie settings
+    options.Cookie.HttpOnly = true;
+    options.Cookie.SameSite = SameSiteMode.Lax;
+
+    // Compatible with local HTTP and HTTPS.
+    // Production should use HTTPS with SecurePolicy.Always.
+    options.Cookie.SecurePolicy = CookieSecurePolicy.SameAsRequest;
+
     options.ExpireTimeSpan = TimeSpan.FromDays(7);
     options.SlidingExpiration = true;
 
@@ -203,9 +210,26 @@ builder.Services.AddScoped<IActivityLogService, ActivityLogService>();
 // User management services
 builder.Services.AddScoped<IUserManagementService, UserManagementService>();
 
-
 // API Controllers
 builder.Services.AddControllersWithViews();
+
+// Antiforgery configuration for browser and API requests.
+// State-changing API requests will use the X-CSRF-TOKEN header
+// once validation and token forwarding are enabled.
+builder.Services.AddAntiforgery(options =>
+{
+    options.HeaderName = "X-CSRF-TOKEN";
+
+    options.Cookie.Name = "EzEggERP.Antiforgery";
+    options.Cookie.HttpOnly = true;
+    options.Cookie.SameSite = SameSiteMode.Strict;
+
+    // Compatible with the current HTTP deployment.
+    // Require HTTPS and SecurePolicy.Always for production.
+    options.Cookie.SecurePolicy =
+        CookieSecurePolicy.SameAsRequest;
+});
+
 // Swagger
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
@@ -350,6 +374,11 @@ app.UseHttpsRedirection();
 app.UseStaticFiles();
 
 app.UseAuthentication();
+
+// Reject cross-origin browser requests before
+// endpoint authorization evaluates the request.
+app.UseMiddleware<ApiOriginProtectionMiddleware>();
+
 app.UseAuthorization();
 
 app.UseAntiforgery();
