@@ -67,6 +67,8 @@ public class PurchaseRepository : IPurchaseRepository
         if (businessId == Guid.Empty || purchaseId == Guid.Empty)
             return false;
 
+        var updatedAtUtc = DateTime.UtcNow;
+
         var affectedRows = await _dbContext.Purchases
             .Where(p =>
                 p.BusinessId == businessId &&
@@ -78,7 +80,28 @@ public class PurchaseRepository : IPurchaseRepository
                 .SetProperty(p => p.PaymentSource, paymentSource)
                 .SetProperty(p => p.ReferenceNumber, referenceNumber)
                 .SetProperty(p => p.BankName, bankName)
-                .SetProperty(p => p.UpdatedAtUtc, DateTime.UtcNow));
+                .SetProperty(p => p.UpdatedAtUtc, updatedAtUtc));
+
+        return affectedRows == 1;
+    }
+
+    public async Task<bool> TryMarkAsPendingAsync(
+        Guid businessId,
+        Guid purchaseId)
+    {
+        if (businessId == Guid.Empty || purchaseId == Guid.Empty)
+            return false;
+
+        var updatedAtUtc = DateTime.UtcNow;
+
+        var affectedRows = await _dbContext.Purchases
+            .Where(p =>
+                p.BusinessId == businessId &&
+                p.Id == purchaseId &&
+                p.Status == "Paid")
+            .ExecuteUpdateAsync(setters => setters
+                .SetProperty(p => p.Status, "Pending")
+                .SetProperty(p => p.UpdatedAtUtc, updatedAtUtc));
 
         return affectedRows == 1;
     }

@@ -8,7 +8,12 @@ namespace EggERP.Shared.Services
 {
     public interface ISaleApiService
     {
+        Task MarkAsPendingAsync(Guid businessId, Guid saleId);
+
         Task<List<SaleDto>> GetSalesAsync(Guid businessId);
+
+        Task<List<DailySalesByGroupDto>>
+            GetDailySalesByGroupAsync(Guid businessId);
 
         Task CreateSaleAsync(CreateSaleRequest request);
 
@@ -29,7 +34,25 @@ namespace EggERP.Shared.Services
             _http = http;
         }
 
-        public async Task<List<SaleDto>> GetSalesAsync(Guid businessId)
+        public async Task MarkAsPendingAsync(
+            Guid businessId,
+            Guid saleId)
+        {
+            using var response = await _http.PutAsync(
+                $"api/sales/{businessId}/{saleId}/mark-pending",
+                null);
+
+            if (!response.IsSuccessStatusCode)
+            {
+                throw new HttpRequestException(
+                    await GetErrorMessageAsync(
+                        response,
+                        "Unable to mark sale as pending."));
+            }
+        }
+
+        public async Task<List<SaleDto>> GetSalesAsync(
+            Guid businessId)
         {
             if (businessId == Guid.Empty)
             {
@@ -37,8 +60,8 @@ namespace EggERP.Shared.Services
                     "A valid Business ID is required to load sales.");
             }
 
-            using var response =
-                await _http.GetAsync($"api/sales/{businessId}");
+            using var response = await _http.GetAsync(
+                $"api/sales/{businessId}");
 
             if (!response.IsSuccessStatusCode)
             {
@@ -65,7 +88,33 @@ namespace EggERP.Shared.Services
                 ?? new List<SaleDto>();
         }
 
-        public async Task CreateSaleAsync(CreateSaleRequest request)
+        public async Task<List<DailySalesByGroupDto>>
+            GetDailySalesByGroupAsync(Guid businessId)
+        {
+            if (businessId == Guid.Empty)
+            {
+                throw new InvalidOperationException(
+                    "A valid business is required.");
+            }
+
+            using var response = await _http.GetAsync(
+                $"api/sales/{businessId}/daily-by-group");
+
+            if (!response.IsSuccessStatusCode)
+            {
+                throw new HttpRequestException(
+                    await GetErrorMessageAsync(
+                        response,
+                        "Unable to load daily sales analytics."));
+            }
+
+            return await response.Content
+                .ReadFromJsonAsync<List<DailySalesByGroupDto>>()
+                ?? new List<DailySalesByGroupDto>();
+        }
+
+        public async Task CreateSaleAsync(
+            CreateSaleRequest request)
         {
             using var response = await _http.PostAsJsonAsync(
                 "api/sales",
@@ -175,11 +224,9 @@ namespace EggERP.Shared.Services
             }
             catch (JsonException)
             {
-                // The API returned a non-JSON response.
+                // Non-JSON error response.
             }
 
-            // Do not expose raw HTML, server stack traces,
-            // or other internal response details to users.
             if (content.TrimStart().StartsWith("<") ||
                 content.Contains('\n') ||
                 content.Length > 300)

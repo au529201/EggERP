@@ -2,6 +2,7 @@
 @attribute [Authorize(Roles = "Admin")]
 @using EggERP.Shared.Models
 @using EggERP.Shared.Services
+@using EggERP.Shared.Components
 @inject IUserManagementApiService UserManagementApiService
 @inject IJSRuntime JsRuntime
 
@@ -53,9 +54,10 @@
     </div>
 </div>
 
+
 @if (users is null)
 {
-    <p>Loading...</p>
+    <p>Loading users...</p>
 }
 else if (!FilteredUsers.Any())
 {
@@ -63,8 +65,11 @@ else if (!FilteredUsers.Any())
 }
 else
 {
-    <div class="table-responsive">
-        <table class="table">
+    <div class="erp-table-scroll"
+         role="region"
+         aria-label="User management table"
+         tabindex="0">
+        <table class="table erp-data-table table-striped table-hover align-middle">
             <thead>
                 <tr>
                     <th>Full Name</th>
@@ -74,76 +79,96 @@ else
                     <th>Actions</th>
                 </tr>
             </thead>
-
             <tbody>
                 @foreach (var user in PagedUsers)
                 {
-                    <tr>
+                    <tr @key="user.Id">
                         <td>@user.FullName</td>
                         <td>@user.Email</td>
-                        <td>@user.Role</td>                      
-                        <td>@if (user.Role == "Admin")
-                {
-        <a class="btn btn-sm btn-secondary me-1"
-           href="@($"/settings/users/edit/{user.Id}")">
-            <i class="bi bi-pencil-fill me-1"></i>
-            Edit
-        </a>
+                        <td>@user.Role</td>
+                        <td>
+                            @if (!user.IsActive)
+                            {
+                                <span class="badge bg-secondary">Deactivated</span>
+                            }
+                            else if (!user.EmailConfirmed)
+                            {
+                                <span class="badge bg-warning text-dark">Pending Invitation</span>
+                            }
+                            else
+                            {
+                                <span class="badge bg-success">Active</span>
+                            }
+                        </td>
+                        <td>
+                            <div class="erp-table-actions">
+                                @if (user.Role == "Admin")
+                                {
+                                    <a class="btn btn-sm btn-secondary"
+                                       href="@($"/settings/users/edit/{user.Id}")">
+                                        <i class="bi bi-pencil-fill me-1"></i>
+                                        Edit
+                                    </a>
 
-        <button class="btn btn-sm btn-outline-secondary"
-                disabled
-                title="Administrator accounts are protected">
-            <i class="bi bi-shield-lock-fill me-1"></i>
-            Protected
-        </button>
-    }
-    else if (!user.IsActive)
-    {
-        <button class="btn btn-sm btn-success"
-                @onclick="() => ActivateUser(user.Id, user.FullName)">
-            <i class="bi bi-arrow-clockwise me-1"></i>
-            Activate
-        </button>
-    }
-    else
-    {
-        <a class="btn btn-sm btn-secondary me-1"
-           href="@($"/settings/users/edit/{user.Id}")">
-            <i class="bi bi-pencil-fill me-1"></i>
-            Edit
-        </a>
+                                    <button type="button"
+                                            class="btn btn-sm btn-outline-secondary"
+                                            disabled
+                                            title="Administrator accounts are protected">
+                                        <i class="bi bi-shield-lock-fill me-1"></i>
+                                        Protected
+                                    </button>
+                                }
+                                else if (!user.IsActive)
+                                {
+                                    <button type="button"
+                                            class="btn btn-sm btn-success"
+                                            @onclick="() => ActivateUser(user.Id, user.FullName)">
+                                        <i class="bi bi-arrow-clockwise me-1"></i>
+                                        Activate
+                                    </button>
+                                }
+                                else
+                                {
+                                    <a class="btn btn-sm btn-secondary"
+                                       href="@($"/settings/users/edit/{user.Id}")">
+                                        <i class="bi bi-pencil-fill me-1"></i>
+                                        Edit
+                                    </a>
 
-        @if (!user.EmailConfirmed)
-        {
-            <button class="btn btn-sm btn-warning me-1"
-                    disabled="@resendingIds.Contains(user.Id)"
-                    @onclick="() => ResendInvitation(user.Id, user.FullName)">
-                <i class="bi bi-envelope-arrow-up me-1"></i>
-                @(resendingIds.Contains(user.Id)
-                    ? "Sending..."
-                    : "Resend Invite")
-            </button>
-        }
+                                    @if (!user.EmailConfirmed)
+                                    {
+                                        <button type="button"
+                                                class="btn btn-sm btn-warning"
+                                                disabled="@resendingIds.Contains(user.Id)"
+                                                @onclick="() => ResendInvitation(user.Id, user.FullName)">
+                                            <i class="bi bi-envelope-arrow-up me-1"></i>
+                                            @(resendingIds.Contains(user.Id)
+                                                ? "Sending..."
+                                                : "Resend Invite")
+                                        </button>
+                                    }
 
-        <button class="btn btn-sm btn-danger"
-                @onclick="() => DeactivateUser(user.Id, user.FullName)">
-            <i class="bi bi-slash-circle me-1"></i>
-            Deactivate
-        </button>
-    }
-</td>
-
+                                    <button type="button"
+                                            class="btn btn-sm btn-danger"
+                                            @onclick="() => DeactivateUser(user.Id, user.FullName)">
+                                        <i class="bi bi-slash-circle me-1"></i>
+                                        Deactivate
+                                    </button>
+                                }
+                            </div>
+                        </td>
                     </tr>
                 }
             </tbody>
         </table>
     </div>
 
-    <Pager Total="FilteredUsers.Count()"
-           Page="page"
-           PageSize="pageSize"
-           PageChanged="OnPageChanged" />
+    <EzPagination TotalCount="FilteredUsers.Count()"
+                  Page="page"
+                  PageSize="pageSize"
+                  PageChanged="OnPageChanged" />
 }
+
 
 @code {
 private readonly HashSet<Guid> resendingIds = new();
@@ -197,7 +222,7 @@ private async Task ResendInvitation(Guid id, string name)
     private string selectedStatus = string.Empty;
 
     private int page = 1;
-    private const int pageSize = 7;
+    private const int pageSize = 10;
 
     private IEnumerable<UserDto> FilteredUsers =>
         (users ?? new List<UserDto>())

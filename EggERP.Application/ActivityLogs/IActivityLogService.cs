@@ -3,6 +3,7 @@
 public class ActivityLogDto
 {
     public Guid Id { get; set; }
+    public Guid? EntityId { get; set; }
     public string UserName { get; set; } = string.Empty;
     public string Action { get; set; } = string.Empty;
     public string EntityType { get; set; } = string.Empty;
@@ -23,6 +24,10 @@ public class ActivityLogFilter
 
 public interface IActivityLogService
 {
+    Task<PagedActivityLogResult> SearchPagedAsync(
+    ActivityLogFilter filter,
+    int page,
+    int pageSize);
     Task LogAsync(Guid businessId, Guid userId, string userName, string action, string entityType, Guid? entityId, string? details);
     Task<List<ActivityLogDto>> SearchAsync(ActivityLogFilter filter);
 }

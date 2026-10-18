@@ -4,6 +4,7 @@
 
 @using EggERP.Shared.Models
 @using EggERP.Shared.Services
+@using EggERP.Shared.Components
 @using Microsoft.AspNetCore.Components.Authorization
 
 @inject IInventoryApiService InventoryApiService
@@ -33,8 +34,8 @@
     <div class="col-md-3">
         <input type="date"
                class="form-control"
-               @bind="selectedDate"
-               @bind:after="LoadData" />
+@bind="selectedDate"
+@bind:after="OnDateChangedAsync"
     </div>
 </div>
 
@@ -200,13 +201,19 @@ else
         </table>
     </div>
 
-    <Pager Total="FilteredRows.Count()"
-           Page="page"
-           PageSize="pageSize"
-           PageChanged="OnPageChanged" />
+<EzPagination TotalCount="FilteredRows.Count()"
+              Page="@(page)"
+              PageSize="pageSize"
+              Disabled="@(isLoading || isSaving)"
+              PageChanged="OnPageChanged" />
 }
 
 @code {
+    private async Task OnDateChangedAsync()
+{
+    page = 1;
+    await LoadData();
+}
     private List<InventoryBoardRowDto> rows = new();
 
     private bool isLoading = true;
@@ -228,7 +235,7 @@ else
     private decimal? editHigh;
 
     private int page = 1;
-    private const int pageSize = 7;
+    private const int pageSize = 10;
 
     private IEnumerable<InventoryBoardRowDto> FilteredRows =>
         rows.Where(r =>
@@ -270,8 +277,14 @@ else
 
         try
         {
-            rows = await InventoryApiService
-                .GetBoardAsOfDateAsync(selectedDate);
+rows = await InventoryApiService
+    .GetBoardAsOfDateAsync(selectedDate);
+
+var totalPages = Math.Max(
+    1,
+    (int)Math.Ceiling(FilteredRows.Count() / (double)pageSize));
+
+page = Math.Clamp(page, 1, totalPages);
         }
         catch
         {

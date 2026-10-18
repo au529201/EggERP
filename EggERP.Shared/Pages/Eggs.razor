@@ -1,18 +1,30 @@
-﻿@page "/eggs"
+﻿
+@page "/eggs"
+@attribute [Microsoft.AspNetCore.Authorization.Authorize(
+    Roles = "Admin,Manager,Staff")]
+
 @using EggERP.Shared.Models
 @using EggERP.Shared.Services
+@using EggERP.Shared.Components
+
 @inject IEggApiService EggApiService
 
-<h3>Eggs</h3>
+<PageTitle>Eggs - EzEggERP</PageTitle>
+
+<h3 class="mb-3">Eggs</h3>
 
 <div class="d-flex flex-wrap gap-2 mb-3">
-    <a class="btn btn-primary" href="/stock/add">+ Add Stock</a>
-    <a class="btn btn-secondary" href="/stock/remove">- Remove Stock</a>
+    <a class="btn btn-primary" href="/stock/add">
+        + Add Stock
+    </a>
+    <a class="btn btn-secondary" href="/stock/remove">
+        - Remove Stock
+    </a>
 </div>
 
 <div class="row mb-3 g-2">
     <div class="col-md-6">
-        <label>Search</label>
+        <label class="form-label">Search</label>
         <input class="form-control"
                placeholder="Search type or description..."
                @bind="searchText"
@@ -21,7 +33,7 @@
     </div>
 
     <div class="col-md-3">
-        <label>Stock Status</label>
+        <label class="form-label">Stock Status</label>
         <select class="form-select"
                 @bind="stockFilter"
                 @bind:after="ResetPage">
@@ -32,16 +44,24 @@
     </div>
 
     <div class="col-md-3 d-flex align-items-end">
-        <button class="btn btn-outline-secondary w-100"
+        <button type="button"
+                class="btn btn-outline-secondary w-100"
                 @onclick="ClearFilters">
             Clear
         </button>
     </div>
 </div>
 
+@if (!string.IsNullOrWhiteSpace(errorMessage))
+{
+    <div class="alert alert-danger" role="alert">
+        @errorMessage
+    </div>
+}
+
 @if (rows is null)
 {
-    <p>Loading...</p>
+    <p class="text-muted">Loading eggs...</p>
 }
 else if (!FilteredRows.Any())
 {
@@ -51,8 +71,13 @@ else if (!FilteredRows.Any())
 }
 else
 {
-    <div class="table-responsive">
-        <table class="table">
+    <div class="erp-table-scroll"
+         role="region"
+         aria-label="Egg stock records"
+         tabindex="0">
+
+        <table class="table erp-data-table
+                      table-striped table-hover align-middle">
             <thead>
                 <tr>
                     <th>Type</th>
@@ -95,10 +120,10 @@ else
         </table>
     </div>
 
-    <Pager Total="FilteredRows.Count()"
-           Page="page"
-           PageSize="pageSize"
-           PageChanged="OnPageChanged" />
+    <EzPagination TotalCount="FilteredRows.Count()"
+                  Page="currentPage"
+                  PageSize="PageSize"
+                  PageChanged="OnPageChanged" />
 }
 
 @code {
@@ -106,19 +131,20 @@ else
 
     private string searchText = string.Empty;
     private string stockFilter = string.Empty;
+    private string? errorMessage;
 
-    private int page = 1;
-    private const int pageSize = 7;
+    private int currentPage = 1;
+    private const int PageSize = 10;
 
     private IEnumerable<StockBoardRowDto> FilteredRows =>
         (rows ?? new List<StockBoardRowDto>())
         .Where(row =>
             (
                 string.IsNullOrWhiteSpace(searchText) ||
-                row.Type.Contains(
+                (row.Type ?? string.Empty).Contains(
                     searchText,
                     StringComparison.OrdinalIgnoreCase) ||
-                row.Description.Contains(
+                (row.Description ?? string.Empty).Contains(
                     searchText,
                     StringComparison.OrdinalIgnoreCase)
             )
@@ -131,28 +157,36 @@ else
 
     private IEnumerable<StockBoardRowDto> PagedRows =>
         FilteredRows
-            .Skip((page - 1) * pageSize)
-            .Take(pageSize);
+            .Skip((currentPage - 1) * PageSize)
+            .Take(PageSize);
 
     protected override async Task OnInitializedAsync()
     {
-        rows = await EggApiService.GetBoardAsync();
+        try
+        {
+            rows = await EggApiService.GetBoardAsync();
+        }
+        catch (Exception)
+        {
+            errorMessage = "Unable to load egg stock records.";
+            rows = new();
+        }
     }
 
     private void ResetPage()
     {
-        page = 1;
+        currentPage = 1;
     }
 
     private void OnPageChanged(int newPage)
     {
-        page = newPage;
+        currentPage = newPage;
     }
 
     private void ClearFilters()
     {
         searchText = string.Empty;
         stockFilter = string.Empty;
-        page = 1;
+        currentPage = 1;
     }
 }

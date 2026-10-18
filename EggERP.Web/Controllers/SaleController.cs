@@ -1,9 +1,13 @@
-﻿using EggERP.Application.ActivityLogs;
+﻿
+using EggERP.Application.ActivityLogs;
 using EggERP.Application.Sales;
 using EggERP.Infrastructure.Identity;
+using EggERP.Infrastructure.Persistence;
+using EggERP.Shared.Models;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.EntityFrameworkCore;
 
 namespace EggERP.Web.Controllers;
 
@@ -16,32 +20,96 @@ public class SaleController : ControllerBase
     private readonly ISaleService _saleService;
     private readonly UserManager<ApplicationUser> _userManager;
     private readonly IActivityLogService _activityLogService;
+    private readonly EggERPDbContext _dbContext;
 
     public SaleController(
         ISaleService saleService,
         UserManager<ApplicationUser> userManager,
-        IActivityLogService activityLogService)
+        IActivityLogService activityLogService,
+        EggERPDbContext dbContext)
     {
         _saleService = saleService;
         _userManager = userManager;
         _activityLogService = activityLogService;
+        _dbContext = dbContext;
     }
 
     [HttpGet("{businessId:guid}")]
     public async Task<IActionResult> GetSales(Guid businessId)
     {
-        var currentUser = await _userManager.GetUserAsync(User);
+        var user = await _userManager.GetUserAsync(User);
 
-        if (currentUser is null || !currentUser.IsActive)
+        if (user is null || !user.IsActive)
             return Unauthorized();
 
-        if (currentUser.BusinessId != businessId)
+        if (user.BusinessId == Guid.Empty ||
+            user.BusinessId != businessId)
             return Forbid();
 
-        var sales = await _saleService.GetSalesAsync(
-            currentUser.BusinessId);
+        return Ok(await _saleService.GetSalesAsync(businessId));
+    }
 
-        return Ok(sales);
+    [HttpGet("{businessId:guid}/daily-by-group")]
+    [Authorize(Roles = "Admin,Manager")]
+    public async Task<IActionResult> GetDailySalesByGroup(
+        Guid businessId)
+    {
+        var user = await _userManager.GetUserAsync(User);
+
+        if (user is null || !user.IsActive)
+            return Unauthorized();
+
+        if (user.BusinessId == Guid.Empty ||
+            user.BusinessId != businessId)
+            return Forbid();
+
+        var today = DateTime.Today;
+        var start = today.AddDays(-6);
+        var end = today.AddDays(1);
+
+        var startUtc = start.ToUniversalTime();
+        var endUtc = end.ToUniversalTime();
+
+        var items = await (
+            from sale in _dbContext.Sales.AsNoTracking()
+            join item in _dbContext.SaleItems.AsNoTracking()
+                on sale.Id equals item.SaleId
+            join product in _dbContext.Products.AsNoTracking()
+                on item.ProductId equals product.Id
+            where sale.BusinessId == businessId
+                  && product.BusinessId == businessId
+                  && sale.SaleDateUtc >= startUtc
+                  && sale.SaleDateUtc < endUtc
+            select new
+            {
+                sale.SaleDateUtc,
+                product.Group,
+                item.TotalAmount
+            }
+        ).ToListAsync();
+
+        var result = Enumerable.Range(0, 7)
+            .Select(offset =>
+            {
+                var date = start.AddDays(offset);
+
+                var daily = items.Where(x =>
+                    x.SaleDateUtc.ToLocalTime().Date == date);
+
+                return new DailySalesByGroupDto
+                {
+                    Date = date,
+                    FlockSales = daily
+                        .Where(x => x.Group == "Flock")
+                        .Sum(x => x.TotalAmount),
+                    EggSales = daily
+                        .Where(x => x.Group == "Egg")
+                        .Sum(x => x.TotalAmount)
+                };
+            })
+            .ToList();
+
+        return Ok(result);
     }
 
     public class CreateSaleRequest
@@ -60,15 +128,13 @@ public class SaleController : ControllerBase
     [HttpPost]
     public async Task<IActionResult> CreateSale(CreateSaleRequest request)
     {
-        var currentUser = await _userManager.GetUserAsync(User);
+        var user = await _userManager.GetUserAsync(User);
 
-        if (currentUser is null || !currentUser.IsActive)
+        if (user is null || !user.IsActive)
             return Unauthorized();
 
-        if (currentUser.BusinessId == Guid.Empty)
-            return Forbid();
-
-        if (request.BusinessId != currentUser.BusinessId)
+        if (user.BusinessId == Guid.Empty ||
+            request.BusinessId != user.BusinessId)
             return Forbid();
 
         if (request.Items is null || request.Items.Count == 0)
@@ -77,7 +143,7 @@ public class SaleController : ControllerBase
         try
         {
             var sale = await _saleService.CreateSaleAsync(
-                currentUser.BusinessId,
+                user.BusinessId,
                 request.CustomerId,
                 request.Items,
                 request.PaymentMethod,
@@ -88,17 +154,18 @@ public class SaleController : ControllerBase
                 request.Notes);
 
             await _activityLogService.LogAsync(
-                currentUser.BusinessId,
-                currentUser.Id,
-                currentUser.FullName,
+                user.BusinessId,
+                user.Id,
+                user.FullName,
                 "Created Sale",
                 "Sale",
                 sale.Id,
-                $"{request.Items.Count} item(s) — Total: {sale.TotalAmount:N2} ({request.PaymentMethod})");
+                $"{request.Items.Count} item(s) — Total: " +
+                $"{sale.TotalAmount:N2} ({request.PaymentMethod})");
 
             return CreatedAtAction(
                 nameof(GetSales),
-                new { businessId = currentUser.BusinessId },
+                new { businessId = user.BusinessId },
                 sale);
         }
         catch (InvalidOperationException ex)
@@ -120,40 +187,68 @@ public class SaleController : ControllerBase
         Guid id,
         MarkSalePaidRequest request)
     {
-        var currentUser = await _userManager.GetUserAsync(User);
+        var user = await _userManager.GetUserAsync(User);
 
-        if (currentUser is null || !currentUser.IsActive)
-        {
+        if (user is null || !user.IsActive)
             return Unauthorized();
-        }
 
-        if (currentUser.BusinessId == Guid.Empty ||
-            currentUser.BusinessId != businessId)
-        {
+        if (user.BusinessId == Guid.Empty ||
+            user.BusinessId != businessId)
             return Forbid();
-        }
 
         var (succeeded, error) =
-await _saleService.MarkAsPaidAsync(
-    currentUser.BusinessId,
-    id,
-    request.PaymentMethod,
-    request.PaymentSource,
-    request.ReferenceNumber);
+            await _saleService.MarkAsPaidAsync(
+                businessId,
+                id,
+                request.PaymentMethod,
+                request.PaymentSource,
+                request.ReferenceNumber);
 
         if (!succeeded)
-        {
             return BadRequest(error);
-        }
 
         await _activityLogService.LogAsync(
-            currentUser.BusinessId,
-            currentUser.Id,
-            currentUser.FullName,
+            businessId,
+            user.Id,
+            user.FullName,
             "Sale Payment Completed",
             "Sale",
             id,
             $"Marked as Paid ({request.PaymentMethod})");
+
+        return NoContent();
+    }
+
+    [HttpPut("{businessId:guid}/{id:guid}/mark-pending")]
+    public async Task<IActionResult> MarkAsPending(
+        Guid businessId,
+        Guid id)
+    {
+        var user = await _userManager.GetUserAsync(User);
+
+        if (user is null || !user.IsActive)
+            return Unauthorized();
+
+        if (user.BusinessId == Guid.Empty ||
+            user.BusinessId != businessId)
+            return Forbid();
+
+        var (succeeded, error) =
+            await _saleService.MarkAsPendingAsync(
+                businessId,
+                id);
+
+        if (!succeeded)
+            return BadRequest(error);
+
+        await _activityLogService.LogAsync(
+            businessId,
+            user.Id,
+            user.FullName,
+            "Sale Marked Pending",
+            "Sale",
+            id,
+            "Payment status changed from Paid to Pending.");
 
         return NoContent();
     }

@@ -1,4 +1,4 @@
-﻿
+
 using EggERP.Application.ActivityLogs;
 using EggERP.Application.Flocks;
 using EggERP.Infrastructure.Identity;
@@ -12,7 +12,7 @@ namespace EggERP.Web.Controllers;
 
 [ApiController]
 [Route("api/stock")]
-[Authorize(Roles = "Admin,Manager")]
+[Authorize(Roles = "Admin,Manager,Staff")]
 [Authorize(Policy = "ActiveBusiness")]
 public class StockController : ControllerBase
 {
@@ -37,8 +37,10 @@ public class StockController : ControllerBase
     public async Task<IActionResult> Process(
         [FromBody] ProcessStockTransactionRequest request)
     {
-        var currentUser = await _userManager.GetUserAsync(User);
+        if (request is null)
+            return BadRequest("Stock transaction request is required.");
 
+        var currentUser = await _userManager.GetUserAsync(User);
         if (currentUser is null)
             return Unauthorized();
 
@@ -64,11 +66,12 @@ public class StockController : ControllerBase
                           "Stock transactions are not permitted."
             });
         }
+        if (currentUser.BusinessId == Guid.Empty)
+            return Forbid();
 
         // Always use the authenticated user's business.
         // Never trust a BusinessId submitted by the client.
         request.BusinessId = currentUser.BusinessId;
-
         var (succeeded, error) =
             await _flockService.ProcessTransactionAsync(request);
 

@@ -1,25 +1,20 @@
-﻿@page "/purchases"
-@attribute [Authorize(Roles = "Admin,Manager")]
+@page "/purchases"
+@attribute [Authorize(Roles = "Admin,Manager,Staff")]
 @using EggERP.Shared.Models
 @using EggERP.Shared.Services
+@using EggERP.Shared.Components 
 @inject IPurchaseApiService PurchaseApiService
 @inject ISupplierApiService SupplierApiService
 @inject IJSRuntime JsRuntime
 @inject CurrentBusinessService CurrentBusiness
-
 <h3>Purchases</h3>
-
 <a class="btn btn-primary mb-3" href="/purchases/new">
     + New Purchase
 </a>
-
 @if (!string.IsNullOrWhiteSpace(errorMessage))
 {
-    <div class="alert alert-danger">
-        @errorMessage
-    </div>
+    <div class="alert alert-danger">@errorMessage</div>
 }
-
 <div class="row mb-3 g-2">
     <div class="col-md-4">
         <label>Search</label>
@@ -29,7 +24,6 @@
                @bind:event="oninput"
                @bind:after="ResetPage" />
     </div>
-
     <div class="col-md-2">
         <label>Status</label>
         <select class="form-select"
@@ -40,23 +34,16 @@
             <option value="Pending">Pending</option>
         </select>
     </div>
-
     <div class="col-md-2">
         <label>From</label>
-        <input type="date"
-               class="form-control"
-               @bind="startDate"
-               @bind:after="ResetPage" />
+        <input type="date" class="form-control"
+               @bind="startDate" @bind:after="ResetPage" />
     </div>
-
     <div class="col-md-2">
         <label>To</label>
-        <input type="date"
-               class="form-control"
-               @bind="endDate"
-               @bind:after="ResetPage" />
+        <input type="date" class="form-control"
+               @bind="endDate" @bind:after="ResetPage" />
     </div>
-
     <div class="col-md-2 d-flex align-items-end">
         <button class="btn btn-outline-secondary w-100"
                 @onclick="ClearFilters">
@@ -67,7 +54,7 @@
 
 @if (purchases is null)
 {
-    <p>Loading...</p>
+    <p>Loading purchases...</p>
 }
 else if (!FilteredPurchases.Any())
 {
@@ -75,8 +62,11 @@ else if (!FilteredPurchases.Any())
 }
 else
 {
-    <div class="table-responsive">
-        <table class="table">
+    <div class="erp-table-scroll"
+         role="region"
+         aria-label="Purchases table"
+         tabindex="0">
+        <table class="table erp-data-table table-striped table-hover align-middle">
             <thead>
                 <tr>
                     <th>Date</th>
@@ -86,29 +76,17 @@ else
                     <th>Action</th>
                 </tr>
             </thead>
-
             <tbody>
                 @foreach (var purchase in PagedPurchases)
                 {
-                    <tr>
-                        <td>
-                            @purchase.PurchaseDateUtc.ToLocalTime().ToString("g")
-                        </td>
-
-                        <td>
-                            @GetSupplierName(purchase.SupplierId)
-                        </td>
-
-                        <td>
-                            @purchase.TotalAmount.ToString("N2")
-                        </td>
-
+                    <tr @key="purchase.Id">
+                        <td>@purchase.PurchaseDateUtc.ToLocalTime().ToString("g")</td>
+                        <td>@GetSupplierName(purchase.SupplierId)</td>
+                        <td>@purchase.TotalAmount.ToString("N2")</td>
                         <td>
                             @if (purchase.Status == "Paid")
                             {
-                                <span class="badge bg-success">
-                                    Paid
-                                </span>
+                                <span class="badge bg-success">Paid</span>
                             }
                             else
                             {
@@ -117,14 +95,21 @@ else
                                 </span>
                             }
                         </td>
-
                         <td>
                             @if (purchase.Status == "Pending")
                             {
                                 <button class="btn btn-sm btn-success"
                                         disabled="@isUpdating"
                                         @onclick="() => MarkAsPaid(purchase)">
-                                    @(isUpdating ? "Processing..." : "Mark Paid")
+                                    Mark Paid
+                                </button>
+                            }
+                            else if (purchase.Status == "Paid")
+                            {
+                                <button class="btn btn-sm btn-warning"
+                                        disabled="@isUpdating"
+                                        @onclick="() => MarkAsPending(purchase)">
+                                    Mark Pending
                                 </button>
                             }
                             else
@@ -137,91 +122,66 @@ else
             </tbody>
         </table>
     </div>
-
-    <Pager Total="FilteredPurchases.Count()"
-           Page="page"
-           PageSize="pageSize"
-           PageChanged="OnPageChanged" />
+    <EzPagination TotalCount="FilteredPurchases.Count()"
+                  Page="page"
+                  PageSize="pageSize"
+                  Disabled="isUpdating"
+                  PageChanged="OnPageChanged" />
 }
 
 @code {
     private List<PurchaseDto>? purchases;
     private List<SupplierDto>? suppliers;
-
+    private Guid businessId;
     private string searchText = string.Empty;
     private string selectedStatus = string.Empty;
     private DateTime? startDate;
     private DateTime? endDate;
-
-    private Guid businessId;
-
     private int page = 1;
-    private const int pageSize = 7;
-
+    private const int pageSize = 10;
     private bool isUpdating;
     private string? errorMessage;
 
     private IEnumerable<PurchaseDto> FilteredPurchases =>
-        (purchases ?? new List<PurchaseDto>())
-        .Where(p =>
-            (
-                string.IsNullOrWhiteSpace(searchText) ||
-                GetSupplierName(p.SupplierId)
-                    .Contains(searchText, StringComparison.OrdinalIgnoreCase)
-            )
-            &&
-            (
-                string.IsNullOrWhiteSpace(selectedStatus) ||
-                p.Status == selectedStatus
-            )
-            &&
-            (
-                !startDate.HasValue ||
-                p.PurchaseDateUtc.ToLocalTime().Date >= startDate.Value.Date
-            )
-            &&
-            (
-                !endDate.HasValue ||
-                p.PurchaseDateUtc.ToLocalTime().Date <= endDate.Value.Date
-            ));
+        (purchases ?? new List<PurchaseDto>()).Where(p =>
+            (string.IsNullOrWhiteSpace(searchText) ||
+             GetSupplierName(p.SupplierId).Contains(
+                 searchText, StringComparison.OrdinalIgnoreCase)) &&
+            (string.IsNullOrWhiteSpace(selectedStatus) ||
+             p.Status == selectedStatus) &&
+            (!startDate.HasValue ||
+             p.PurchaseDateUtc.ToLocalTime().Date >= startDate.Value.Date) &&
+            (!endDate.HasValue ||
+             p.PurchaseDateUtc.ToLocalTime().Date <= endDate.Value.Date));
 
     private IEnumerable<PurchaseDto> PagedPurchases =>
-        FilteredPurchases
-            .Skip((page - 1) * pageSize)
-            .Take(pageSize);
+        FilteredPurchases.Skip((page - 1) * pageSize).Take(pageSize);
 
     protected override async Task OnInitializedAsync()
     {
-        businessId = await CurrentBusiness.GetBusinessIdAsync();
-
-        purchases =
-            await PurchaseApiService.GetPurchasesAsync(businessId);
-
-        suppliers =
-            await SupplierApiService.GetSuppliersAsync(businessId);
+        try
+        {
+            businessId = await CurrentBusiness.GetBusinessIdAsync();
+            purchases = await PurchaseApiService.GetPurchasesAsync(businessId);
+            suppliers = await SupplierApiService.GetSuppliersAsync(businessId);
+        }
+        catch (Exception ex)
+        {
+            errorMessage = $"Unable to load purchases: {ex.Message}";
+            purchases = new();
+            suppliers = new();
+        }
     }
 
     private string GetSupplierName(Guid? supplierId)
     {
-        if (supplierId is null)
-        {
-            return "Unspecified";
-        }
-
-        return suppliers?
-            .FirstOrDefault(s => s.Id == supplierId)?
-            .Name ?? "Unknown";
+        if (supplierId is null) return "Unspecified";
+        return suppliers?.FirstOrDefault(s => s.Id == supplierId)?.Name
+               ?? "Unknown";
     }
 
-    private void ResetPage()
-    {
-        page = 1;
-    }
-
-    private void OnPageChanged(int newPage)
-    {
-        page = newPage;
-    }
+    private void ResetPage() => page = 1;
+    private void OnPageChanged(int newPage) => page = newPage;
 
     private void ClearFilters()
     {
@@ -232,52 +192,64 @@ else
         page = 1;
     }
 
+    private async Task RefreshAsync()
+    {
+        purchases = await PurchaseApiService.GetPurchasesAsync(businessId);
+        var totalPages = Math.Max(1,
+            (int)Math.Ceiling(FilteredPurchases.Count() / (double)pageSize));
+        if (page > totalPages) page = totalPages;
+    }
+
     private async Task MarkAsPaid(PurchaseDto purchase)
     {
-        if (isUpdating)
-        {
-            return;
-        }
-
-        errorMessage = null;
+        if (isUpdating) return;
 
         var confirmed = await JsRuntime.InvokeAsync<bool>(
             "confirm",
             $"Mark this purchase of {purchase.TotalAmount:N2} as fully paid in Cash?");
 
-        if (!confirmed)
-        {
-            return;
-        }
+        if (!confirmed) return;
 
         isUpdating = true;
-
+        errorMessage = null;
         try
         {
             await PurchaseApiService.MarkAsPaidAsync(
-                businessId,
-                purchase.Id,
-                "Cash",
-                null,
-                null,
-                null);
-
-            purchases =
-                await PurchaseApiService.GetPurchasesAsync(businessId);
-
-            var totalPages = Math.Max(
-                1,
-                (int)Math.Ceiling(FilteredPurchases.Count() / (double)pageSize));
-
-            if (page > totalPages)
-            {
-                page = totalPages;
-            }
+                businessId, purchase.Id, "Cash", null, null, null);
+            await RefreshAsync();
         }
         catch (Exception ex)
         {
-            errorMessage =
-                $"Failed to update payment: {ex.Message}";
+            errorMessage = $"Failed to mark purchase paid: {ex.Message}";
+        }
+        finally
+        {
+            isUpdating = false;
+        }
+    }
+
+    private async Task MarkAsPending(PurchaseDto purchase)
+    {
+        if (isUpdating) return;
+
+        var confirmed = await JsRuntime.InvokeAsync<bool>(
+            "confirm",
+            $"Change this paid purchase of {purchase.TotalAmount:N2} back to Pending? " +
+            "This will not remove stock.");
+
+        if (!confirmed) return;
+
+        isUpdating = true;
+        errorMessage = null;
+        try
+        {
+            await PurchaseApiService.MarkAsPendingAsync(
+                businessId, purchase.Id);
+            await RefreshAsync();
+        }
+        catch (Exception ex)
+        {
+            errorMessage = $"Failed to mark purchase pending: {ex.Message}";
         }
         finally
         {

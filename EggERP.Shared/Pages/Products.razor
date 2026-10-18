@@ -1,15 +1,20 @@
-﻿@page "/products"
+@page "/products"
 @using EggERP.Shared.Models
 @using EggERP.Shared.Services
 @inject IProductApiService ProductApiService
 @inject IJSRuntime JsRuntime
-
+@using Microsoft.AspNetCore.Components.Authorization
+@inject AuthenticationStateProvider AuthenticationStateProvider
+@using EggERP.Shared.Components
 <h3>Products</h3>
 
-<a class="btn btn-primary mb-3" href="/products/add">+ Add Product</a>
+@if (canManage)
+{
+    <a class="btn btn-primary mb-3" href="/products/add">+ Add Product</a>
+}
 
 <div class="row mb-3 g-2">
-    <div class="col-md-6">
+    <div class="col-md-4">
         <input class="form-control"
                placeholder="Search products..."
                @bind="searchText"
@@ -17,7 +22,7 @@
                @bind:after="ResetPage" />
     </div>
 
-    <div class="col-md-6">
+    <div class="col-md-4">
         <select class="form-select"
                 @bind="selectedGroup"
                 @bind:after="ResetPage">
@@ -26,6 +31,16 @@
             <option value="Egg">Egg</option>
         </select>
     </div>
+    @if (canManage)
+    {
+        <div class="col-md-4">
+            <select class="form-select" @bind="statusFilter" @bind:after="ResetPage">
+                <option value="Active">Active</option>
+                <option value="Inactive">Inactive</option>
+                <option value="All">All</option>
+            </select>
+        </div>
+    }
 </div>
 
 @if (products is null)
@@ -49,7 +64,8 @@ else
                     <th>Cost Price</th>
 <th>Sell Price</th>
 <th>Low Stock At</th>
-<th>Actions</th>
+<th>Status</th>
+                    @if (canManage) { <th>Actions</th> }
                 </tr>
             </thead>
 
@@ -64,38 +80,44 @@ else
                         <td>@product.CostPrice.ToString("N2")</td>
                         <td>@product.SellingPrice.ToString("N2")</td>
                         <td>@product.ReorderLevel.ToString("N0")</td>
-                        <td>
-                            <div class="erp-table-actions">
-                                <a class="btn btn-sm btn-secondary"
-                                   href="@($"/products/edit/{product.Id}")">
-                                    Edit
-                                </a>
-
-                                <button class="btn btn-sm btn-danger"
-                                        @onclick="() => DeactivateProduct(product.Id, product.Name)">
-                                    Deactivate
-                                </button>
-                            </div>
-                        </td>
+                        <td><span class="badge @(product.IsActive ? "bg-success" : "bg-secondary")">@(product.IsActive ? "Active" : "Inactive")</span></td>
+                        @if (canManage)
+                        {
+                            <td>
+                                <div class="erp-table-actions">
+                                    <a class="btn btn-sm btn-secondary" href="@($"/products/edit/{product.Id}")">Edit</a>
+                                    @if (product.IsActive)
+                                    {
+                                        <button class="btn btn-sm btn-danger" @onclick="() => DeactivateProduct(product.Id, product.Name)">Deactivate</button>
+                                    }
+                                    else
+                                    {
+                                        <button class="btn btn-sm btn-success" @onclick="() => ReactivateProduct(product.Id, product.Name)">Reactivate</button>
+                                    }
+                                </div>
+                            </td>
+                        }
                     </tr>
                 }
             </tbody>
         </table>
     </div>
 
-    <Pager Total="FilteredProducts.Count()"
-           Page="page"
-           PageSize="pageSize"
-           PageChanged="OnPageChanged" />
+    <EzPagination TotalCount="FilteredProducts.Count()"
+                  Page="@(page)"
+                  PageSize="pageSize"
+                  PageChanged="OnPageChanged" />
 }
 
 @code {
     private List<ProductDto>? products;
     private string searchText = string.Empty;
     private string selectedGroup = string.Empty;
+    private string statusFilter = "Active";
+    private bool canManage;
 
     private int page = 1;
-    private const int pageSize = 7;
+    private const int pageSize = 10;
 
     private IEnumerable<ProductDto> FilteredProducts =>
         products is null
@@ -114,7 +136,10 @@ else
                 (
                     string.IsNullOrWhiteSpace(selectedGroup) ||
                     p.Group == selectedGroup
-                ));
+                )
+                && (statusFilter == "All" ||
+                    (statusFilter == "Active" && p.IsActive) ||
+                    (statusFilter == "Inactive" && !p.IsActive)));
 
     private IEnumerable<ProductDto> PagedProducts =>
         FilteredProducts
@@ -133,7 +158,23 @@ else
 
     protected override async Task OnInitializedAsync()
     {
-        products = await ProductApiService.GetProductsAsync();
+        var state = await AuthenticationStateProvider.GetAuthenticationStateAsync();
+        canManage = state.User.IsInRole("Admin") || state.User.IsInRole("Manager");
+        products = await ProductApiService.GetProductsAsync(canManage);
+    }
+
+    private async Task RefreshProductsAsync()
+    {
+        products = await ProductApiService.GetProductsAsync(canManage);
+    }
+
+    private async Task ReactivateProduct(Guid id, string name)
+    {
+        if (!canManage) return;
+        var confirmed = await JsRuntime.InvokeAsync<bool>("confirm", $"Reactivate '{name}'?");
+        if (!confirmed) return;
+        await ProductApiService.ReactivateProductAsync(id);
+        await RefreshProductsAsync();
     }
 
     private async Task DeactivateProduct(Guid id, string name)
@@ -148,6 +189,6 @@ else
         }
 
         await ProductApiService.DeactivateProductAsync(id);
-        products = await ProductApiService.GetProductsAsync();
+        await RefreshProductsAsync();
     }
 }

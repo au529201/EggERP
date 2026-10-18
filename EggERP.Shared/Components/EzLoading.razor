@@ -1,0 +1,15 @@
+﻿
+<div class="ez-loading"
+     role="status"
+     aria-live="polite"
+     aria-busy="true">
+    <div class="spinner-border spinner-border-sm ez-loading-spinner"
+         aria-hidden="true"></div>
+
+    <span>@Message</span>
+</div>
+
+@code {
+    [Parameter]
+    public string Message { get; set; } = "Loading, please wait...";
+}

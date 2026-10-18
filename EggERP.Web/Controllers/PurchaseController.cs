@@ -1,4 +1,5 @@
-﻿using EggERP.Application.ActivityLogs;
+
+using EggERP.Application.ActivityLogs;
 using EggERP.Application.Purchases;
 using EggERP.Infrastructure.Identity;
 using Microsoft.AspNetCore.Authorization;
@@ -9,7 +10,7 @@ namespace EggERP.Web.Controllers;
 
 [ApiController]
 [Route("api/purchases")]
-[Authorize(Roles = "Admin,Manager")]
+[Authorize(Roles = "Admin,Manager,Staff")]
 [Authorize(Policy = "ActiveBusiness")]
 public class PurchaseController : ControllerBase
 {
@@ -30,43 +31,40 @@ public class PurchaseController : ControllerBase
     [HttpGet("{businessId:guid}")]
     public async Task<IActionResult> GetPurchases(Guid businessId)
     {
-        var currentUser = await _userManager.GetUserAsync(User);
+        var user = await _userManager.GetUserAsync(User);
 
-        if (currentUser is null || !currentUser.IsActive)
+        if (user is null || !user.IsActive)
             return Unauthorized();
 
-        if (currentUser.BusinessId != businessId)
+        if (user.BusinessId == Guid.Empty ||
+            user.BusinessId != businessId)
             return Forbid();
 
-        var purchases = await _purchaseService.GetPurchasesAsync(
-            currentUser.BusinessId);
-
-        return Ok(purchases);
+        return Ok(await _purchaseService.GetPurchasesAsync(businessId));
     }
+
     [HttpGet("{businessId:guid}/{id:guid}")]
     public async Task<IActionResult> GetPurchaseById(
-        Guid businessId,
-        Guid id)
+        Guid businessId, Guid id)
     {
-        var currentUser = await _userManager.GetUserAsync(User);
+        var user = await _userManager.GetUserAsync(User);
 
-        if (currentUser is null || !currentUser.IsActive)
+        if (user is null || !user.IsActive)
             return Unauthorized();
 
-        if (currentUser.BusinessId == Guid.Empty ||
-            currentUser.BusinessId != businessId)
+        if (user.BusinessId == Guid.Empty ||
+            user.BusinessId != businessId)
             return Forbid();
 
         var purchase = await _purchaseService.GetPurchaseByIdAsync(
-            currentUser.BusinessId,
-            id);
+            businessId, id);
 
         if (purchase is null)
             return NotFound();
 
         var items = await _purchaseService.GetPurchaseItemsAsync(
-            currentUser.BusinessId,
-            id);
+            businessId, id);
+
         return Ok(new { purchase, items });
     }
 
@@ -88,13 +86,13 @@ public class PurchaseController : ControllerBase
     public async Task<IActionResult> CreatePurchase(
         CreatePurchaseRequest request)
     {
-        var currentUser = await _userManager.GetUserAsync(User);
+        var user = await _userManager.GetUserAsync(User);
 
-        if (currentUser is null || !currentUser.IsActive)
+        if (user is null || !user.IsActive)
             return Unauthorized();
 
-        if (currentUser.BusinessId == Guid.Empty ||
-            currentUser.BusinessId != request.BusinessId)
+        if (user.BusinessId == Guid.Empty ||
+            user.BusinessId != request.BusinessId)
             return Forbid();
 
         if (request.Items is null || request.Items.Count == 0)
@@ -103,7 +101,7 @@ public class PurchaseController : ControllerBase
         try
         {
             var purchase = await _purchaseService.CreatePurchaseAsync(
-                currentUser.BusinessId,
+                user.BusinessId,
                 request.SupplierId,
                 request.Items,
                 request.PaymentMethod,
@@ -115,18 +113,14 @@ public class PurchaseController : ControllerBase
                 request.Notes);
 
             await _activityLogService.LogAsync(
-                currentUser.BusinessId,
-                currentUser.Id,
-                currentUser.FullName,
-                "Created Purchase",
-                "Purchase",
-                purchase.Id,
+                user.BusinessId, user.Id, user.FullName,
+                "Created Purchase", "Purchase", purchase.Id,
                 $"{request.Items.Count} item(s) — Total: " +
                 $"{purchase.TotalAmount:N2} ({request.PaymentMethod})");
 
             return CreatedAtAction(
                 nameof(GetPurchases),
-                new { businessId = currentUser.BusinessId },
+                new { businessId = user.BusinessId },
                 purchase);
         }
         catch (InvalidOperationException ex)
@@ -145,45 +139,58 @@ public class PurchaseController : ControllerBase
 
     [HttpPut("{businessId:guid}/{id:guid}/mark-paid")]
     public async Task<IActionResult> MarkAsPaid(
-        Guid businessId,
-        Guid id,
+        Guid businessId, Guid id,
         MarkPurchasePaidRequest request)
     {
-        var currentUser = await _userManager.GetUserAsync(User);
+        var user = await _userManager.GetUserAsync(User);
 
-        if (currentUser is null || !currentUser.IsActive)
-        {
+        if (user is null || !user.IsActive)
             return Unauthorized();
-        }
 
-        if (currentUser.BusinessId == Guid.Empty ||
-            currentUser.BusinessId != businessId)
-        {
+        if (user.BusinessId == Guid.Empty ||
+            user.BusinessId != businessId)
             return Forbid();
-        }
 
         var (succeeded, error) =
-await _purchaseService.MarkAsPaidAsync(
-    currentUser.BusinessId,
-    id,
-    request.PaymentMethod,
-    request.PaymentSource,
-    request.ReferenceNumber,
-    request.BankName);
+            await _purchaseService.MarkAsPaidAsync(
+                businessId, id, request.PaymentMethod,
+                request.PaymentSource, request.ReferenceNumber,
+                request.BankName);
 
         if (!succeeded)
-        {
             return BadRequest(error);
-        }
 
         await _activityLogService.LogAsync(
-            currentUser.BusinessId,
-            currentUser.Id,
-            currentUser.FullName,
-            "Purchase Payment Completed",
-            "Purchase",
-            id,
+            businessId, user.Id, user.FullName,
+            "Purchase Payment Completed", "Purchase", id,
             $"Marked as Paid ({request.PaymentMethod})");
+
+        return NoContent();
+    }
+
+    [HttpPut("{businessId:guid}/{id:guid}/mark-pending")]
+    public async Task<IActionResult> MarkAsPending(
+        Guid businessId, Guid id)
+    {
+        var user = await _userManager.GetUserAsync(User);
+
+        if (user is null || !user.IsActive)
+            return Unauthorized();
+
+        if (user.BusinessId == Guid.Empty ||
+            user.BusinessId != businessId)
+            return Forbid();
+
+        var (succeeded, error) =
+            await _purchaseService.MarkAsPendingAsync(businessId, id);
+
+        if (!succeeded)
+            return BadRequest(error);
+
+        await _activityLogService.LogAsync(
+            businessId, user.Id, user.FullName,
+            "Purchase Marked Pending", "Purchase", id,
+            "Payment status changed from Paid to Pending.");
 
         return NoContent();
     }

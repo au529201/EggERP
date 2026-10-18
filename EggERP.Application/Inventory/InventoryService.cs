@@ -1,5 +1,6 @@
 ﻿
 using EggERP.Application.Products;
+using EggERP.Domain.Entities;
 
 namespace EggERP.Application.Inventory;
 
@@ -19,40 +20,87 @@ public class InventoryService : IInventoryService
     public Task<List<EggERP.Domain.Entities.Inventory>>
         GetInventoryAsync(Guid businessId)
     {
+        EnsureBusinessId(businessId);
+
         return _inventoryRepository.GetByBusinessIdAsync(businessId);
     }
 
     public Task<EggERP.Domain.Entities.Inventory?>
         GetByProductIdAsync(Guid businessId, Guid productId)
     {
+        EnsureBusinessId(businessId);
+        EnsureProductId(productId);
+
         return _inventoryRepository.GetByProductIdAsync(
             businessId, productId);
     }
 
-    public Task<EggERP.Domain.Entities.Inventory>
+    public async Task<EggERP.Domain.Entities.Inventory>
         AdjustQuantityAsync(
             Guid businessId,
             Guid productId,
             decimal delta)
     {
-        return _inventoryRepository.AdjustQuantityAsync(
+        EnsureBusinessId(businessId);
+        EnsureProductId(productId);
+
+        if (delta == 0)
+        {
+            throw new InvalidOperationException(
+                "Stock adjustment quantity cannot be zero.");
+        }
+
+        var product = await _productRepository.GetByIdAsync(
+            businessId, productId);
+
+        if (product is null)
+        {
+            throw new InvalidOperationException(
+                "The selected product does not belong to this business.");
+        }
+
+        if (!product.IsActive)
+        {
+            throw new InvalidOperationException(
+                "The selected product is inactive. " +
+                "Reactivate it before processing stock transactions.");
+        }
+
+        return await _inventoryRepository.AdjustQuantityAsync(
             businessId, productId, delta);
     }
 
-    public Task<EggERP.Domain.Entities.Inventory>
+    public async Task<EggERP.Domain.Entities.Inventory>
         SetThresholdsAsync(
             Guid businessId,
             Guid productId,
             decimal lowThreshold,
             decimal? highThreshold)
     {
-        return _inventoryRepository.SetThresholdsAsync(
-            businessId, productId, lowThreshold, highThreshold);
+        EnsureBusinessId(businessId);
+        EnsureProductId(productId);
+
+        var product = await _productRepository.GetByIdAsync(
+            businessId, productId);
+
+        if (product is null)
+        {
+            throw new InvalidOperationException(
+                "The selected product does not belong to this business.");
+        }
+
+        return await _inventoryRepository.SetThresholdsAsync(
+            businessId,
+            productId,
+            lowThreshold,
+            highThreshold);
     }
 
     public async Task<List<InventoryBoardRowDto>>
         GetBoardAsOfDateAsync(Guid businessId, DateTime asOfDate)
     {
+        EnsureBusinessId(businessId);
+
         var products =
             await _productRepository.GetActiveByBusinessIdAsync(businessId);
 
@@ -83,16 +131,39 @@ public class InventoryService : IInventoryService
                 Group = p.Group,
                 Unit = p.Unit,
                 SellingPrice = p.SellingPrice,
+
                 Available = (int)Math.Floor(
                     inv?.QuantityOnHand ?? 0),
+
                 ReorderLevel = (int)Math.Floor(
                     inv?.ReorderLevel ?? 0),
+
                 HighStockThreshold = inv?.HighStockThreshold,
+
                 BoughtAsOfDate = (int)Math.Round(
                     boughtByProduct.GetValueOrDefault(p.Id, 0)),
+
                 SoldAsOfDate = (int)Math.Round(
                     soldByProduct.GetValueOrDefault(p.Id, 0))
             };
         }).ToList();
+    }
+
+    private static void EnsureBusinessId(Guid businessId)
+    {
+        if (businessId == Guid.Empty)
+        {
+            throw new InvalidOperationException(
+                "A valid Business ID is required.");
+        }
+    }
+
+    private static void EnsureProductId(Guid productId)
+    {
+        if (productId == Guid.Empty)
+        {
+            throw new InvalidOperationException(
+                "A valid Product ID is required.");
+        }
     }
 }

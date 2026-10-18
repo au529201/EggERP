@@ -152,23 +152,40 @@
                         </NavLink>
                     </div>
 
-                    <div class="nav-item">
-                        <NavLink class="nav-link"
-                                 href="/purchases"
-                                 @onclick="CloseMobileMenu">
-                            <i class="bi bi-bag-plus-fill"></i>
-                            <span class="nav-text">Purchases</span>
-                        </NavLink>
-                    </div>
 
-                    <div class="nav-item">
-                        <NavLink class="nav-link"
-                                 href="/expenses"
-                                 @onclick="CloseMobileMenu">
-                            <i class="bi bi-cash-stack"></i>
-                            <span class="nav-text">Expenses</span>
-                        </NavLink>
-                    </div>
+                    <AuthorizeView Roles="Admin,Manager" Context="financialNavAuth">
+                        <Authorized>
+                            <div class="nav-item">
+                                <NavLink class="nav-link"
+                                         href="/purchases"
+                                         @onclick="CloseMobileMenu">
+                                    <i class="bi bi-bag-plus-fill"></i>
+                                    <span class="nav-text">Purchases</span>
+                                </NavLink>
+                            </div>
+
+                            <div class="nav-item">
+                                <NavLink class="nav-link"
+                                         href="/expenses"
+                                         @onclick="CloseMobileMenu">
+                                    <i class="bi bi-cash-stack"></i>
+                                    <span class="nav-text">Expenses</span>
+                                </NavLink>
+                            </div>
+
+                            <div class="nav-item">
+                                <NavLink class="nav-link"
+                                         href="/reports"
+                                         @onclick="CloseMobileMenu">
+                                    <i class="bi bi-bar-chart-line-fill"></i>
+                                    <span class="nav-text">
+                                        Reporting &amp; Analytics
+                                    </span>
+                                </NavLink>
+                            </div>
+                        </Authorized>
+                    </AuthorizeView>
+
 
                     <div class="nav-item">
                         <NavLink class="nav-link"

@@ -2,7 +2,10 @@
 @attribute [Authorize(Roles = "Admin,Manager")]
 @using EggERP.Shared.Models
 @using EggERP.Shared.Services
+@using EggERP.Shared.Components
+
 @inject IExpenseApiService ExpenseApiService
+@inject CurrentBusinessService CurrentBusiness
 
 <h3>Expenses</h3>
 
@@ -64,8 +67,11 @@ else if (!FilteredExpenses.Any())
 }
 else
 {
-    <div class="table-responsive">
-        <table class="table">
+<div class="erp-table-scroll"
+     role="region"
+     aria-label="Expenses table"
+     tabindex="0">
+    <table class="table erp-data-table table-striped table-hover align-middle">
             <thead>
                 <tr>
                     <th>Date</th>
@@ -147,10 +153,11 @@ else
         </table>
     </div>
 
-    <Pager Total="FilteredExpenses.Count()"
-           Page="page"
-           PageSize="pageSize"
-           PageChanged="OnPageChanged" />
+<EzPagination TotalCount="FilteredExpenses.Count()"
+              Page="page"
+              PageSize="pageSize"
+              Disabled="@(updatingExpenseId.HasValue)"
+              PageChanged="OnPageChanged" />
 }
 
 @code {
@@ -163,11 +170,10 @@ else
     private Guid? updatingExpenseId;
     private string? errorMessage;
 
-    private readonly Guid businessId =
-        Guid.Parse("11111111-1111-1111-1111-111111111111");
+private Guid businessId;
 
-    private int page = 1;
-    private const int pageSize = 7;
+private int page = 1;
+private const int pageSize = 10;
 
     private IEnumerable<ExpenseDto> FilteredExpenses =>
         (expenses ?? new List<ExpenseDto>())
@@ -204,14 +210,27 @@ else
         FilteredExpenses
             .Skip((page - 1) * pageSize)
             .Take(pageSize);
-
-    protected override async Task OnInitializedAsync()
+protected override async Task OnInitializedAsync()
+{
+    try
     {
-        expenses =
-            await ExpenseApiService.GetExpensesAsync(
-                businessId);
-    }
+        businessId = await CurrentBusiness.GetBusinessIdAsync();
 
+        if (businessId == Guid.Empty)
+        {
+            errorMessage = "No business is currently selected.";
+            expenses = new();
+            return;
+        }
+
+        expenses = await ExpenseApiService.GetExpensesAsync(businessId);
+    }
+    catch (Exception ex)
+    {
+        errorMessage = $"Unable to load expenses: {ex.Message}";
+        expenses = new();
+    }
+}
     private void ResetPage()
     {
         page = 1;
@@ -226,11 +245,10 @@ else
         ExpenseDto expense,
         string newStatus)
     {
-        if (updatingExpenseId.HasValue)
-        {
-            return;
-        }
-
+if (updatingExpenseId.HasValue || businessId == Guid.Empty)
+{
+    return;
+}
         if (expense.Status == newStatus)
         {
             return;

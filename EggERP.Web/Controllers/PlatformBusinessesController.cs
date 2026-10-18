@@ -33,29 +33,71 @@ public class PlatformBusinessesController : ControllerBase
         if (currentUser is null || !currentUser.IsActive)
             return Unauthorized();
 
-        var adminRole = await _db.Roles
+        var adminRoleId = await _db.Roles
+            .AsNoTracking()
             .Where(r => r.Name == "Admin")
             .Select(r => r.Id)
             .FirstOrDefaultAsync();
 
-        var results = await (
-            from business in _db.Businesses.AsNoTracking()
-            join owner in _db.Users.AsNoTracking()
-                on business.Id equals owner.BusinessId
-            join userRole in _db.UserRoles.AsNoTracking()
-                on owner.Id equals userRole.UserId
-            where userRole.RoleId == adminRole
-            orderby business.Name
+        var businesses = await _db.Businesses
+            .AsNoTracking()
+            .OrderBy(b => b.Name)
+            .ThenBy(b => b.Id)
+            .Select(b => new
+            {
+                BusinessId = b.Id,
+                BusinessName = b.Name,
+                IsActive = b.IsActive
+            })
+            .ToListAsync();
+
+        var admins = await (
+            from user in _db.Users.AsNoTracking()
+            join role in _db.UserRoles.AsNoTracking()
+                on user.Id equals role.UserId
+            where role.RoleId == adminRoleId
+                  && user.BusinessId != Guid.Empty
             select new
             {
-                BusinessId = business.Id,
-                BusinessName = business.Name,
-                OwnerName = owner.FullName,
-                OwnerEmail = owner.Email,
-                OwnerEmailConfirmed = owner.EmailConfirmed,
-                IsActive = business.IsActive
+                user.BusinessId,
+                user.Id,
+                user.FullName,
+                user.Email,
+                user.EmailConfirmed,
+                user.IsActive
             }
         ).ToListAsync();
+
+        var adminsByBusiness = admins
+            .GroupBy(a => a.BusinessId)
+            .ToDictionary(
+                g => g.Key,
+                g => g
+                    .OrderByDescending(a => a.IsActive)
+                    .ThenByDescending(a => a.EmailConfirmed)
+                    .ThenBy(a => a.Id)
+                    .First());
+
+        var results = businesses.Select(b =>
+        {
+            var hasAdmin = adminsByBusiness.TryGetValue(
+                b.BusinessId, out var admin);
+
+            return new
+            {
+                b.BusinessId,
+                b.BusinessName,
+                OwnerName = hasAdmin
+                    ? admin!.FullName
+                    : "No administrator assigned",
+                OwnerEmail = hasAdmin
+                    ? admin!.Email
+                    : null,
+                OwnerEmailConfirmed =
+                    hasAdmin && admin!.EmailConfirmed,
+                b.IsActive
+            };
+        }).ToList();
 
         return Ok(results);
     }
@@ -71,7 +113,6 @@ public class PlatformBusinessesController : ControllerBase
         Guid businessId,
         [FromBody] ChangeBusinessStatusRequest request)
     {
-        // Require a custom header for administrative status changes.
         if (!Request.Headers.TryGetValue(
                 "X-EzEggERP-Admin-Action",
                 out var actionHeader) ||

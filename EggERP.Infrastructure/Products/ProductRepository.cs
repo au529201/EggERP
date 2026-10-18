@@ -1,4 +1,4 @@
-﻿using EggERP.Application.Products;
+using EggERP.Application.Products;
 using EggERP.Domain.Entities;
 using EggERP.Infrastructure.Persistence;
 using Microsoft.EntityFrameworkCore;
@@ -18,6 +18,15 @@ public class ProductRepository : IProductRepository
     {
         return _dbContext.Products
             .Where(p => p.BusinessId == businessId && p.IsActive)
+            .OrderBy(p => p.Type)
+            .ThenBy(p => p.Description)
+            .ToListAsync();
+    }
+
+    public Task<List<Product>> GetAllByBusinessIdAsync(Guid businessId)
+    {
+        return _dbContext.Products
+            .Where(p => p.BusinessId == businessId)
             .OrderBy(p => p.Type)
             .ThenBy(p => p.Description)
             .ToListAsync();
@@ -52,6 +61,17 @@ public class ProductRepository : IProductRepository
         existing.CostPrice = product.CostPrice;
         existing.SellingPrice = product.SellingPrice;
         existing.Unit = product.Unit;
+        existing.UpdatedAtUtc = DateTime.UtcNow;
+        await _dbContext.SaveChangesAsync();
+        return true;
+    }
+
+    public async Task<bool> ReactivateAsync(Guid businessId, Guid id)
+    {
+        var existing = await _dbContext.Products
+            .FirstOrDefaultAsync(p => p.BusinessId == businessId && p.Id == id && !p.IsActive);
+        if (existing is null) return false;
+        existing.IsActive = true;
         existing.UpdatedAtUtc = DateTime.UtcNow;
         await _dbContext.SaveChangesAsync();
         return true;

@@ -33,13 +33,12 @@ public class ExpenseController : ControllerBase
     public async Task<IActionResult> GetExpenses(Guid businessId)
     {
         var currentUser = await _userManager.GetUserAsync(User);
-
-        if (currentUser is null)
+        if (currentUser is null || !currentUser.IsActive)
             return Unauthorized();
 
-        if (businessId != currentUser.BusinessId)
+        if (currentUser.BusinessId == Guid.Empty ||
+            businessId != currentUser.BusinessId)
             return Forbid();
-
         var expenses = await _expenseService
             .GetExpensesAsync(currentUser.BusinessId);
 
@@ -52,13 +51,12 @@ public class ExpenseController : ControllerBase
         Guid id)
     {
         var currentUser = await _userManager.GetUserAsync(User);
-
-        if (currentUser is null)
+        if (currentUser is null || !currentUser.IsActive)
             return Unauthorized();
 
-        if (businessId != currentUser.BusinessId)
+        if (currentUser.BusinessId == Guid.Empty ||
+            businessId != currentUser.BusinessId)
             return Forbid();
-
         var expense = await _expenseService.GetExpenseByIdAsync(
             currentUser.BusinessId,
             id);
@@ -74,10 +72,11 @@ public class ExpenseController : ControllerBase
         [FromBody] Expense expense)
     {
         var currentUser = await _userManager.GetUserAsync(User);
-
-        if (currentUser is null)
+        if (currentUser is null || !currentUser.IsActive)
             return Unauthorized();
 
+        if (currentUser.BusinessId == Guid.Empty)
+            return Forbid();
         if (expense is null)
             return BadRequest("Expense details are required.");
 
@@ -122,10 +121,11 @@ public class ExpenseController : ControllerBase
         [FromBody] UpdateExpenseStatusRequest request)
     {
         var currentUser = await _userManager.GetUserAsync(User);
-
-        if (currentUser is null)
+        if (currentUser is null || !currentUser.IsActive)
             return Unauthorized();
 
+        if (currentUser.BusinessId == Guid.Empty)
+            return Forbid();
         if (request is null)
             return BadRequest("Expense status is required.");
 

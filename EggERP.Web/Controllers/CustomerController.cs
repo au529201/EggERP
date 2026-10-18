@@ -33,14 +33,11 @@ public class CustomerController : ControllerBase
     {
         var user = await _userManager.GetUserAsync(User);
 
-        if (user is null ||
-            !user.IsActive ||
-            user.BusinessId == Guid.Empty)
-        {
-            return null;
-        }
-
-        return user;
+        return user is not null &&
+               user.IsActive &&
+               user.BusinessId != Guid.Empty
+            ? user
+            : null;
     }
 
     [HttpGet("{businessId:guid}")]
@@ -51,31 +48,33 @@ public class CustomerController : ControllerBase
         if (user is null || user.BusinessId != businessId)
             return Forbid();
 
-        var customers =
-            await _customerService.GetCustomersAsync(user.BusinessId);
-
-        return Ok(customers);
+        return Ok(await _customerService.GetCustomersAsync(businessId));
     }
 
-    [HttpGet("{businessId:guid}/{id:guid}")]
-    public async Task<IActionResult> GetCustomerById(
-        Guid businessId,
-        Guid id)
+    [HttpGet("{businessId:guid}/all")]
+    [Authorize(Roles = "Admin,Manager")]
+    public async Task<IActionResult> GetAllCustomers(Guid businessId)
     {
         var user = await GetActiveUserAsync();
 
         if (user is null || user.BusinessId != businessId)
             return Forbid();
 
-        var customer =
-            await _customerService.GetCustomerByIdAsync(
-                user.BusinessId,
-                id);
+        return Ok(await _customerService.GetAllCustomersAsync(businessId));
+    }
 
-        if (customer is null)
-            return NotFound();
+    [HttpGet("{businessId:guid}/{id:guid}")]
+    public async Task<IActionResult> GetCustomerById(Guid businessId, Guid id)
+    {
+        var user = await GetActiveUserAsync();
 
-        return Ok(customer);
+        if (user is null || user.BusinessId != businessId)
+            return Forbid();
+
+        var customer = await _customerService
+            .GetCustomerByIdAsync(businessId, id);
+
+        return customer is null ? NotFound() : Ok(customer);
     }
 
     [HttpPost]
@@ -87,15 +86,15 @@ public class CustomerController : ControllerBase
         if (user is null)
             return Forbid();
 
-        if (string.IsNullOrWhiteSpace(customer.Name))
+        if (customer is null ||
+            string.IsNullOrWhiteSpace(customer.Name))
             return BadRequest("Customer name is required.");
 
         customer.Id = Guid.NewGuid();
         customer.BusinessId = user.BusinessId;
         customer.Name = customer.Name.Trim();
 
-        var createdCustomer =
-            await _customerService.CreateCustomerAsync(customer);
+        var created = await _customerService.CreateCustomerAsync(customer);
 
         await _activityLogService.LogAsync(
             user.BusinessId,
@@ -103,20 +102,17 @@ public class CustomerController : ControllerBase
             user.FullName,
             "Created Customer",
             "Customer",
-            createdCustomer.Id,
-            createdCustomer.Name);
+            created.Id,
+            created.Name);
 
         return CreatedAtAction(
             nameof(GetCustomerById),
-            new
-            {
-                businessId = user.BusinessId,
-                id = createdCustomer.Id
-            },
-            createdCustomer);
+            new { businessId = user.BusinessId, id = created.Id },
+            created);
     }
 
     [HttpPut("{id:guid}")]
+    [Authorize(Roles = "Admin,Manager")]
     public async Task<IActionResult> UpdateCustomer(
         Guid id,
         [FromBody] Customer customer)
@@ -126,27 +122,22 @@ public class CustomerController : ControllerBase
         if (user is null)
             return Forbid();
 
-        if (id != customer.Id)
+        if (customer is null || id != customer.Id)
             return BadRequest("Customer ID mismatch.");
-
-        var existing =
-            await _customerService.GetCustomerByIdAsync(
-                user.BusinessId,
-                id);
-
-        if (existing is null)
-            return NotFound();
 
         if (string.IsNullOrWhiteSpace(customer.Name))
             return BadRequest("Customer name is required.");
 
+        var existing = await _customerService
+            .GetCustomerByIdAsync(user.BusinessId, id);
+
+        if (existing is null)
+            return NotFound();
+
         customer.BusinessId = user.BusinessId;
         customer.Name = customer.Name.Trim();
 
-        var updated =
-            await _customerService.UpdateCustomerAsync(customer);
-
-        if (!updated)
+        if (!await _customerService.UpdateCustomerAsync(customer))
             return NotFound();
 
         await _activityLogService.LogAsync(
@@ -162,6 +153,7 @@ public class CustomerController : ControllerBase
     }
 
     [HttpDelete("{businessId:guid}/{id:guid}")]
+    [Authorize(Roles = "Admin,Manager")]
     public async Task<IActionResult> DeactivateCustomer(
         Guid businessId,
         Guid id)
@@ -171,19 +163,40 @@ public class CustomerController : ControllerBase
         if (user is null || user.BusinessId != businessId)
             return Forbid();
 
-        var deactivated =
-            await _customerService.DeactivateCustomerAsync(
-                user.BusinessId,
-                id);
-
-        if (!deactivated)
+        if (!await _customerService.DeactivateCustomerAsync(businessId, id))
             return NotFound();
 
         await _activityLogService.LogAsync(
-            user.BusinessId,
+            businessId,
             user.Id,
             user.FullName,
             "Deactivated Customer",
+            "Customer",
+            id,
+            null);
+
+        return NoContent();
+    }
+
+    [HttpPatch("{businessId:guid}/{id:guid}/reactivate")]
+    [Authorize(Roles = "Admin,Manager")]
+    public async Task<IActionResult> ReactivateCustomer(
+        Guid businessId,
+        Guid id)
+    {
+        var user = await GetActiveUserAsync();
+
+        if (user is null || user.BusinessId != businessId)
+            return Forbid();
+
+        if (!await _customerService.ReactivateCustomerAsync(businessId, id))
+            return NotFound();
+
+        await _activityLogService.LogAsync(
+            businessId,
+            user.Id,
+            user.FullName,
+            "Reactivated Customer",
             "Customer",
             id,
             null);

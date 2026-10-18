@@ -30,6 +30,16 @@ public class ActivityLogService : IActivityLogService
         await _activityLogRepository.AddAsync(log);
     }
 
+    public Task<PagedActivityLogResult> SearchPagedAsync(
+        ActivityLogFilter filter,
+        int page,
+        int pageSize)
+    {
+        return _activityLogRepository.SearchPagedAsync(
+            filter, page, pageSize);
+    }
+
+
     public async Task<List<ActivityLogDto>> SearchAsync(ActivityLogFilter filter)
     {
         var logs = await _activityLogRepository.SearchAsync(filter);
@@ -37,6 +47,7 @@ public class ActivityLogService : IActivityLogService
         return logs.Select(l => new ActivityLogDto
         {
             Id = l.Id,
+            EntityId = l.EntityId,
             UserName = l.UserName,
             Action = l.Action,
             EntityType = l.EntityType,

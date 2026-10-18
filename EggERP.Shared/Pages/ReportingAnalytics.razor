@@ -1,0 +1,505 @@
+﻿@page "/reports"
+@attribute [Authorize(Roles = "Admin,Manager")]
+@using EggERP.Shared.Models
+@using EggERP.Shared.Services
+@using EggERP.Shared.Components 
+@using Microsoft.AspNetCore.Authorization
+@using System.Globalization
+@using System.Text
+
+@inject ISaleApiService SaleApiService
+@inject IPurchaseApiService PurchaseApiService
+@inject IExpenseApiService ExpenseApiService
+@inject IFlockApiService FlockApiService
+@inject IEggApiService EggApiService
+@inject CurrentBusinessService CurrentBusiness
+
+<PageTitle>Reporting &amp; Analytics - EzEggERP</PageTitle>
+
+<h3 class="mb-3">Reporting &amp; Analytics</h3>
+<p class="text-muted">
+    Financial transactions and stock summaries for your business.
+</p>
+
+
+<div class="card mb-4">
+    <div class="card-body">
+        <div class="row g-3 align-items-end">
+            <div class="col-md-3">
+                <label class="form-label">Date Range</label>
+                <select class="form-select"
+                        @bind="datePreset"
+                        @bind:after="OnPresetChanged">
+                    <option value="Today">Today</option>
+                    <option value="Last7">Last 7 Days</option>
+                    <option value="ThisMonth">This Month</option>
+                    <option value="Last30">Last 30 Days</option>
+                    <option value="Custom">Custom Range</option>
+                </select>
+            </div>
+
+            <div class="col-md-3">
+                <label class="form-label">From</label>
+                <input type="date" class="form-control"
+                       @bind="fromDate"
+                       @bind:after="OnCustomDateChanged" />
+            </div>
+
+            <div class="col-md-3">
+                <label class="form-label">To</label>
+                <input type="date" class="form-control"
+                       @bind="toDate"
+                       @bind:after="OnCustomDateChanged" />
+            </div>
+
+            <div class="col-md-3">
+                <label class="form-label">Transaction Type</label>
+                <select class="form-select"
+                        @bind="typeFilter"
+                        @bind:after="ApplyFilters">
+                    <option value="All">All</option>
+                    <option value="Sale">Sales</option>
+                    <option value="Purchase">Purchases</option>
+                    <option value="Expense">Expenses</option>
+                </select>
+            </div>
+
+            <div class="col-md-3">
+                <label class="form-label">Payment Status</label>
+                <select class="form-select"
+                        @bind="statusFilter"
+                        @bind:after="ApplyFilters">
+                    <option value="All">All Statuses</option>
+                    <option value="Paid">Paid</option>
+                    <option value="Pending">Pending</option>
+                </select>
+            </div>
+
+            <div class="col-md-6">
+                <label class="form-label">Search Transactions</label>
+                <input class="form-control"
+                       placeholder="Search type, details, or status..."
+                       @bind="searchTerm"
+                       @bind:event="oninput"
+                       @bind:after="ApplyFilters" />
+            </div>
+        </div>
+    </div>
+</div>
+
+
+@if (loading)
+{
+    <p>Loading reports...</p>
+}
+else if (!string.IsNullOrWhiteSpace(error))
+{
+    <div class="alert alert-warning">@error</div>
+}
+else
+{
+
+    <div class="card mb-4 erp-report-section">
+        <div class="card-body">
+            <div class="d-flex flex-wrap justify-content-between
+                align-items-center gap-2 mb-3">
+                <h5 class="mb-0">Transaction Report</h5>
+
+                <a class="btn btn-outline-success btn-sm"
+                href="@csvUrl"
+                download="EzEggERP-Transactions.csv">
+                    <i class="bi bi-download me-1"></i>
+                    Export Filtered CSV
+                </a>
+            </div>
+            <div class="erp-table-scroll"
+                 role="region"
+                 aria-label="Transaction report"
+                 tabindex="0">
+                <table class="table erp-data-table
+                    table-striped table-hover align-middle mb-0">
+                    <thead>
+                        <tr>
+                            <th>Date</th>
+                            <th>Type</th>
+                            <th>Details</th>
+                            <th>Status</th>
+                            <th class="text-end">Amount</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach (var row in pagedRows)
+                        {
+                            <tr>
+                                <td>@row.Date.ToString("yyyy-MM-dd")</td>
+                                <td>@row.Type</td>
+                                <td>@row.Details</td>
+                                <td>@row.Status</td>
+                                <td class="text-end">@Money(row.Amount)</td>
+                            </tr>
+                        }
+
+                        @if (pagedRows.Count == 0)
+                        {
+                            <tr>
+                                <td colspan="5" class="text-center py-4">
+                                    No matching transactions found.
+                                </td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            </div>
+
+            <EzPagination TotalCount="filteredRows.Count"
+                          Page="currentPage"
+                          PageSize="PageSize"
+                          PageChanged="GoToPage" />
+        </div>
+    </div>
+
+<div class="row g-3 mb-4 erp-report-metrics">
+        <div class="col-md-6 col-xl-3">
+            <div class="card h-100 border-success">
+                <div class="card-body">
+                    <div class="text-muted">Collected Sales</div>
+                    <h4 class="text-success">@Money(paidSales)</h4>
+                    <small>Paid sales</small>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-md-6 col-xl-3">
+            <div class="card h-100 border-warning">
+                <div class="card-body">
+                    <div class="text-muted">Pending Sales</div>
+                    <h4>@Money(pendingSales)</h4>
+                    <small>Awaiting payment</small>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-md-6 col-xl-3">
+            <div class="card h-100">
+                <div class="card-body">
+                    <div class="text-muted">Paid Purchases</div>
+                    <h4>@Money(paidPurchases)</h4>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-md-6 col-xl-3">
+            <div class="card h-100">
+                <div class="card-body">
+                    <div class="text-muted">Pending Purchases</div>
+                    <h4>@Money(pendingPurchases)</h4>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <p class="small text-muted mb-4">
+        Transaction Balance = Recorded Sales − Recorded Purchases
+        − Recorded Expenses. This is not accounting net profit
+        or actual cash flow. Payment breakdowns use the recorded
+        Paid/Pending statuses. All summaries respect the selected
+        transaction type and payment-status filters.
+    </p>
+
+    <div class="row g-3 mb-4 erp-report-inventory">
+        <div class="col-md-6">
+            <div class="card h-100">
+                <div class="card-body">
+                    <h5>Flock Inventory</h5>
+                    <h3>@flockQuantity.ToString("N0") birds</h3>
+                    <p class="text-muted mb-0">
+                        Current stock, not historical stock.
+                    </p>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-6">
+            <div class="card h-100">
+                <div class="card-body">
+                    <h5>Egg Inventory</h5>
+                    <h3>@eggQuantity.ToString("N0") pcs</h3>
+                    <p class="text-muted mb-0">
+                        Current stock, not historical stock.
+                    </p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+
+    @code {
+
+    private void GoToPage(int pageNumber)
+    {
+        if (pageNumber < 1 || pageNumber > totalPages)
+            return;
+
+        currentPage = pageNumber;
+        RefreshPage();
+    }
+
+    private sealed class ReportRow
+    {
+        public DateTime Date { get; set; }
+        public string Type { get; set; } = "";
+        public string Details { get; set; } = "";
+        public string Status { get; set; } = "";
+        public decimal Amount { get; set; }
+    }
+
+    private DateTime fromDate = DateTime.Today.AddDays(-29);
+    private DateTime toDate = DateTime.Today;
+    private string datePreset = "Last30";
+    private string typeFilter = "All";
+    private string statusFilter = "All";
+    private string searchTerm = "";
+
+    private bool loading = true;
+    private string? error;
+
+    private readonly List<ReportRow> allRows = new();
+    private List<ReportRow> filteredRows = new();
+    private List<ReportRow> pagedRows = new();
+
+    private decimal totalSales;
+    private decimal totalPurchases;
+    private decimal totalExpenses;
+    private decimal balance;
+    private decimal paidSales;
+    private decimal pendingSales;
+    private decimal paidPurchases;
+    private decimal pendingPurchases;
+
+    private int flockQuantity;
+    private int eggQuantity;
+    private int currentPage = 1;
+    private int totalPages = 1;
+    private const int PageSize = 10;
+    private string csvUrl = "";
+
+    protected override async Task OnInitializedAsync()
+    {
+        try
+        {
+            var businessId =
+                await CurrentBusiness.GetBusinessIdAsync();
+
+            if (businessId == Guid.Empty)
+            {
+                error = "No business is currently selected.";
+                return;
+            }
+
+            var sales =
+                await SaleApiService.GetSalesAsync(businessId);
+
+            var purchases =
+                await PurchaseApiService.GetPurchasesAsync(businessId);
+
+            var expenses =
+                await ExpenseApiService.GetExpensesAsync(businessId);
+
+            var flocks = await FlockApiService.GetBoardAsync();
+            var eggs = await EggApiService.GetBoardAsync();
+
+            flockQuantity = flocks.Sum(x => x.Available);
+            eggQuantity = eggs.Sum(x => x.Available);
+
+            allRows.AddRange(sales.Select(s => new ReportRow
+            {
+                Date = s.SaleDateUtc.ToLocalTime(),
+                Type = "Sale",
+                Details = s.CustomerId is null
+                    ? "Walk-in" : "Customer sale",
+                Status = s.Status,
+                Amount = s.TotalAmount
+            }));
+
+            allRows.AddRange(purchases.Select(p => new ReportRow
+            {
+                Date = p.PurchaseDateUtc.ToLocalTime(),
+                Type = "Purchase",
+                Details = p.SupplierId is null
+                    ? "Unspecified supplier" : "Supplier purchase",
+                Status = p.Status,
+                Amount = p.TotalAmount
+            }));
+
+            allRows.AddRange(expenses.Select(e => new ReportRow
+            {
+                Date = e.ExpenseDateUtc.ToLocalTime(),
+                Type = "Expense",
+                Details = e.Category,
+                Status = e.Status,
+                Amount = e.Amount
+            }));
+
+            ApplyFilters();
+        }
+        catch
+        {
+            error = "Unable to load reports. Please try again.";
+        }
+        finally
+        {
+            loading = false;
+        }
+    }
+
+    private void OnPresetChanged()
+    {
+        var today = DateTime.Today;
+
+        switch (datePreset)
+        {
+            case "Today":
+                fromDate = today;
+                toDate = today;
+                break;
+
+            case "Last7":
+                fromDate = today.AddDays(-6);
+                toDate = today;
+                break;
+
+            case "ThisMonth":
+                fromDate = new DateTime(today.Year, today.Month, 1);
+                toDate = today;
+                break;
+
+            case "Last30":
+                fromDate = today.AddDays(-29);
+                toDate = today;
+                break;
+        }
+
+        ApplyFilters();
+    }
+
+    private void OnCustomDateChanged()
+    {
+        datePreset = "Custom";
+        ApplyFilters();
+    }
+
+    private void ApplyFilters()
+    {
+        if (fromDate.Date > toDate.Date)
+        {
+            error = "From date cannot be after To date.";
+            return;
+        }
+
+        error = null;
+
+        filteredRows = allRows
+            .Where(x =>
+                x.Date.Date >= fromDate.Date &&
+                x.Date.Date <= toDate.Date)
+            .Where(x =>
+                typeFilter == "All" ||
+                x.Type == typeFilter)
+            .Where(x =>
+                statusFilter == "All" ||
+                x.Status.Equals(
+                    statusFilter,
+                    StringComparison.OrdinalIgnoreCase))
+            .Where(x =>
+                string.IsNullOrWhiteSpace(searchTerm) ||
+                x.Type.Contains(
+                    searchTerm,
+                    StringComparison.OrdinalIgnoreCase) ||
+                x.Details.Contains(
+                    searchTerm,
+                    StringComparison.OrdinalIgnoreCase) ||
+                x.Status.Contains(
+                    searchTerm,
+                    StringComparison.OrdinalIgnoreCase))
+            .OrderByDescending(x => x.Date)
+            .ToList();
+
+        totalSales = SumAmount("Sale");
+        totalPurchases = SumAmount("Purchase");
+        totalExpenses = SumAmount("Expense");
+
+        paidSales = SumAmount("Sale", "Paid");
+        pendingSales = SumAmount("Sale", "Pending");
+        paidPurchases = SumAmount("Purchase", "Paid");
+        pendingPurchases = SumAmount("Purchase", "Pending");
+
+        balance = totalSales - totalPurchases - totalExpenses;
+
+        currentPage = 1;
+        RefreshPage();
+        BuildCsv();
+    }
+
+    private decimal SumAmount(string type, string? status = null)
+    {
+        return filteredRows
+            .Where(x =>
+                x.Type == type &&
+                (status is null ||
+                 x.Status.Equals(
+                     status,
+                     StringComparison.OrdinalIgnoreCase)))
+            .Sum(x => x.Amount);
+    }
+
+    private void RefreshPage()
+    {
+        totalPages = Math.Max(
+            1,
+            (int)Math.Ceiling(
+                filteredRows.Count / (double)PageSize));
+
+        currentPage = Math.Clamp(currentPage, 1, totalPages);
+
+        pagedRows = filteredRows
+            .Skip((currentPage - 1) * PageSize)
+            .Take(PageSize)
+            .ToList();
+    }
+
+    private void BuildCsv()
+    {
+        static string Escape(string? value)
+        {
+            var safe = value ?? "";
+
+            if (safe.Length > 0 &&
+                "=+-@\t\r\n".Contains(safe[0]))
+            {
+                safe = "'" + safe;
+            }
+
+            return "\"" + safe.Replace("\"", "\"\"") + "\"";
+        }
+
+        var sb = new StringBuilder();
+        sb.AppendLine("Date,Type,Details,Status,Amount");
+
+        foreach (var row in filteredRows)
+        {
+            sb.AppendLine(string.Join(",",
+                Escape(row.Date.ToString("yyyy-MM-dd")),
+                Escape(row.Type),
+                Escape(row.Details),
+                Escape(row.Status),
+                row.Amount.ToString(
+                    CultureInfo.InvariantCulture)));
+        }
+
+        csvUrl = "data:text/csv;charset=utf-8," +
+                 Uri.EscapeDataString(sb.ToString());
+    }
+
+    private static string Money(decimal value) =>
+        value.ToString("N2", CultureInfo.CurrentCulture);
+}
+}

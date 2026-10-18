@@ -1,4 +1,5 @@
-﻿using EggERP.Domain.Entities;
+﻿
+using EggERP.Domain.Entities;
 
 namespace EggERP.Application.Customers;
 
@@ -14,6 +15,11 @@ public class CustomerService : ICustomerService
     public Task<List<Customer>> GetCustomersAsync(Guid businessId)
     {
         return _customerRepository.GetActiveByBusinessIdAsync(businessId);
+    }
+
+    public Task<List<Customer>> GetAllCustomersAsync(Guid businessId)
+    {
+        return _customerRepository.GetAllByBusinessIdAsync(businessId);
     }
 
     public Task<Customer?> GetCustomerByIdAsync(Guid businessId, Guid id)
@@ -45,6 +51,11 @@ public class CustomerService : ICustomerService
     public Task<bool> DeactivateCustomerAsync(Guid businessId, Guid id)
     {
         return _customerRepository.DeactivateAsync(businessId, id);
+    }
+
+    public Task<bool> ReactivateCustomerAsync(Guid businessId, Guid id)
+    {
+        return _customerRepository.ReactivateAsync(businessId, id);
     }
 
     private static void ValidateCustomer(Customer customer)

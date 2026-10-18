@@ -31,12 +31,15 @@ public class UserManagementController : ControllerBase
     public async Task<IActionResult> GetUsers()
     {
         var currentUser = await _userManager.GetUserAsync(User);
-
-        if (currentUser is null)
+        if (currentUser is null || !currentUser.IsActive)
         {
             return Unauthorized();
         }
 
+        if (currentUser.BusinessId == Guid.Empty)
+        {
+            return Forbid();
+        }
         var users = await _userManagementService.GetUsersForBusinessAsync(
             currentUser.BusinessId);
 
@@ -47,10 +50,14 @@ public class UserManagementController : ControllerBase
     public async Task<IActionResult> CreateUser(CreateBusinessUserRequest request)
     {
         var currentUser = await _userManager.GetUserAsync(User);
-
-        if (currentUser is null)
+        if (currentUser is null || !currentUser.IsActive)
         {
             return Unauthorized();
+        }
+
+        if (currentUser.BusinessId == Guid.Empty)
+        {
+            return Forbid();
         }
 
         request.BusinessId = currentUser.BusinessId;
@@ -81,10 +88,14 @@ public class UserManagementController : ControllerBase
         }
 
         var currentUser = await _userManager.GetUserAsync(User);
-
-        if (currentUser is null)
+        if (currentUser is null || !currentUser.IsActive)
         {
             return Unauthorized();
+        }
+
+        if (currentUser.BusinessId == Guid.Empty)
+        {
+            return Forbid();
         }
 
         request.BusinessId = currentUser.BusinessId;
@@ -109,12 +120,15 @@ public class UserManagementController : ControllerBase
     public async Task<IActionResult> DeactivateUser(Guid id)
     {
         var currentUser = await _userManager.GetUserAsync(User);
-
-        if (currentUser is null)
+        if (currentUser is null || !currentUser.IsActive)
         {
             return Unauthorized();
         }
 
+        if (currentUser.BusinessId == Guid.Empty)
+        {
+            return Forbid();
+        }
         if (id == currentUser.Id)
         {
             return BadRequest(
@@ -163,12 +177,15 @@ public class UserManagementController : ControllerBase
     public async Task<IActionResult> ActivateUser(Guid id)
     {
         var currentUser = await _userManager.GetUserAsync(User);
-
-        if (currentUser is null)
+        if (currentUser is null || !currentUser.IsActive)
         {
             return Unauthorized();
         }
 
+        if (currentUser.BusinessId == Guid.Empty)
+        {
+            return Forbid();
+        }
         var (succeeded, error) =
             await _userManagementService.ActivateUserAsync(
                 currentUser.BusinessId,
@@ -190,14 +207,18 @@ public class UserManagementController : ControllerBase
     public async Task<IActionResult> ResendInvitation(Guid id)
     {
         var currentUser = await _userManager.GetUserAsync(User);
-
         if (currentUser is null || !currentUser.IsActive)
         {
             return Unauthorized();
         }
 
+        if (currentUser.BusinessId == Guid.Empty)
+        {
+            return Forbid();
+        }
+
         var (succeeded, error) =
-            await _userManagementService.ResendInvitationAsync(
+                    await _userManagementService.ResendInvitationAsync(
                 currentUser.BusinessId,
                 id);
 

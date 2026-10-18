@@ -1,4 +1,5 @@
-﻿using EggERP.Domain.Entities;
+﻿
+using EggERP.Domain.Entities;
 
 namespace EggERP.Application.Suppliers;
 
@@ -14,6 +15,11 @@ public class SupplierService : ISupplierService
     public Task<List<Supplier>> GetSuppliersAsync(Guid businessId)
     {
         return _supplierRepository.GetActiveByBusinessIdAsync(businessId);
+    }
+
+    public Task<List<Supplier>> GetAllSuppliersAsync(Guid businessId)
+    {
+        return _supplierRepository.GetAllByBusinessIdAsync(businessId);
     }
 
     public Task<Supplier?> GetSupplierByIdAsync(Guid businessId, Guid id)
@@ -45,6 +51,11 @@ public class SupplierService : ISupplierService
     public Task<bool> DeactivateSupplierAsync(Guid businessId, Guid id)
     {
         return _supplierRepository.DeactivateAsync(businessId, id);
+    }
+
+    public Task<bool> ReactivateSupplierAsync(Guid businessId, Guid id)
+    {
+        return _supplierRepository.ReactivateAsync(businessId, id);
     }
 
     private static void ValidateSupplier(Supplier supplier)

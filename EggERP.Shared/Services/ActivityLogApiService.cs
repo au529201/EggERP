@@ -1,34 +1,102 @@
-﻿using System.Net.Http.Json;
+﻿
+using System.Net.Http.Json;
 using EggERP.Shared.Models;
 
-namespace EggERP.Shared.Services
+namespace EggERP.Shared.Services;
+
+public interface IActivityLogApiService
 {
-    public interface IActivityLogApiService
+    Task<List<ActivityLogDto>> SearchAsync(
+        string? search,
+        string? entityType,
+        DateTime? startDate,
+        DateTime? endDate);
+
+    Task<PagedActivityLogDto> SearchPagedAsync(
+        string? search,
+        string? entityType,
+        DateTime? startDate,
+        DateTime? endDate,
+        int page,
+        int pageSize);
+}
+
+public class ActivityLogApiService : IActivityLogApiService
+{
+    private readonly HttpClient _http;
+
+    public ActivityLogApiService(HttpClient http)
     {
-        Task<List<ActivityLogDto>> SearchAsync(string? search, string? entityType, DateTime? startDate, DateTime? endDate);
+        _http = http;
     }
 
-    public class ActivityLogApiService : IActivityLogApiService
+    private static string BuildQuery(
+        string? search,
+        string? entityType,
+        DateTime? startDate,
+        DateTime? endDate)
     {
-        private readonly HttpClient _http;
+        var query = new List<string>();
 
-        public ActivityLogApiService(HttpClient http)
+        if (!string.IsNullOrWhiteSpace(search))
         {
-            _http = http;
+            query.Add(
+                $"search={Uri.EscapeDataString(search)}");
         }
 
-        public async Task<List<ActivityLogDto>> SearchAsync(string? search, string? entityType, DateTime? startDate, DateTime? endDate)
+        if (!string.IsNullOrWhiteSpace(entityType))
         {
-            var query = new List<string>();
-            if (!string.IsNullOrWhiteSpace(search)) query.Add($"search={Uri.EscapeDataString(search)}");
-            if (!string.IsNullOrWhiteSpace(entityType)) query.Add($"entityType={Uri.EscapeDataString(entityType)}");
-            if (startDate.HasValue) query.Add($"startDate={startDate:yyyy-MM-dd}");
-            if (endDate.HasValue) query.Add($"endDate={endDate:yyyy-MM-dd}");
-
-            var url = "api/activitylogs" + (query.Count > 0 ? "?" + string.Join("&", query) : "");
-
-            var result = await _http.GetFromJsonAsync<List<ActivityLogDto>>(url);
-            return result ?? new List<ActivityLogDto>();
+            query.Add(
+                $"entityType={Uri.EscapeDataString(entityType)}");
         }
+
+        if (startDate.HasValue)
+        {
+            query.Add($"startDate={startDate.Value:yyyy-MM-dd}");
+        }
+
+        if (endDate.HasValue)
+        {
+            query.Add($"endDate={endDate.Value:yyyy-MM-dd}");
+        }
+
+        return string.Join("&", query);
+    }
+
+    public async Task<List<ActivityLogDto>> SearchAsync(
+        string? search,
+        string? entityType,
+        DateTime? startDate,
+        DateTime? endDate)
+    {
+        var query = BuildQuery(
+            search, entityType, startDate, endDate);
+
+        var url = "api/activitylogs" +
+            (query.Length > 0 ? "?" + query : "");
+
+        return await _http.GetFromJsonAsync<List<ActivityLogDto>>(
+            url) ?? new();
+    }
+
+    public async Task<PagedActivityLogDto> SearchPagedAsync(
+        string? search,
+        string? entityType,
+        DateTime? startDate,
+        DateTime? endDate,
+        int page,
+        int pageSize)
+    {
+        var query = BuildQuery(
+            search, entityType, startDate, endDate);
+
+        var paging = $"page={page}&pageSize={pageSize}";
+
+        var url = "api/activitylogs/paged?" +
+            (query.Length > 0 ? query + "&" : "") +
+            paging;
+
+        return await _http.GetFromJsonAsync<PagedActivityLogDto>(
+            url) ?? new();
     }
 }

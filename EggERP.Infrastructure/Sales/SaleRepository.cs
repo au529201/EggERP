@@ -1,4 +1,5 @@
-﻿using EggERP.Application.Sales;
+﻿
+using EggERP.Application.Sales;
 using EggERP.Domain.Entities;
 using EggERP.Infrastructure.Persistence;
 using Microsoft.EntityFrameworkCore;
@@ -25,9 +26,9 @@ public class SaleRepository : ISaleRepository
     public Task<Sale?> GetByIdAsync(Guid businessId, Guid id)
     {
         return _dbContext.Sales
-            .FirstOrDefaultAsync(
-                s => s.BusinessId == businessId &&
-                     s.Id == id);
+            .FirstOrDefaultAsync(s =>
+                s.BusinessId == businessId &&
+                s.Id == id);
     }
 
     public Task<List<SaleItem>> GetItemsBySaleIdAsync(
@@ -55,7 +56,6 @@ public class SaleRepository : ISaleRepository
         return sale;
     }
 
-
     public async Task<bool> TryMarkAsPaidAsync(
         Guid businessId,
         Guid saleId,
@@ -65,6 +65,8 @@ public class SaleRepository : ISaleRepository
     {
         if (businessId == Guid.Empty || saleId == Guid.Empty)
             return false;
+
+        var updatedAtUtc = DateTime.UtcNow;
 
         var affectedRows = await _dbContext.Sales
             .Where(s =>
@@ -76,9 +78,29 @@ public class SaleRepository : ISaleRepository
                 .SetProperty(s => s.PaymentMethod, paymentMethod)
                 .SetProperty(s => s.PaymentSource, paymentSource)
                 .SetProperty(s => s.ReferenceNumber, referenceNumber)
-                .SetProperty(s => s.UpdatedAtUtc, DateTime.UtcNow));
+                .SetProperty(s => s.UpdatedAtUtc, updatedAtUtc));
 
         return affectedRows == 1;
     }
 
+    public async Task<bool> TryMarkAsPendingAsync(
+        Guid businessId,
+        Guid saleId)
+    {
+        if (businessId == Guid.Empty || saleId == Guid.Empty)
+            return false;
+
+        var updatedAtUtc = DateTime.UtcNow;
+
+        var affectedRows = await _dbContext.Sales
+            .Where(s =>
+                s.BusinessId == businessId &&
+                s.Id == saleId &&
+                s.Status == "Paid")
+            .ExecuteUpdateAsync(setters => setters
+                .SetProperty(s => s.Status, "Pending")
+                .SetProperty(s => s.UpdatedAtUtc, updatedAtUtc));
+
+        return affectedRows == 1;
+    }
 }

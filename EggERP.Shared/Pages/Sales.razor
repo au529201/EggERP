@@ -2,6 +2,7 @@
 @attribute [Authorize(Roles = "Admin,Manager,Staff")]
 @using EggERP.Shared.Models
 @using EggERP.Shared.Services
+@using EggERP.Shared.Components
 @inject ISaleApiService SaleApiService
 @inject ICustomerApiService CustomerApiService
 @inject IJSRuntime JsRuntime
@@ -15,9 +16,7 @@
 
 @if (!string.IsNullOrWhiteSpace(errorMessage))
 {
-    <div class="alert alert-danger">
-        @errorMessage
-    </div>
+    <div class="alert alert-danger">@errorMessage</div>
 }
 
 <div class="row mb-3 g-2">
@@ -29,7 +28,6 @@
                @bind:event="oninput"
                @bind:after="ResetPage" />
     </div>
-
     <div class="col-md-2">
         <label>Status</label>
         <select class="form-select"
@@ -40,23 +38,16 @@
             <option value="Pending">Pending</option>
         </select>
     </div>
-
     <div class="col-md-2">
         <label>From</label>
-        <input type="date"
-               class="form-control"
-               @bind="startDate"
-               @bind:after="ResetPage" />
+        <input type="date" class="form-control"
+               @bind="startDate" @bind:after="ResetPage" />
     </div>
-
     <div class="col-md-2">
         <label>To</label>
-        <input type="date"
-               class="form-control"
-               @bind="endDate"
-               @bind:after="ResetPage" />
+        <input type="date" class="form-control"
+               @bind="endDate" @bind:after="ResetPage" />
     </div>
-
     <div class="col-md-2 d-flex align-items-end">
         <button class="btn btn-outline-secondary w-100"
                 @onclick="ClearFilters">
@@ -67,7 +58,7 @@
 
 @if (sales is null)
 {
-    <p>Loading...</p>
+    <p>Loading sales...</p>
 }
 else if (!FilteredSales.Any())
 {
@@ -75,8 +66,12 @@ else if (!FilteredSales.Any())
 }
 else
 {
-    <div class="table-responsive">
-        <table class="table">
+    <div class="table-responsive"
+         role="region"
+         aria-label="Sales transactions"
+         tabindex="0">
+        <table class="table table-striped table-hover
+            align-middle mb-0">
             <thead>
                 <tr>
                     <th>Date</th>
@@ -86,29 +81,17 @@ else
                     <th>Action</th>
                 </tr>
             </thead>
-
             <tbody>
                 @foreach (var sale in PagedSales)
                 {
-                    <tr>
-                        <td>
-                            @sale.SaleDateUtc.ToLocalTime().ToString("g")
-                        </td>
-
-                        <td>
-                            @GetCustomerName(sale.CustomerId)
-                        </td>
-
-                        <td>
-                            @sale.TotalAmount.ToString("N2")
-                        </td>
-
+                    <tr @key="sale.Id">
+                        <td>@sale.SaleDateUtc.ToLocalTime().ToString("g")</td>
+                        <td>@GetCustomerName(sale.CustomerId)</td>
+                        <td>@sale.TotalAmount.ToString("N2")</td>
                         <td>
                             @if (sale.Status == "Paid")
                             {
-                                <span class="badge bg-success">
-                                    Paid
-                                </span>
+                                <span class="badge bg-success">Paid</span>
                             }
                             else
                             {
@@ -117,14 +100,21 @@ else
                                 </span>
                             }
                         </td>
-
                         <td>
                             @if (sale.Status == "Pending")
                             {
                                 <button class="btn btn-sm btn-success"
                                         disabled="@isUpdating"
                                         @onclick="() => MarkAsPaid(sale)">
-                                    @(isUpdating ? "Processing..." : "Mark Paid")
+                                    Mark Paid
+                                </button>
+                            }
+                            else if (sale.Status == "Paid")
+                            {
+                                <button class="btn btn-sm btn-warning"
+                                        disabled="@isUpdating"
+                                        @onclick="() => MarkAsPending(sale)">
+                                    Mark Pending
                                 </button>
                             }
                             else
@@ -138,96 +128,66 @@ else
         </table>
     </div>
 
-    <Pager Total="FilteredSales.Count()"
-           Page="page"
-           PageSize="pageSize"
-           PageChanged="OnPageChanged" />
+    <EzPagination TotalCount="FilteredSales.Count()"
+                  Page="@(page)"
+                  PageSize="pageSize"
+                  Disabled="isUpdating"
+                  PageChanged="OnPageChanged" />
 }
 
 @code {
     private List<SaleDto>? sales;
     private List<CustomerDto>? customers;
-
+    private Guid businessId;
     private string searchText = string.Empty;
     private string selectedStatus = string.Empty;
     private DateTime? startDate;
     private DateTime? endDate;
-
-    private Guid businessId;
-
     private int page = 1;
-    private const int pageSize = 7;
-
+    private const int pageSize = 10;
     private bool isUpdating;
     private string? errorMessage;
 
     private IEnumerable<SaleDto> FilteredSales =>
-        (sales ?? new List<SaleDto>())
-        .Where(s =>
-            (
-                string.IsNullOrWhiteSpace(searchText) ||
-                GetCustomerName(s.CustomerId)
-                    .Contains(searchText, StringComparison.OrdinalIgnoreCase)
-            )
-            &&
-            (
-                string.IsNullOrWhiteSpace(selectedStatus) ||
-                s.Status == selectedStatus
-            )
-            &&
-            (
-                !startDate.HasValue ||
-                s.SaleDateUtc.ToLocalTime().Date >= startDate.Value.Date
-            )
-            &&
-            (
-                !endDate.HasValue ||
-                s.SaleDateUtc.ToLocalTime().Date <= endDate.Value.Date
-            ));
+        (sales ?? new List<SaleDto>()).Where(s =>
+            (string.IsNullOrWhiteSpace(searchText) ||
+             GetCustomerName(s.CustomerId).Contains(
+                 searchText, StringComparison.OrdinalIgnoreCase)) &&
+            (string.IsNullOrWhiteSpace(selectedStatus) ||
+             s.Status == selectedStatus) &&
+            (!startDate.HasValue ||
+             s.SaleDateUtc.ToLocalTime().Date >= startDate.Value.Date) &&
+            (!endDate.HasValue ||
+             s.SaleDateUtc.ToLocalTime().Date <= endDate.Value.Date));
 
     private IEnumerable<SaleDto> PagedSales =>
-        FilteredSales
-            .Skip((page - 1) * pageSize)
-            .Take(pageSize);
+        FilteredSales.Skip((page - 1) * pageSize).Take(pageSize);
 
     protected override async Task OnInitializedAsync()
     {
         try
         {
             businessId = await CurrentBusiness.GetBusinessIdAsync();
-
             sales = await SaleApiService.GetSalesAsync(businessId);
             customers = await CustomerApiService.GetCustomersAsync(businessId);
         }
         catch (Exception ex)
         {
             errorMessage = $"Unable to load sales: {ex.Message}";
-            sales = new List<SaleDto>();
-            customers = new List<CustomerDto>();
+            sales = new();
+            customers = new();
         }
     }
 
     private string GetCustomerName(Guid? customerId)
     {
-        if (customerId is null)
-        {
-            return "Walk-in";
-        }
-
-        return customers?
-            .FirstOrDefault(c => c.Id == customerId)?
-            .Name ?? "Unknown";
+        if (customerId is null) return "Walk-in";
+        return customers?.FirstOrDefault(c => c.Id == customerId)?.Name
+               ?? "Unknown";
     }
 
-    private void ResetPage()
-    {
-        page = 1;
-    }
-
-    private void OnPageChanged(int newPage)
-    {
-        page = newPage;
-    }
+    private void ResetPage() => page = 1;
+    private void OnPageChanged(int newPage) => page = newPage;
 
     private void ClearFilters()
     {
@@ -238,50 +198,63 @@ else
         page = 1;
     }
 
+    private async Task RefreshAsync()
+    {
+        sales = await SaleApiService.GetSalesAsync(businessId);
+        var totalPages = Math.Max(1,
+            (int)Math.Ceiling(FilteredSales.Count() / (double)pageSize));
+        if (page > totalPages) page = totalPages;
+    }
+
     private async Task MarkAsPaid(SaleDto sale)
     {
-        if (isUpdating)
-        {
-            return;
-        }
-
-        errorMessage = null;
+        if (isUpdating) return;
 
         var confirmed = await JsRuntime.InvokeAsync<bool>(
             "confirm",
             $"Mark this sale of {sale.TotalAmount:N2} as fully paid in Cash?");
 
-        if (!confirmed)
-        {
-            return;
-        }
+        if (!confirmed) return;
 
         isUpdating = true;
-
+        errorMessage = null;
         try
         {
             await SaleApiService.MarkAsPaidAsync(
-                businessId,
-                sale.Id,
-                "Cash",
-                null,
-                null);
-
-            sales = await SaleApiService.GetSalesAsync(businessId);
-
-            var totalPages = Math.Max(
-                1,
-                (int)Math.Ceiling(FilteredSales.Count() / (double)pageSize));
-
-            if (page > totalPages)
-            {
-                page = totalPages;
-            }
+                businessId, sale.Id, "Cash", null, null);
+            await RefreshAsync();
         }
         catch (Exception ex)
         {
-            errorMessage =
-                $"Failed to update payment: {ex.Message}";
+            errorMessage = $"Failed to mark sale paid: {ex.Message}";
+        }
+        finally
+        {
+            isUpdating = false;
+        }
+    }
+
+    private async Task MarkAsPending(SaleDto sale)
+    {
+        if (isUpdating) return;
+
+        var confirmed = await JsRuntime.InvokeAsync<bool>(
+            "confirm",
+            $"Change this paid sale of {sale.TotalAmount:N2} back to Pending? " +
+            "This will not restore stock.");
+
+        if (!confirmed) return;
+
+        isUpdating = true;
+        errorMessage = null;
+        try
+        {
+            await SaleApiService.MarkAsPendingAsync(businessId, sale.Id);
+            await RefreshAsync();
+        }
+        catch (Exception ex)
+        {
+            errorMessage = $"Failed to mark sale pending: {ex.Message}";
         }
         finally
         {

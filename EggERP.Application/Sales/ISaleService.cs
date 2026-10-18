@@ -11,6 +11,9 @@ public class CreateSaleItemRequest
 
 public interface ISaleService
 {
+    Task<(bool Succeeded, string? Error)> MarkAsPendingAsync(
+    Guid businessId,
+    Guid saleId);
     Task<List<Sale>> GetSalesAsync(Guid businessId);
 
     Task<Sale?> GetSaleByIdAsync(Guid businessId, Guid id);

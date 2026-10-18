@@ -31,25 +31,40 @@ public class InventoryRepository : IInventoryRepository
                 i.ProductId == productId);
     }
 
+
+
     private async Task ValidateProductAsync(
         Guid businessId,
         Guid productId)
     {
-        if (businessId == Guid.Empty || productId == Guid.Empty)
+        if (businessId == Guid.Empty ||
+            productId == Guid.Empty)
         {
             throw new InvalidOperationException(
                 "A valid business and product are required.");
         }
 
-        var productExists = await _dbContext.Products
-            .AnyAsync(p =>
-                p.Id == productId &&
-                p.BusinessId == businessId);
+        var product = await _dbContext.Products
+            .AsNoTracking()
+            .Where(p =>
+                p.BusinessId == businessId &&
+                p.Id == productId)
+            .Select(p => new
+            {
+                p.IsActive
+            })
+            .FirstOrDefaultAsync();
 
-        if (!productExists)
+        if (product is null)
         {
             throw new InvalidOperationException(
                 "Product not found in this business.");
+        }
+
+        if (!product.IsActive)
+        {
+            throw new InvalidOperationException(
+                "Cannot adjust inventory for an inactive product.");
         }
     }
 

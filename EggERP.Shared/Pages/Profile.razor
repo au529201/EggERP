@@ -3,7 +3,7 @@
 @using EggERP.Shared.Models
 @using EggERP.Shared.Services
 @inject IProfileApiService ProfileApiService
-
+@using EggERP.Shared.Components
 <PageTitle>My Profile - EzEggERP</PageTitle>
 
 <div class="profile-page">
@@ -17,14 +17,10 @@
         </div>
     </div>
 
-    @if (isLoading)
-    {
-        <div class="profile-state">
-            <div class="spinner-border spinner-border-sm me-2"
-                 role="status"></div>
-            Loading profile...
-        </div>
-    }
+@if (isLoading)
+{
+    <EzLoading Message="Loading profile..." />
+}
     else if (profile is null)
     {
         <div class="alert alert-danger">

@@ -23,4 +23,8 @@ public interface ISaleRepository
         string paymentMethod,
         string? paymentSource,
         string? referenceNumber);
+
+    Task<bool> TryMarkAsPendingAsync(
+        Guid businessId,
+        Guid saleId);
 }

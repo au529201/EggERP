@@ -87,7 +87,9 @@ else
 
                                 <option value="">Select product</option>
 
-                                @foreach (var product in products)
+                                @foreach (var product in products.Where(p =>
+                                    stockOnHand.TryGetValue(p.Id, out var stock) &&
+                                    stock > 0))
                                 {
                                     <option value="@product.Id">
                                         @product.Type - @product.Description

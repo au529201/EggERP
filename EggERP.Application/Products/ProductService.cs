@@ -1,4 +1,4 @@
-﻿using EggERP.Domain.Entities;
+using EggERP.Domain.Entities;
 namespace EggERP.Application.Products;
 public class ProductService : IProductService
 {
@@ -10,6 +10,11 @@ public class ProductService : IProductService
     public Task<List<Product>> GetProductsAsync(Guid businessId)
     {
         return _productRepository.GetActiveByBusinessIdAsync(businessId);
+    }
+
+    public Task<List<Product>> GetAllProductsAsync(Guid businessId)
+    {
+        return _productRepository.GetAllByBusinessIdAsync(businessId);
     }
 
     public Task<Product?> GetProductByIdAsync(Guid businessId, Guid id)
@@ -55,6 +60,11 @@ public class ProductService : IProductService
     {
         return _productRepository.DeactivateAsync(businessId, id);
     }
+    public Task<bool> ReactivateProductAsync(Guid businessId, Guid id)
+    {
+        return _productRepository.ReactivateAsync(businessId, id);
+    }
+
     private static void ValidateProduct(Product product)
     {
         if (string.IsNullOrWhiteSpace(product.Type))

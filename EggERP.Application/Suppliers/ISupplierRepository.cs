@@ -7,4 +7,6 @@ public interface ISupplierRepository
     Task<Supplier> AddAsync(Supplier supplier);
     Task<bool> UpdateAsync(Supplier supplier);
     Task<bool> DeactivateAsync(Guid businessId, Guid id);
+    Task<List<Supplier>> GetAllByBusinessIdAsync(Guid businessId);
+    Task<bool> ReactivateAsync(Guid businessId, Guid id);
 }

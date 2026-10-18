@@ -4,6 +4,7 @@
 @rendermode InteractiveServer
 
 @using EggERP.Shared.Services
+@using EggERP.Shared.Components
 @inject IPlatformBusinessApiService PlatformApi
 
 <PageTitle>Platform Administration - EzEggERP</PageTitle>
@@ -107,11 +108,41 @@
         </div>
 
         <div class="card-body">
+            <div class="row g-2 mb-3">
+                <div class="col-md-6">
+                    <label class="form-label">Search Businesses</label>
+                    <input class="form-control"
+                           placeholder="Search business, owner or email..."
+                           @bind="searchText"
+                           @bind:event="oninput"
+                           @bind:after="ResetPage" />
+                </div>
+
+                <div class="col-md-3">
+                    <label class="form-label">Business Status</label>
+                    <select class="form-select"
+                            @bind="statusFilter"
+                            @bind:after="ResetPage">
+                        <option value="All">All</option>
+                        <option value="Active">Active</option>
+                        <option value="Suspended">Suspended</option>
+                    </select>
+                </div>
+
+                <div class="col-md-3 d-flex align-items-end">
+                    <button type="button"
+                            class="btn btn-outline-secondary w-100"
+                            @onclick="ClearFilters">
+                        Clear
+                    </button>
+                </div>
+            </div>
+
             @if (loading)
             {
                 <p>Loading businesses...</p>
             }
-            else if (businesses.Count == 0)
+else if (!FilteredBusinesses.Any())
             {
                 <p class="text-muted mb-0">
                     No businesses found.
@@ -119,8 +150,11 @@
             }
             else
             {
-                <div class="table-responsive">
-                    <table class="table table-striped align-middle">
+<div class="erp-table-scroll"
+     role="region"
+     aria-label="Registered businesses table"
+     tabindex="0">
+    <table class="table erp-data-table table-striped table-hover align-middle">
                         <thead>
                             <tr>
                                 <th>Business</th>
@@ -133,7 +167,7 @@
                         </thead>
 
                         <tbody>
-                            @foreach (var business in businesses)
+@foreach (var business in PagedBusinesses)
                             {
                                 <tr>
                                     <td>@business.BusinessName</td>
@@ -212,14 +246,63 @@
                         </tbody>
                     </table>
                 </div>
+
+                <EzPagination TotalCount="FilteredBusinesses.Count()"
+                              Page="page"
+                              PageSize="PageSize"
+                              Disabled="updatingStatus"
+                              PageChanged="OnPageChanged" />
             }
         </div>
     </div>
 </div>
 
 @code {
-    private CreatePlatformBusinessRequest form = new();
-    private List<PlatformBusinessDto> businesses = new();
+private CreatePlatformBusinessRequest form = new();
+private List<PlatformBusinessDto> businesses = new();
+
+private string searchText = string.Empty;
+private string statusFilter = "All";
+
+private int page = 1;
+private const int PageSize = 10;
+
+private IEnumerable<PlatformBusinessDto> FilteredBusinesses =>
+    businesses.Where(b =>
+        (
+            string.IsNullOrWhiteSpace(searchText) ||
+            (b.BusinessName ?? string.Empty).Contains(
+                searchText, StringComparison.OrdinalIgnoreCase) ||
+            (b.OwnerName ?? string.Empty).Contains(
+                searchText, StringComparison.OrdinalIgnoreCase) ||
+            (b.OwnerEmail ?? string.Empty).Contains(
+                searchText, StringComparison.OrdinalIgnoreCase)
+        )
+        &&
+        (
+            statusFilter == "All" ||
+            (statusFilter == "Active" && b.IsActive) ||
+            (statusFilter == "Suspended" && !b.IsActive)
+        ));
+
+private IEnumerable<PlatformBusinessDto> PagedBusinesses =>
+    FilteredBusinesses
+        .Skip((page - 1) * PageSize)
+        .Take(PageSize);
+
+private void ResetPage() => page = 1;
+
+private void OnPageChanged(int newPage)
+{
+    page = newPage;
+}
+
+private void ClearFilters()
+{
+    searchText = string.Empty;
+    statusFilter = "All";
+    page = 1;
+}
 
     private bool loading = true;
     private bool submitting;
@@ -240,8 +323,13 @@
 
         try
         {
-            businesses = await PlatformApi.GetBusinessesAsync();
-        }
+businesses = await PlatformApi.GetBusinessesAsync();
+
+var totalPages = Math.Max(
+    1,
+    (int)Math.Ceiling(FilteredBusinesses.Count() / (double)PageSize));
+
+page = Math.Clamp(page, 1, totalPages);        }
             catch (Exception ex)
             {
                 businesses = new();

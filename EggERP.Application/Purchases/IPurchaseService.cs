@@ -11,6 +11,9 @@ public class CreatePurchaseItemRequest
 
 public interface IPurchaseService
 {
+    Task<(bool Succeeded, string? Error)> MarkAsPendingAsync(
+    Guid businessId,
+    Guid purchaseId);
     Task<List<Purchase>> GetPurchasesAsync(Guid businessId);
 
     Task<Purchase?> GetPurchaseByIdAsync(Guid businessId, Guid id);

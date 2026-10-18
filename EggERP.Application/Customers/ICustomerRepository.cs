@@ -7,4 +7,6 @@ public interface ICustomerRepository
     Task<Customer> AddAsync(Customer customer);
     Task<bool> UpdateAsync(Customer customer);
     Task<bool> DeactivateAsync(Guid businessId, Guid id);
+    Task<List<Customer>> GetAllByBusinessIdAsync(Guid businessId);
+    Task<bool> ReactivateAsync(Guid businessId, Guid id);
 }

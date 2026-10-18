@@ -5,6 +5,7 @@ namespace EggERP.Shared.Services
 {
     public interface IPurchaseApiService
     {
+        Task MarkAsPendingAsync(Guid businessId, Guid purchaseId);
         Task<List<PurchaseDto>> GetPurchasesAsync(Guid businessId);
         Task CreatePurchaseAsync(CreatePurchaseRequest request);
 
@@ -19,6 +20,14 @@ namespace EggERP.Shared.Services
 
     public class PurchaseApiService : IPurchaseApiService
     {
+        public async Task MarkAsPendingAsync(Guid businessId, Guid purchaseId)
+        {
+            var response = await _http.PutAsync(
+                $"api/purchases/{businessId}/{purchaseId}/mark-pending",
+                null);
+
+            response.EnsureSuccessStatusCode();
+        }
         private readonly HttpClient _http;
 
         public PurchaseApiService(HttpClient http)

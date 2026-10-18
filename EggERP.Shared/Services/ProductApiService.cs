@@ -1,15 +1,16 @@
-﻿using System.Net.Http.Json;
+using System.Net.Http.Json;
 using EggERP.Shared.Models;
 
 namespace EggERP.Shared.Services
 {
     public interface IProductApiService
     {
-        Task<List<ProductDto>> GetProductsAsync();
+        Task<List<ProductDto>> GetProductsAsync(bool includeInactive = false);
         Task CreateProductAsync(CreateProductRequest request);
         Task<ProductDetailDto?> GetProductByIdAsync(Guid id);
         Task UpdateProductAsync(UpdateProductRequest request);
         Task DeactivateProductAsync(Guid id);
+        Task ReactivateProductAsync(Guid id);
     }
 
     public class ProductApiService : IProductApiService
@@ -21,10 +22,10 @@ namespace EggERP.Shared.Services
             _http = http;
         }
 
-        public async Task<List<ProductDto>> GetProductsAsync()
+        public async Task<List<ProductDto>> GetProductsAsync(bool includeInactive = false)
         {
             var result = await _http.GetFromJsonAsync<List<ProductDto>>(
-                "api/products");
+                includeInactive ? "api/products?includeInactive=true" : "api/products");
 
             return result ?? new List<ProductDto>();
         }
@@ -61,6 +62,12 @@ namespace EggERP.Shared.Services
                 $"api/products/{request.Id}",
                 request);
 
+            response.EnsureSuccessStatusCode();
+        }
+
+        public async Task ReactivateProductAsync(Guid id)
+        {
+            var response = await _http.PostAsync($"api/products/{id}/reactivate", null);
             response.EnsureSuccessStatusCode();
         }
 

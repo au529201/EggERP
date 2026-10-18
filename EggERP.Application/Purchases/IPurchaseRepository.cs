@@ -24,4 +24,8 @@ public interface IPurchaseRepository
         string? paymentSource,
         string? referenceNumber,
         string? bankName);
+
+    Task<bool> TryMarkAsPendingAsync(
+        Guid businessId,
+        Guid purchaseId);
 }

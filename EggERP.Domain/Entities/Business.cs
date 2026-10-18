@@ -1,4 +1,5 @@
-﻿namespace EggERP.Domain.Entities;
+﻿
+namespace EggERP.Domain.Entities;
 
 public class Business
 {
@@ -25,6 +26,7 @@ public class Business
     public string? PostalCode { get; set; }
 
     public string CountryCode { get; set; } = "PH";
+
     public string TaxStatus { get; set; } = "Non-VAT";
 
     public string? PercentageTaxOption { get; set; }

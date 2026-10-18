@@ -1,5 +1,5 @@
-﻿@page "/stock/add"
-@attribute [Authorize(Roles = "Admin,Manager")]
+@page "/stock/add"
+@attribute [Authorize(Roles = "Admin,Manager,Staff")]
 @using EggERP.Shared.Models
 @using EggERP.Shared.Services
 @inject IStockApiService StockApiService

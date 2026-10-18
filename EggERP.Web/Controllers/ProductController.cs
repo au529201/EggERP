@@ -1,4 +1,4 @@
-﻿
+
 using EggERP.Application.ActivityLogs;
 using EggERP.Application.Categories;
 using EggERP.Application.Inventory;
@@ -39,15 +39,19 @@ public class ProductController : ControllerBase
     }
 
     [HttpGet]
-    public async Task<IActionResult> GetProducts()
+    public async Task<IActionResult> GetProducts([FromQuery] bool includeInactive = false)
     {
         var user = await _userManager.GetUserAsync(User);
 
         if (user is null)
             return Unauthorized();
 
-        var products = await _productService
-            .GetProductsAsync(user.BusinessId);
+        var canManage = User.IsInRole("Admin") || User.IsInRole("Manager");
+        if (includeInactive && !canManage) return Forbid();
+
+        var products = includeInactive
+            ? await _productService.GetAllProductsAsync(user.BusinessId)
+            : await _productService.GetProductsAsync(user.BusinessId);
 
         var inventory = await _inventoryRepository
             .GetByBusinessIdAsync(user.BusinessId);
@@ -246,6 +250,23 @@ public class ProductController : ControllerBase
             "Product",
             id,
             product.Name);
+
+        return NoContent();
+    }
+
+    [HttpPost("{id:guid}/reactivate")]
+    [Authorize(Roles = "Admin,Manager")]
+    public async Task<IActionResult> ReactivateProduct(Guid id)
+    {
+        var user = await _userManager.GetUserAsync(User);
+        if (user is null) return Unauthorized();
+
+        var reactivated = await _productService.ReactivateProductAsync(user.BusinessId, id);
+        if (!reactivated) return NotFound();
+
+        await _activityLogService.LogAsync(
+            user.BusinessId, user.Id, user.FullName,
+            "Reactivated Product", "Product", id, null);
 
         return NoContent();
     }

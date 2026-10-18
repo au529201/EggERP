@@ -1,17 +1,35 @@
 ﻿@page "/customers"
 @attribute [Authorize(Roles = "Admin,Manager,Staff")]
+
 @using EggERP.Shared.Models
 @using EggERP.Shared.Services
+@using EggERP.Shared.Components
+@using Microsoft.AspNetCore.Authorization
+@using Microsoft.AspNetCore.Components.Authorization
+
 @inject ICustomerApiService CustomerApiService
 @inject CurrentBusinessService CurrentBusiness
+@inject AuthenticationStateProvider AuthenticationStateProvider
 @inject IJSRuntime JsRuntime
 
 <h3>Customers</h3>
 
-<a class="btn btn-primary mb-3" href="/customers/add">+ Add Customer</a>
+@if (canManage)
+{
+    <a class="btn btn-primary mb-3" href="/customers/add">
+        + Add Customer
+    </a>
+}
+
+@if (!string.IsNullOrWhiteSpace(errorMessage))
+{
+    <div class="alert alert-danger" role="alert">
+        @errorMessage
+    </div>
+}
 
 <div class="row mb-3 g-2">
-    <div class="col-md-9">
+    <div class="col-md-6">
         <input class="form-control"
                placeholder="Search name, email, phone or address..."
                @bind="searchText"
@@ -19,17 +37,31 @@
                @bind:after="ResetPage" />
     </div>
 
+    @if (canManage)
+    {
+        <div class="col-md-3">
+            <select class="form-select"
+                    @bind="statusFilter"
+                    @bind:after="ResetPage">
+                <option value="Active">Active</option>
+                <option value="Inactive">Inactive</option>
+                <option value="All">All</option>
+            </select>
+        </div>
+    }
+
     <div class="col-md-3">
         <button class="btn btn-outline-secondary w-100"
+                disabled="@isBusy"
                 @onclick="ClearFilters">
-            Clear
+            Clear Filters
         </button>
     </div>
 </div>
 
 @if (customers is null)
 {
-    <p>Loading...</p>
+    <p>Loading customers...</p>
 }
 else if (!FilteredCustomers.Any())
 {
@@ -37,69 +69,106 @@ else if (!FilteredCustomers.Any())
 }
 else
 {
-    <div class="table-responsive">
-        <table class="table">
+    <div class="erp-table-scroll">
+        <table class="table erp-data-table">
             <thead>
                 <tr>
                     <th>Name</th>
                     <th>Email</th>
                     <th>Phone</th>
                     <th>Address</th>
-                    <th></th>
+                    <th>Status</th>
+                    @if (canManage)
+                    {
+                        <th>Actions</th>
+                    }
                 </tr>
             </thead>
+
             <tbody>
                 @foreach (var customer in PagedCustomers)
                 {
-                    <tr>
+                    <tr @key="customer.Id">
                         <td>@customer.Name</td>
                         <td>@customer.Email</td>
                         <td>@customer.Phone</td>
                         <td>@customer.Address</td>
                         <td>
-                            <AuthorizeView Roles="Admin,Manager">
-                                <Authorized>
+                            <span class="badge @(customer.IsActive ? "bg-success" : "bg-secondary")">
+                                @(customer.IsActive ? "Active" : "Inactive")
+                            </span>
+                        </td>
+
+                        @if (canManage)
+                        {
+                            <td>
+                                <div class="erp-table-actions">
                                     <a class="btn btn-sm btn-secondary"
                                        href="@($"/customers/edit/{customer.Id}")">
                                         Edit
                                     </a>
 
-                                    <button class="btn btn-sm btn-danger"
-                                            @onclick="() => DeactivateCustomer(customer.Id, customer.Name)">
-                                        Deactivate
-                                    </button>
-                                </Authorized>
-                            </AuthorizeView>
-                        </td>
+                                    @if (customer.IsActive)
+                                    {
+                                        <button class="btn btn-sm btn-danger"
+                                                disabled="@isBusy"
+                                                @onclick="() => DeactivateCustomer(customer.Id, customer.Name)">
+                                            Deactivate
+                                        </button>
+                                    }
+                                    else
+                                    {
+                                        <button class="btn btn-sm btn-success"
+                                                disabled="@isBusy"
+                                                @onclick="() => ReactivateCustomer(customer.Id, customer.Name)">
+                                            Reactivate
+                                        </button>
+                                    }
+                                </div>
+                            </td>
+                        }
                     </tr>
                 }
             </tbody>
         </table>
     </div>
-
-    <Pager Total="FilteredCustomers.Count()"
-           Page="page"
-           PageSize="pageSize"
-           PageChanged="OnPageChanged" />
+    <EzPagination TotalCount="FilteredCustomers.Count()"
+                  Page="page"
+                  PageSize="pageSize"
+                  Disabled="isBusy"
+                  PageChanged="OnPageChanged" />
 }
 
 @code {
     private List<CustomerDto>? customers;
-    private string searchText = string.Empty;
 
     private Guid businessId;
+    private bool canManage;
+    private bool isBusy;
+
+    private string searchText = string.Empty;
+    private string statusFilter = "Active";
+    private string? errorMessage;
 
     private int page = 1;
-    private const int pageSize = 7;
+    private const int pageSize = 10;
 
     private IEnumerable<CustomerDto> FilteredCustomers =>
         (customers ?? new List<CustomerDto>())
         .Where(c =>
-            string.IsNullOrWhiteSpace(searchText) ||
-            c.Name.Contains(searchText, StringComparison.OrdinalIgnoreCase) ||
-            (c.Email ?? string.Empty).Contains(searchText, StringComparison.OrdinalIgnoreCase) ||
-            (c.Phone ?? string.Empty).Contains(searchText, StringComparison.OrdinalIgnoreCase) ||
-            (c.Address ?? string.Empty).Contains(searchText, StringComparison.OrdinalIgnoreCase));
+            (string.IsNullOrWhiteSpace(searchText) ||
+             (c.Name ?? string.Empty).Contains(
+                 searchText, StringComparison.OrdinalIgnoreCase) ||
+             (c.Email ?? string.Empty).Contains(
+                 searchText, StringComparison.OrdinalIgnoreCase) ||
+             (c.Phone ?? string.Empty).Contains(
+                 searchText, StringComparison.OrdinalIgnoreCase) ||
+             (c.Address ?? string.Empty).Contains(
+                 searchText, StringComparison.OrdinalIgnoreCase))
+            &&
+            (statusFilter == "All" ||
+             (statusFilter == "Active" && c.IsActive) ||
+             (statusFilter == "Inactive" && !c.IsActive)));
 
     private IEnumerable<CustomerDto> PagedCustomers =>
         FilteredCustomers
@@ -108,33 +177,117 @@ else
 
     protected override async Task OnInitializedAsync()
     {
+        var authState = await AuthenticationStateProvider
+            .GetAuthenticationStateAsync();
+
+        canManage =
+            authState.User.IsInRole("Admin") ||
+            authState.User.IsInRole("Manager");
+
         businessId = await CurrentBusiness.GetBusinessIdAsync();
-        customers = await CustomerApiService.GetCustomersAsync(businessId);
+
+        await RefreshCustomersAsync();
     }
 
-    private void ResetPage() => page = 1;
+    private async Task RefreshCustomersAsync()
+    {
+        try
+        {
+            errorMessage = null;
 
-    private void OnPageChanged(int newPage) => page = newPage;
+            customers = canManage
+                ? await CustomerApiService.GetAllCustomersAsync(businessId)
+                : await CustomerApiService.GetCustomersAsync(businessId);
+
+            var totalPages = Math.Max(
+                1,
+                (int)Math.Ceiling(FilteredCustomers.Count() /
+                                  (double)pageSize));
+
+            if (page > totalPages)
+                page = totalPages;
+        }
+        catch (Exception ex)
+        {
+            errorMessage = $"Unable to load customers: {ex.Message}";
+            customers ??= new List<CustomerDto>();
+        }
+    }
+
+    private void ResetPage()
+    {
+        page = 1;
+    }
+
+    private void OnPageChanged(int newPage)
+    {
+        page = newPage;
+    }
 
     private void ClearFilters()
     {
         searchText = string.Empty;
+        statusFilter = "Active";
         page = 1;
     }
 
     private async Task DeactivateCustomer(Guid id, string name)
     {
+        if (!canManage || isBusy)
+            return;
+
         var confirmed = await JsRuntime.InvokeAsync<bool>(
             "confirm",
-            $"Deactivate '{name}'? It will be hidden from the active customer list.");
+            $"Deactivate '{name}'? The customer will be hidden from active lists.");
 
         if (!confirmed)
-        {
             return;
-        }
 
-        await CustomerApiService.DeactivateCustomerAsync(businessId, id);
-        customers = await CustomerApiService.GetCustomersAsync(businessId);
-        page = 1;
+        await ChangeStatusAsync(id, false);
+    }
+
+    private async Task ReactivateCustomer(Guid id, string name)
+    {
+        if (!canManage || isBusy)
+            return;
+
+        var confirmed = await JsRuntime.InvokeAsync<bool>(
+            "confirm",
+            $"Reactivate '{name}'?");
+
+        if (!confirmed)
+            return;
+
+        await ChangeStatusAsync(id, true);
+    }
+
+    private async Task ChangeStatusAsync(Guid id, bool activate)
+    {
+        isBusy = true;
+        errorMessage = null;
+
+        try
+        {
+            if (activate)
+            {
+                await CustomerApiService
+                    .ReactivateCustomerAsync(businessId, id);
+            }
+            else
+            {
+                await CustomerApiService
+                    .DeactivateCustomerAsync(businessId, id);
+            }
+
+            await RefreshCustomersAsync();
+        }
+        catch (Exception ex)
+        {
+            errorMessage = $"Unable to update customer: {ex.Message}";
+        }
+        finally
+        {
+            isBusy = false;
+        }
     }
 }

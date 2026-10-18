@@ -1,5 +1,5 @@
-﻿@page "/stock/remove"
-@attribute [Authorize(Roles = "Admin,Manager")]
+@page "/stock/remove"
+@attribute [Authorize(Roles = "Admin,Manager,Staff")]
 @using EggERP.Shared.Models
 @using EggERP.Shared.Services
 @inject IStockApiService StockApiService
@@ -369,20 +369,21 @@ private string? loadError;
             : eggOutReasons;
     }
 
-    private IEnumerable<ProductDto> AvailableProducts(Line current)
+        private IEnumerable<ProductDto> AvailableProducts(Line current)
     {
-        var takenIds =
-            lines
-                .Where(l =>
-                    l != current &&
-                    !string.IsNullOrWhiteSpace(l.ProductId))
-                .Select(l => l.ProductId)
-                .ToHashSet();
+        var takenIds = lines
+            .Where(l =>
+                l != current &&
+                !string.IsNullOrWhiteSpace(l.ProductId))
+            .Select(l => l.ProductId)
+            .ToHashSet();
 
         return (products ?? new())
             .Where(p =>
                 p.Group == current.Group &&
-                !takenIds.Contains(p.Id.ToString()));
+                !takenIds.Contains(p.Id.ToString()) &&
+                stockOnHand.TryGetValue(p.Id, out var stock) &&
+                stock > 0);
     }
 
     private bool CanAddLine()

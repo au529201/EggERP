@@ -1,4 +1,4 @@
-﻿
+
 using EggERP.Application.ActivityLogs;
 using EggERP.Application.Suppliers;
 using EggERP.Domain.Entities;
@@ -10,7 +10,7 @@ using Microsoft.AspNetCore.Mvc;
 namespace EggERP.Web.Controllers;
 
 [ApiController]
-[Authorize(Roles = "Admin,Manager")]
+[Authorize(Roles = "Admin,Manager,Staff")]
 [Authorize(Policy = "ActiveBusiness")]
 [Route("api/suppliers")]
 public class SupplierController : ControllerBase
@@ -33,14 +33,11 @@ public class SupplierController : ControllerBase
     {
         var user = await _userManager.GetUserAsync(User);
 
-        if (user is null ||
-            !user.IsActive ||
-            user.BusinessId == Guid.Empty)
-        {
-            return null;
-        }
-
-        return user;
+        return user is not null &&
+               user.IsActive &&
+               user.BusinessId != Guid.Empty
+            ? user
+            : null;
     }
 
     [HttpGet("{businessId:guid}")]
@@ -51,31 +48,33 @@ public class SupplierController : ControllerBase
         if (user is null || user.BusinessId != businessId)
             return Forbid();
 
-        var suppliers =
-            await _supplierService.GetSuppliersAsync(user.BusinessId);
-
-        return Ok(suppliers);
+        return Ok(await _supplierService.GetSuppliersAsync(businessId));
     }
 
-    [HttpGet("{businessId:guid}/{id:guid}")]
-    public async Task<IActionResult> GetSupplierById(
-        Guid businessId,
-        Guid id)
+    [HttpGet("{businessId:guid}/all")]
+    [Authorize(Roles = "Admin,Manager")]
+    public async Task<IActionResult> GetAllSuppliers(Guid businessId)
     {
         var user = await GetActiveUserAsync();
 
         if (user is null || user.BusinessId != businessId)
             return Forbid();
 
-        var supplier =
-            await _supplierService.GetSupplierByIdAsync(
-                user.BusinessId,
-                id);
+        return Ok(await _supplierService.GetAllSuppliersAsync(businessId));
+    }
 
-        if (supplier is null)
-            return NotFound();
+    [HttpGet("{businessId:guid}/{id:guid}")]
+    public async Task<IActionResult> GetSupplierById(Guid businessId, Guid id)
+    {
+        var user = await GetActiveUserAsync();
 
-        return Ok(supplier);
+        if (user is null || user.BusinessId != businessId)
+            return Forbid();
+
+        var supplier = await _supplierService
+            .GetSupplierByIdAsync(businessId, id);
+
+        return supplier is null ? NotFound() : Ok(supplier);
     }
 
     [HttpPost]
@@ -87,15 +86,15 @@ public class SupplierController : ControllerBase
         if (user is null)
             return Forbid();
 
-        if (string.IsNullOrWhiteSpace(supplier.Name))
+        if (supplier is null ||
+            string.IsNullOrWhiteSpace(supplier.Name))
             return BadRequest("Supplier name is required.");
 
         supplier.Id = Guid.NewGuid();
         supplier.BusinessId = user.BusinessId;
         supplier.Name = supplier.Name.Trim();
 
-        var createdSupplier =
-            await _supplierService.CreateSupplierAsync(supplier);
+        var created = await _supplierService.CreateSupplierAsync(supplier);
 
         await _activityLogService.LogAsync(
             user.BusinessId,
@@ -103,20 +102,17 @@ public class SupplierController : ControllerBase
             user.FullName,
             "Created Supplier",
             "Supplier",
-            createdSupplier.Id,
-            createdSupplier.Name);
+            created.Id,
+            created.Name);
 
         return CreatedAtAction(
             nameof(GetSupplierById),
-            new
-            {
-                businessId = user.BusinessId,
-                id = createdSupplier.Id
-            },
-            createdSupplier);
+            new { businessId = user.BusinessId, id = created.Id },
+            created);
     }
 
     [HttpPut("{id:guid}")]
+    [Authorize(Roles = "Admin,Manager")]
     public async Task<IActionResult> UpdateSupplier(
         Guid id,
         [FromBody] Supplier supplier)
@@ -126,27 +122,22 @@ public class SupplierController : ControllerBase
         if (user is null)
             return Forbid();
 
-        if (id != supplier.Id)
+        if (supplier is null || id != supplier.Id)
             return BadRequest("Supplier ID mismatch.");
-
-        var existing =
-            await _supplierService.GetSupplierByIdAsync(
-                user.BusinessId,
-                id);
-
-        if (existing is null)
-            return NotFound();
 
         if (string.IsNullOrWhiteSpace(supplier.Name))
             return BadRequest("Supplier name is required.");
 
+        var existing = await _supplierService
+            .GetSupplierByIdAsync(user.BusinessId, id);
+
+        if (existing is null)
+            return NotFound();
+
         supplier.BusinessId = user.BusinessId;
         supplier.Name = supplier.Name.Trim();
 
-        var updated =
-            await _supplierService.UpdateSupplierAsync(supplier);
-
-        if (!updated)
+        if (!await _supplierService.UpdateSupplierAsync(supplier))
             return NotFound();
 
         await _activityLogService.LogAsync(
@@ -162,6 +153,7 @@ public class SupplierController : ControllerBase
     }
 
     [HttpDelete("{businessId:guid}/{id:guid}")]
+    [Authorize(Roles = "Admin,Manager")]
     public async Task<IActionResult> DeactivateSupplier(
         Guid businessId,
         Guid id)
@@ -171,19 +163,40 @@ public class SupplierController : ControllerBase
         if (user is null || user.BusinessId != businessId)
             return Forbid();
 
-        var deactivated =
-            await _supplierService.DeactivateSupplierAsync(
-                user.BusinessId,
-                id);
-
-        if (!deactivated)
+        if (!await _supplierService.DeactivateSupplierAsync(businessId, id))
             return NotFound();
 
         await _activityLogService.LogAsync(
-            user.BusinessId,
+            businessId,
             user.Id,
             user.FullName,
             "Deactivated Supplier",
+            "Supplier",
+            id,
+            null);
+
+        return NoContent();
+    }
+
+    [HttpPatch("{businessId:guid}/{id:guid}/reactivate")]
+    [Authorize(Roles = "Admin,Manager")]
+    public async Task<IActionResult> ReactivateSupplier(
+        Guid businessId,
+        Guid id)
+    {
+        var user = await GetActiveUserAsync();
+
+        if (user is null || user.BusinessId != businessId)
+            return Forbid();
+
+        if (!await _supplierService.ReactivateSupplierAsync(businessId, id))
+            return NotFound();
+
+        await _activityLogService.LogAsync(
+            businessId,
+            user.Id,
+            user.FullName,
+            "Reactivated Supplier",
             "Supplier",
             id,
             null);
