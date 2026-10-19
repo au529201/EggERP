@@ -32,10 +32,10 @@ public class StockController : ControllerBase
         _activityLogService = activityLogService;
         _db = db;
     }
-
     [HttpPost("process")]
+    [ValidateAntiForgeryToken]
     public async Task<IActionResult> Process(
-        [FromBody] ProcessStockTransactionRequest request)
+            [FromBody] ProcessStockTransactionRequest request)
     {
         if (request is null)
             return BadRequest("Stock transaction request is required.");

@@ -71,7 +71,10 @@ builder.Services.ConfigureApplicationCookie(options =>
 
     // Compatible with local HTTP and HTTPS.
     // Production should use HTTPS with SecurePolicy.Always.
-    options.Cookie.SecurePolicy = CookieSecurePolicy.SameAsRequest;
+    options.Cookie.SecurePolicy =
+    builder.Environment.IsProduction()
+        ? CookieSecurePolicy.Always
+        : CookieSecurePolicy.SameAsRequest;
 
     options.ExpireTimeSpan = TimeSpan.FromDays(7);
     options.SlidingExpiration = true;
@@ -224,10 +227,11 @@ builder.Services.AddAntiforgery(options =>
     options.Cookie.HttpOnly = true;
     options.Cookie.SameSite = SameSiteMode.Strict;
 
-    // Compatible with the current HTTP deployment.
-    // Require HTTPS and SecurePolicy.Always for production.
+    // Require secure antiforgery cookies in production.
     options.Cookie.SecurePolicy =
-        CookieSecurePolicy.SameAsRequest;
+        builder.Environment.IsProduction()
+            ? CookieSecurePolicy.Always
+            : CookieSecurePolicy.SameAsRequest;
 });
 
 // Swagger

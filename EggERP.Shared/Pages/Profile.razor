@@ -4,6 +4,8 @@
 @using EggERP.Shared.Services
 @inject IProfileApiService ProfileApiService
 @using EggERP.Shared.Components
+@inject Microsoft.JSInterop.IJSRuntime JS
+
 <PageTitle>My Profile - EzEggERP</PageTitle>
 
 <div class="profile-page">
@@ -326,10 +328,13 @@ private bool showConfirmPassword;
 
         try
         {
-            var error =
-                await ProfileApiService.UpdateProfileAsync(
-                    editModel);
+var csrfToken = await JS.InvokeAsync<string>(
+    "ezEggAntiforgery.getRequestToken");
 
+var error =
+    await ProfileApiService.UpdateProfileAsync(
+        editModel,
+        csrfToken);
             if (error is not null)
             {
                 errorMessage = error;
@@ -380,9 +385,13 @@ private bool showConfirmPassword;
 
         try
         {
-            var error =
-                await ProfileApiService.ChangePasswordAsync(
-                    passwordModel);
+var csrfToken = await JS.InvokeAsync<string>(
+    "ezEggAntiforgery.getRequestToken");
+
+var error =
+    await ProfileApiService.ChangePasswordAsync(
+        passwordModel,
+        csrfToken);
 
             if (error is not null)
             {

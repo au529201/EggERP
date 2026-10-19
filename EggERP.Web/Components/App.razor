@@ -1,21 +1,102 @@
-﻿<!DOCTYPE html>
+﻿
+<!DOCTYPE html>
 <html lang="en">
 
 <head>
     <meta charset="utf-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="viewport"
+          content="width=device-width, initial-scale=1.0" />
     <base href="/" />
-    <link rel="stylesheet" href="_content/EggERP.Shared/bootstrap/bootstrap.min.css" />
-    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css" />
-    <link rel="stylesheet" href="_content/EggERP.Shared/app.css" />
-    <link rel="stylesheet" href="EggERP.Web.styles.css" />
-    <link rel="icon" type="image/png" href="_content/EggERP.Shared/favicon.png" />
+
+    <link rel="stylesheet"
+          href="_content/EggERP.Shared/bootstrap/bootstrap.min.css" />
+
+    <link rel="stylesheet"
+          href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css" />
+
+    <link rel="stylesheet"
+          href="_content/EggERP.Shared/app.css" />
+
+    <link rel="stylesheet"
+          href="EggERP.Web.styles.css" />
+
+    <link rel="icon"
+          type="image/png"
+          href="_content/EggERP.Shared/favicon.png" />
+
     <HeadOutlet @rendermode="InteractiveServer" />
 </head>
 
 <body>
     <Routes @rendermode="InteractiveServer" />
-    <script src="_framework/blazor.web.js"></script>
+
+    <script src="_framework/blazor.web.js"
+            autostart="false"></script>
+
+    <script>
+        window.ezEggAntiforgery = {
+            requestToken: null,
+
+            initialize: async function () {
+                this.requestToken = null;
+
+                try {
+                    const response = await fetch(
+                        "/api/antiforgery/token",
+                        {
+                            method: "GET",
+                            credentials: "same-origin",
+                            cache: "no-store"
+                        }
+                    );
+
+                    if (!response.ok) {
+                        return false;
+                    }
+
+                    const result = await response.json();
+
+                    if (!result.requestToken) {
+                        return false;
+                    }
+
+                    // Keep the request token in browser
+                    // memory only, never persistent storage.
+                    this.requestToken = result.requestToken;
+
+                    return true;
+                } catch {
+                    return false;
+                }
+            },
+
+getRequestToken: async function () {
+    if (this.requestToken) {
+        return this.requestToken;
+    }
+
+    const initialized = await this.initialize();
+
+    if (!initialized || !this.requestToken) {
+        throw new Error(
+            "Unable to obtain an antiforgery token. Please sign in again."
+        );
+    }
+
+    return this.requestToken;
+}
+        };
+
+        (async function () {
+            // Obtain the authenticated antiforgery
+            // cookie before starting the Blazor circuit.
+            await window.ezEggAntiforgery.initialize();
+
+            // Start Blazor even on anonymous pages,
+            // such as Login and Forgot Password.
+            await Blazor.start();
+        })();
+    </script>
 </body>
 
 </html>

@@ -614,9 +614,20 @@ if (businessId == Guid.Empty)
                                         : null
                             }).ToList()
                 };
+            var csrfToken = await JsRuntime.InvokeAsync<string?>(
+                "ezEggAntiforgery.getRequestToken");
+
+            if (string.IsNullOrWhiteSpace(csrfToken))
+            {
+                errorMessage =
+                    "Security token unavailable. Refresh the page and try again.";
+                return;
+            }
 
             var error =
-                await StockApiService.ProcessAsync(request);
+                await StockApiService.ProcessAsync(
+                    request,
+                    csrfToken);
 
             if (error is not null)
             {

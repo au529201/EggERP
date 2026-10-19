@@ -1,4 +1,5 @@
-﻿using System.Net.Http.Json;
+﻿
+using System.Net.Http.Json;
 using EggERP.Shared.Models;
 
 namespace EggERP.Shared.Services;
@@ -8,10 +9,11 @@ public interface IProfileApiService
     Task<UserProfileDto?> GetProfileAsync();
 
     Task<string?> UpdateProfileAsync(
-        UpdateMyProfileRequest request);
-
+        UpdateMyProfileRequest request,
+        string csrfToken);
     Task<string?> ChangePasswordAsync(
-        ChangeMyPasswordRequest request);
+        ChangeMyPasswordRequest request,
+        string csrfToken);
 }
 
 public class ProfileApiService : IProfileApiService
@@ -28,40 +30,57 @@ public class ProfileApiService : IProfileApiService
         var response = await _http.GetAsync("api/profile");
 
         if (!response.IsSuccessStatusCode)
-        {
             return null;
-        }
 
         return await response.Content
             .ReadFromJsonAsync<UserProfileDto>();
     }
 
     public async Task<string?> UpdateProfileAsync(
-        UpdateMyProfileRequest request)
+        UpdateMyProfileRequest request,
+        string csrfToken)
     {
-        var response = await _http.PutAsJsonAsync(
-            "api/profile",
-            request);
+        if (string.IsNullOrWhiteSpace(csrfToken))
+            return "An antiforgery token is required.";
+
+        using var message = new HttpRequestMessage(
+            HttpMethod.Put,
+            "api/profile");
+
+        message.Headers.TryAddWithoutValidation(
+            "X-CSRF-TOKEN",
+            csrfToken);
+
+        message.Content = JsonContent.Create(request);
+
+        using var response = await _http.SendAsync(message);
 
         if (response.IsSuccessStatusCode)
-        {
             return null;
-        }
 
         return await ReadErrorAsync(response);
     }
-
     public async Task<string?> ChangePasswordAsync(
-        ChangeMyPasswordRequest request)
+        ChangeMyPasswordRequest request,
+        string csrfToken)
     {
-        var response = await _http.PostAsJsonAsync(
-            "api/profile/change-password",
-            request);
+        if (string.IsNullOrWhiteSpace(csrfToken))
+            return "An antiforgery token is required.";
+
+        using var message = new HttpRequestMessage(
+            HttpMethod.Post,
+            "api/profile/change-password");
+
+        message.Headers.TryAddWithoutValidation(
+            "X-CSRF-TOKEN",
+            csrfToken);
+
+        message.Content = JsonContent.Create(request);
+
+        using var response = await _http.SendAsync(message);
 
         if (response.IsSuccessStatusCode)
-        {
             return null;
-        }
 
         return await ReadErrorAsync(response);
     }
@@ -72,9 +91,7 @@ public class ProfileApiService : IProfileApiService
         var text = await response.Content.ReadAsStringAsync();
 
         if (string.IsNullOrWhiteSpace(text))
-        {
             return "The request could not be completed.";
-        }
 
         return text.Trim().Trim('"');
     }

@@ -83,8 +83,9 @@ public class ProfileController : ControllerBase
         });
     }
     [HttpPut]
+    [ValidateAntiForgeryToken]
     public async Task<IActionResult> UpdateProfile(
-              [FromBody] UpdateMyProfileRequest request)
+                  [FromBody] UpdateMyProfileRequest request)
     {
         var user = await GetAuthorizedUserAsync();
 
@@ -123,10 +124,10 @@ public class ProfileController : ControllerBase
 
         return NoContent();
     }
-
     [HttpPost("change-password")]
+    [ValidateAntiForgeryToken]
     public async Task<IActionResult> ChangePassword(
-        [FromBody] ChangeMyPasswordRequest request)
+            [FromBody] ChangeMyPasswordRequest request)
     {
         var user = await GetAuthorizedUserAsync();
 
